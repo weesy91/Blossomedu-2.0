@@ -144,3 +144,6 @@ LOGOUT_REDIRECT_URL = 'core:login'
 
 # 데이터 전송 제한 해제
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
+
+# 기본 키 필드 타입 설정 (W042 경고 해결용)
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
