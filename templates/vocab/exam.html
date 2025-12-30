@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>단어 시험</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* 터치 반응 속도 최적화 */
+        body { 
+            background-color: #f8f9fa; 
+            touch-action: manipulation; 
+            overscroll-behavior: none;
+        } 
+        
+        .exam-card {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            min-height: 100vh; /* 화면 꽉 차게 */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 단어 텍스트 */
+        .word-display {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #212529;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        /* 발음 아이콘 */
+        .pronunciation-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: #e7f1ff;
+            color: #0d6efd;
+            font-size: 1.2rem;
+            margin-left: 10px;
+            cursor: pointer;
+            /* 터치 인식 개선 */
+            position: relative; 
+            z-index: 10; 
+        }
+
+        /* 타이머 바 */
+        .timer-container {
+            height: 6px;
+            background-color: #e9ecef;
+            margin-bottom: 20px;
+            border-radius: 3px;
+            overflow: hidden;
+            width: 100%;
+        }
+        .timer-bar { 
+            height: 100%; 
+            background-color: #0d6efd; 
+            width: 100%; 
+            /* 부드러운 애니메이션 제거 (즉각 반응 위해) or 짧게 설정 */
+            transition: width 0.05s linear; 
+        }
+        .timer-bar.danger { background-color: #dc3545; }
+
+        /* [학습 모드] 터치 영역 - 화면 전체 활용 */
+        .touch-area {
+            flex-grow: 1; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            margin: 20px 0;
+            border-radius: 15px;
+            background-color: #ffffff; /* 투명도 제거 */
+            /* 클릭 명확성을 위해 테두리 추가 */
+            border: 2px dashed #dee2e6;
+        }
+        .touch-area:active { background-color: #f8f9fa; border-color: #adb5bd; }
+        .tap-hint { color: #adb5bd; font-size: 0.9rem; margin-top: 15px; }
+
+        /* [시험 모드] 입력창 */
+        .input-answer {
+            font-size: 1.3rem;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #dee2e6;
+            margin-bottom: 0;
+            width: 100%;
+            background-color: #fff;
+        }
+        .input-answer:focus { border-color: #0d6efd; outline: none; box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1); }
+        .input-answer.correct { border-color: #198754; background-color: #d1e7dd; }
+        .input-answer.wrong { border-color: #dc3545; background-color: #f8d7da; }
+
+        /* 결과 테이블 */
+        .result-table th { background-color: #f8f9fa; text-align: center; white-space: nowrap; font-size: 0.9rem; }
+        .result-table td { vertical-align: middle; padding: 12px 8px; font-size: 0.95rem; }
+        .correct-row { background-color: #f6fff9; }
+        .wrong-row { background-color: #fff5f5; }
+
+        /* 하단 고정 버튼 */
+        .bottom-btn-area {
+            margin-top: auto;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .btn-large {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border-radius: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="exam-card">
+    
+    <div id="headerInfo">
+        <div class="d-flex justify-content-between text-muted mb-3 small align-items-center">
+            <span class="fw-bold text-truncate" style="max-width: 60%;">{{ book_title }}</span>
+            <span class="badge bg-light text-dark border"><span id="currentIndex">1</span> / {{ words_json|length }}</span>
+        </div>
+        
+        <div class="timer-container" id="timerContainer">
+            <div id="timerBar" class="timer-bar"></div>
+        </div>
+    </div>
+
+    <div id="questionArea" style="display: contents;">
+        
+        <div class="d-flex justify-content-center align-items-center mt-2 mb-3">
+            <div id="wordQuestion" class="word-display">Ready</div>
+            <div class="pronunciation-btn shadow-sm" onclick="speakWord(event)">🔊</div>
+        </div>
+
+        <div id="learningArea" style="display: none; flex-grow: 1; flex-direction: column;">
+            <div class="touch-area" onclick="handleLearningClick()">
+                <div id="learningAnswer" class="fs-1 fw-bold text-primary mb-3 text-center" style="display:none;"></div>
+                <div id="learningExample" class="text-muted fst-italic px-3 text-center" style="display:none; line-height: 1.5;"></div>
+                
+                <div id="touchHint" class="tap-hint">
+                    👆 화면을 터치하면 정답이 보입니다
+                </div>
+            </div>
+
+            <div class="bottom-btn-area">
+                <button id="nextWordBtn" class="btn btn-primary btn-large shadow" style="display:none;" onclick="nextQuestion()">
+                    다음 단어 <small class="fw-normal">(Touch)</small>
+                </button>
+            </div>
+        </div>
+
+        <div id="testArea" style="display: none; flex-grow: 1;">
+            <div class="d-flex flex-column justify-content-center h-50">
+                <form id="answerForm" onsubmit="event.preventDefault(); checkAnswer();" autocomplete="off">
+                    <input type="text" id="answerInput" class="input-answer shadow-sm" 
+                           placeholder="정답을 입력하세요" 
+                           enterkeyhint="go"
+                           autocomplete="off">
+                </form>
+                <div class="text-center mt-3 text-muted small">
+                    입력 후 <span class="badge bg-secondary">엔터</span> 또는 <span class="badge bg-secondary">이동</span>을 누르세요
+                </div>
+            </div>
+            </div>
+    </div>
+
+    <div id="resultArea" style="display: none;">
+        <h3 class="fw-bold mb-4 text-center" id="scoreTitle">결과 리포트</h3>
+        <div class="alert alert-light border mb-4 text-center shadow-sm" id="scoreMsg"></div>
+        
+        <div class="table-responsive border rounded-3 mb-4 shadow-sm" style="max-height: 50vh; overflow-y: auto;">
+            <table class="table result-table mb-0">
+                <thead class="sticky-top border-bottom">
+                    <tr>
+                        <th>단어</th>
+                        <th>내 답</th>
+                        <th>정답</th>
+                        <th>결과</th>
+                    </tr>
+                </thead>
+                <tbody id="resultTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="bottom-btn-area">
+            <a href="/vocab/" class="btn btn-primary btn-large shadow">확인 (메인으로)</a>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 1. 데이터 가져오기
+    const words = {{ words_json|safe }};
+    const mode = "{{ mode }}"; 
+    const isPractice = {{ is_practice|yesno:"true,false" }};
+    const isLearning = {{ is_learning|yesno:"true,false" }};
+    const isMonthly = {{ is_monthly|yesno:"true,false" }};
+    const testId = "{{ test_id|default:'' }}";
+
+    // 상태 변수
+    let currentIndex = 0;
+    let score = 0;
+    let userAnswers = [];
+    let isProcessing = false; 
+    
+    // 타이머 관련
+    let timerInterval = null;
+    let timeLeft = 5000;
+    const totalTime = 5000;
+
+    // DOM 요소
+    const wordEl = document.getElementById('wordQuestion');
+    const inputEl = document.getElementById('answerInput');
+    const timerBar = document.getElementById('timerBar');
+    const timerContainer = document.getElementById('timerContainer');
+    
+    // 학습 모드 요소
+    const learningArea = document.getElementById('learningArea');
+    const learningAnswer = document.getElementById('learningAnswer');
+    const learningExample = document.getElementById('learningExample');
+    const touchHint = document.getElementById('touchHint');
+    const nextWordBtn = document.getElementById('nextWordBtn');
+    
+    const testArea = document.getElementById('testArea');
+
+    // === 시작 ===
+    window.onload = function() {
+        if (!words || words.length === 0) {
+            alert("학습할 단어가 없습니다.");
+            window.location.href = "/vocab/";
+            return;
+        }
+        
+        if (isLearning) {
+            timerContainer.style.visibility = 'hidden';
+            testArea.style.display = 'none';
+            learningArea.style.display = 'flex';
+        } else {
+            learningArea.style.display = 'none';
+            testArea.style.display = 'block';
+        }
+
+        showQuestion();
+    };
+
+    // === 문제 표시 ===
+    function showQuestion() {
+        isProcessing = false;
+        
+        const currentWord = words[currentIndex];
+        wordEl.innerText = currentWord.english;
+        document.getElementById('currentIndex').innerText = currentIndex + 1;
+        
+        setTimeout(() => speakWord(), 300);
+
+        if (isLearning) {
+            learningAnswer.style.display = 'none';
+            learningExample.style.display = 'none';
+            learningAnswer.innerText = currentWord.korean;
+            learningExample.innerText = currentWord.example || "";
+            touchHint.style.display = 'block';
+            nextWordBtn.style.display = 'none';
+        } else {
+            inputEl.value = "";
+            inputEl.disabled = false;
+            // [수정] 색상 초기화 코드 삭제 (더 이상 색을 안 입히므로 초기화도 필요 없음)
+            inputEl.focus();
+            resetAndStartTimer();
+        }
+    }
+
+    // === [학습 모드] 터치 로직 ===
+    window.handleLearningClick = function() {
+        if (learningAnswer.style.display === 'block') return;
+        learningAnswer.style.display = 'block';
+        learningExample.style.display = 'block';
+        touchHint.style.display = 'none';
+        nextWordBtn.style.display = 'block';
+    };
+
+    // === [시험 모드] 타이머 ===
+    function resetAndStartTimer() {
+        if (isLearning) return;
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timeLeft = totalTime;
+        timerBar.style.width = "100%";
+        timerBar.classList.remove('danger');
+
+        timerInterval = setInterval(() => {
+            timeLeft -= 50;
+            const percent = (timeLeft / totalTime) * 100;
+            timerBar.style.width = percent + "%";
+            if (percent < 30) timerBar.classList.add('danger');
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                if (!isProcessing) {
+                    processResult(false, "(시간 초과)");
+                }
+            }
+        }, 50);
+    }
+
+    // === [시험 모드] 정답 체크 ===
+    window.checkAnswer = function() {
+        if (isLearning) return;
+        if (isProcessing) return;
+
+        const userInput = inputEl.value.trim();
+        const dbAnswer = words[currentIndex].korean; 
+        
+        if (!userInput) return; 
+
+        const correctAnswers = dbAnswer.split(',').map(word => word.trim());
+        const isCorrect = correctAnswers.includes(userInput);
+
+        processResult(isCorrect, userInput);
+    }
+
+    function processResult(isCorrect, userInput) {
+        isProcessing = true;
+        clearInterval(timerInterval);
+        
+        // [수정] 정답/오답 시 배경색 변경 코드 삭제
+        // if (isCorrect) inputEl.classList.add('correct');
+        // else inputEl.classList.add('wrong');
+
+        userAnswers.push({
+            english: words[currentIndex].english,
+            korean: words[currentIndex].korean,
+            user_input: userInput,
+            is_correct: isCorrect
+        });
+
+        if (isCorrect) score++;
+
+        setTimeout(nextQuestion, 200);
+    }
+
+    // === 다음 문제 이동 ===
+    window.nextQuestion = function() {
+        currentIndex++;
+        if (currentIndex < words.length) {
+            showQuestion();
+        } else {
+            finishExam();
+        }
+    }
+
+    // === TTS ===
+    window.speakWord = function(event) {
+        if(event) event.stopPropagation();
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(words[currentIndex].english);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    // === 결과 처리 ===
+    function finishExam() {
+        document.getElementById('headerInfo').style.display = 'none';
+        document.getElementById('questionArea').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'block';
+
+        if (isLearning) {
+            document.getElementById('scoreTitle').innerText = "학습 완료";
+            document.getElementById('scoreMsg').innerText = "오늘의 단어 학습을 마쳤습니다!";
+            renderTable([]);
+            return;
+        }
+
+        if (!isPractice) {
+            saveResultToServer();
+        } else {
+            document.getElementById('scoreMsg').innerHTML = `<strong>연습 결과:</strong> ${score} / ${words.length} 점`;
+            renderTable(null);
+        }
+    }
+
+    function saveResultToServer() {
+        const data = {
+            test_id: testId,
+            mode: mode,
+            score: score,
+            wrong_count: words.length - score,
+            details: userAnswers,
+            is_monthly: isMonthly
+        };
+
+        fetch("{% url 'vocab:save_result' %}", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // [수정] 월말평가(85점)와 일반시험(27점) 통과 기준 분리 적용
+                let isPass = false;
+                if (isMonthly) {
+                    isPass = score >= 85; // 월말평가 기준
+                } else {
+                    isPass = score >= 27; // 도전/오답모드 기준 (30문제 중 27)
+                }
+
+                const passMsg = !isPass 
+                    ? "<br><span class='text-danger fw-bold'>불합격 (재시험 필요)</span>" 
+                    : "<br><span class='text-success fw-bold'>통과! 수고하셨습니다.</span>";
+                
+                document.getElementById('scoreMsg').innerHTML = `<strong>최종 점수:</strong> ${score}점 ${passMsg}`;
+                renderTable(data.detail_ids);
+            } else {
+                alert("저장 실패: " + data.message);
+            }
+        });
+    }
+
+    function renderTable(detailIds) {
+        const tbody = document.getElementById('resultTableBody');
+        tbody.innerHTML = "";
+
+        userAnswers.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.className = item.is_correct ? 'correct-row' : 'wrong-row';
+            
+            let status = item.is_correct ? '<span class="text-success fw-bold">O</span>' : '<span class="text-danger fw-bold">X</span>';
+            
+            if (!item.is_correct && detailIds && detailIds.length > index) {
+                const detailId = detailIds[index];
+                status += `<br><button class="btn btn-outline-secondary btn-sm mt-1 shadow-sm" style="font-size: 0.7rem; padding: 4px 8px;" onclick="requestCorrection(${detailId}, this)">정답요청</button>`;
+            }
+
+            tr.innerHTML = `
+                <td class="fw-bold">${item.english}</td>
+                <td class="small">${item.user_input || '-'}</td>
+                <td class="small text-primary">${item.korean}</td>
+                <td class="text-center">${status}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.requestCorrection = function(detailId, btn) {
+        if(!confirm("선생님께 정답 처리를 요청하시겠습니까?")) return;
+        
+        fetch("{% url 'vocab:request_correction' %}", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ detail_id: detailId, is_monthly: isMonthly })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("요청되었습니다.");
+                btn.disabled = true;
+                btn.innerText = "요청됨";
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-secondary');
+            }
+        });
+    };
+</script>
+
+</body>
+</html>

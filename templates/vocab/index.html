@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시험 설정 - Blossom Edu</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+        body { background-color: #f8f9fa; }
+        
+        /* [수정] 헤더가 모바일에서 좁을 때 줄바꿈 되도록 수정 */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+            flex-wrap: wrap; /* 모바일 안전장치 */
+            gap: 10px;
+        }
+        
+        /* [수정] 모바일 여백 최적화 */
+        .config-container {
+            max-width: 700px; 
+            margin: 0 auto 40px auto;
+            background: white;
+            padding: 30px; /* PC 기본 여백 */
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        /* 화면이 좁을 때(모바일) 여백을 줄임 */
+        @media (max-width: 576px) {
+            .config-container {
+                padding: 20px; /* 30px -> 20px 로 축소 */
+            }
+            .header-bar h4 {
+                font-size: 1.2rem; /* 제목 글자 크기 살짝 조절 */
+            }
+        }
+
+        .section-label {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #343a40;
+            margin-bottom: 8px;
+        }
+        .form-select, .form-control {
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+            font-size: 0.95rem;
+        }
+        .form-select:focus, .form-control:focus {
+            border-color: #4dabf7;
+            box-shadow: 0 0 0 4px rgba(77, 171, 247, 0.1);
+        }
+        .mode-card {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            display: flex;
+            align-items: center;
+        }
+        .mode-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .mode-card.selected { border-color: #0d6efd; background-color: #f8f9fa; }
+        .mode-icon { font-size: 1.4rem; margin-right: 12px; width: 30px; text-align: center; }
+        .mode-title { font-weight: 800; font-size: 1rem; margin-bottom: 1px; }
+        .mode-desc { font-size: 0.8rem; color: #868e96; margin: 0; }
+        .btn-start {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border-radius: 12px;
+            margin-top: 15px;
+            background-color: #0d6efd;
+            border: none;
+            color: white;
+        }
+        .btn-start:hover { background-color: #0b5ed7; color: white; }
+        .btn-start:disabled { background-color: #a0a0a0; cursor: not-allowed; }
+        .d-none-custom { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-bar">
+            <h4 class="fw-bold m-0 text-primary">📝 시험 설정</h4>
+            <div class="d-flex align-items-center gap-3">
+                <span class="fw-bold text-dark">
+                    🧑‍🎓 {{ user.profile.name|default:user.username }} 학생
+                </span>
+                <a href="{% url 'core:logout' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                    로그아웃
+                </a>
+            </div>
+        </div>
+
+        <div class="config-container">
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm border bg-light">
+                        <div class="card-header bg-transparent fw-bold text-warning border-0 pt-3 ps-3">
+                            👑 이달의 랭킹 TOP 5
+                        </div>
+                        <div class="card-body p-2 pt-0">
+                            <ul class="list-group list-group-flush bg-transparent small">
+                                {% for ranker in ranking_list %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-2 bg-transparent">
+                                    <span>
+                                        <span class="badge rounded-pill bg-warning text-dark me-2">{{ ranker.rank }}위</span>
+                                        <span class="fw-bold">{{ ranker.name }}</span>
+                                    </span>
+                                    <span class="text-muted fw-bold">{{ ranker.count }} XP</span>
+                                </li>
+                                {% empty %}
+                                <li class="list-group-item text-center text-muted small py-3 bg-transparent">아직 랭킹 주인공이 없어요!</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm border bg-light">
+                        <div class="card-header bg-transparent fw-bold text-primary border-0 pt-3 ps-3">
+                            📈 나의 실력 변화
+                        </div>
+                        <div class="card-body p-2 pt-0" style="height: 150px;">
+                            <canvas id="growthChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="border-secondary-subtle my-4 opacity-50">
+
+            <div class="row g-3 mb-2">
+                <div class="col-md-6">
+                    <div class="section-label">1. 출판사 선택</div>
+                    <select id="publisherSelect" class="form-select mb-3" onchange="filterBooks()">
+                        <option value="" selected disabled>-- 선택하세요 --</option>
+                        {% for pub in publishers %}
+                            <option value="{{ pub.id }}">{{ pub.name }}</option>
+                        {% endfor %}
+                        {% if etc_books %}
+                            <option value="etc">기타</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="section-label">2. 단어장 선택</div>
+                    <select id="bookSelect" class="form-select mb-3" disabled>
+                        <option value="" selected disabled>-- 출판사 먼저 --</option>
+                        {% for pub in publishers %}
+                            {% for book in pub.wordbook_set.all %}
+                            <option value="{{ book.id }}" class="book-option pub-{{ pub.id }} d-none-custom">{{ book.title }}</option>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for book in etc_books %}
+                        <option value="{{ book.id }}" class="book-option pub-etc d-none-custom">{{ book.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="section-label">3. Day 범위 설정</div>
+                <input type="tel" id="rangeInput" class="form-control" placeholder="예: 1-5, 7 (비워두면 전체)">
+            </div>
+
+            <div>
+                <div class="section-label">4. 시험 모드 선택</div>
+                
+                <div class="mode-card" onclick="selectMode('learning', this)">
+                    <div class="mode-icon">📖</div>
+                    <div>
+                        <div class="mode-title text-primary">학습 모드</div>
+                        <p class="mode-desc">정답과 예문을 보며 암기</p>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('practice', this)">
+                    <div class="mode-icon">🌱</div>
+                    <div>
+                        <div class="mode-title text-success">연습 모드</div>
+                        <p class="mode-desc">기록 남지 않음 (30문제)</p>
+                    </div>
+                </div>
+
+                {% if is_wrong_mode_active %}
+                    <div class="mode-card" onclick="selectMode('wrong', this)" style="border-color: #ff6b6b; background-color: #fff5f5;">
+                        <div class="mode-icon">🚨</div>
+                        <div>
+                            <div class="mode-title text-danger">오답 탈출 모드</div>
+                            <p class="mode-desc text-danger">취약 단어 <strong>{{ wrong_count }}개</strong>가 쌓였습니다!</p>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="mode-card" onclick="selectMode('challenge', this)">
+                        <div class="mode-icon">🔥</div>
+                        <div>
+                            <div class="mode-title text-danger">도전 모드 (시험)</div>
+                            <p class="mode-desc">결과 저장 + 불합격 시 쿨타임</p>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {% if is_monthly_period %}
+                <div class="mode-card" onclick="selectMode('monthly', this)" style="border-color: #ffc107; background-color: #fff9db;">
+                        <div class="mode-icon">📅</div>
+                        <div>
+                            <div class="mode-title" style="color: #d68c00;">월말 평가</div>
+                            <p class="mode-desc">이번 달 학습 내용 최종 점검 (100문제)</p>
+                        </div>
+                    </div>
+            {% endif %}
+            </div>
+
+            <button id="startBtn" class="btn btn-start" onclick="startExam()" disabled>
+                모드를 선택해주세요
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const rawLabels = {{ graph_labels|default:"[]"|safe }};
+            const rawData = {{ graph_data|default:"[]"|safe }};
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            
+            if(rawLabels.length === 0) {
+                document.getElementById('growthChart').style.display = 'none';
+                document.querySelector('#growthChart').parentElement.innerHTML = '<div class="text-center text-muted py-5 small">기록이 쌓이면<br>그래프가 나타납니다!</div>';
+                return;
+            }
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rawLabels,
+                    datasets: [{
+                        data: rawData,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#0d6efd',
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 30,
+                            ticks: { stepSize: 10, display: true }, // y축 간소화
+                            grid: { drawBorder: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 5 } // x축 라벨 겹침 방지
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        });
+
+        let selectedMode = null;
+
+        function filterBooks() {
+            const pubSelect = document.getElementById('publisherSelect');
+            const bookSelect = document.getElementById('bookSelect');
+            const selectedPubId = pubSelect.value;
+            const options = document.querySelectorAll('.book-option');
+
+            bookSelect.value = "";
+            bookSelect.disabled = false;
+            
+            let hasBooks = false;
+            options.forEach(opt => {
+                if (opt.classList.contains('pub-' + selectedPubId)) {
+                    opt.classList.remove('d-none-custom');
+                    hasBooks = true;
+                } else {
+                    opt.classList.add('d-none-custom');
+                }
+            });
+
+            if (!hasBooks) {
+                bookSelect.innerHTML = '<option value="" disabled selected>단어장이 없습니다</option>';
+                bookSelect.disabled = true;
+            } else {
+                const defaultOpt = document.createElement('option');
+                defaultOpt.text = "-- 선택하세요 --";
+                defaultOpt.value = "";
+                defaultOpt.disabled = true;
+                defaultOpt.selected = true;
+                if(bookSelect.options[0].text !== defaultOpt.text) bookSelect.prepend(defaultOpt);
+            }
+        }
+
+        function selectMode(mode, cardElement) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-card').forEach(el => {
+                el.classList.remove('selected');
+                el.style.backgroundColor = '';
+            });
+            cardElement.classList.add('selected');
+            if (mode === 'wrong') cardElement.style.backgroundColor = '#fff5f5';
+
+            const btn = document.getElementById('startBtn');
+            btn.disabled = false;
+            
+            const modeNames = {
+                'learning': '📖 학습 모드 시작하기',
+                'practice': '🚀 연습 모드 시작하기',
+                'challenge': '🔥 도전 모드 시작하기',
+                'wrong': '🚨 오답 탈출 시작하기',
+                'monthly': '📅 월말 평가 시작하기'
+            };
+            btn.innerText = modeNames[mode];
+            
+            if (mode === 'challenge' || mode === 'wrong') btn.className = 'btn btn-start bg-danger';
+            else if (mode === 'learning') btn.className = 'btn btn-start bg-success';
+            else if (mode === 'monthly') btn.className = 'btn btn-start bg-warning';
+            else btn.className = 'btn btn-start bg-primary';
+        }
+
+        function startExam() {
+            if (!selectedMode) return alert("시험 모드를 선택해주세요.");
+            
+            if (selectedMode === 'wrong') {
+                window.location.href = "{% url 'vocab:wrong_study' %}";
+                return;
+            }
+
+            const bookId = document.getElementById('bookSelect').value;
+            const range = document.getElementById('rangeInput').value.trim();
+
+            if (!bookId) {
+                alert("단어장을 먼저 선택해주세요!");
+                document.getElementById('bookSelect').focus();
+                return;
+            }
+
+            if (selectedMode === 'monthly') {
+                const msg = "⚠️ [중요] 월말 평가는 단 1번만 응시할 수 있습니다.\n\n" +
+                            "응시 도중 '뒤로가기'를 누르거나 창을 닫으면\n" +
+                            "시험이 종료되어 재응시가 불가능합니다.\n\n" +
+                            "정말로 시작하시겠습니까?";
+                
+                if (confirm(msg)) {
+                    let url = `{% url 'vocab:exam' %}?mode=monthly&book_id=${bookId}`;
+                    if (range) url += `&day_range=${encodeURIComponent(range)}`;
+                    window.location.href = url;
+                }
+                return; 
+            }
+
+            let url = `/vocab/exam/?book_id=${bookId}&mode=${selectedMode}`;
+            if (range) url += `&day_range=${encodeURIComponent(range)}`;
+            window.location.href = url;
+        }
+    </script>
+</body>
+</html>

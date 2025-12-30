@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ student_name }} 학생 답안지</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .table-warning { background-color: #fff3cd !important; } /* 강조색 확실하게 */
+    </style>
+</head>
+<body>
+    
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{% url 'core:teacher_home' %}">Vocabulary Admin</a>
+        </div>
+    </nav>
+
+    <div class="container py-4" style="max-width: 1000px;">
+        
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <div>
+                <a href="{% url 'vocab:grading_list' %}" class="btn btn-outline-secondary btn-sm mb-2 shadow-sm">
+                    <i class="bi bi-arrow-left"></i> 목록으로 돌아가기
+                </a>
+                <h3 class="fw-bold mb-1">
+                    <span class="text-primary">{{ student_name }}</span> 학생의 답안지
+                </h3>
+                <p class="text-muted mb-0 fs-5">
+                    📖 {{ exam.book.title }} <span class="badge bg-light text-dark border ms-2">{{ exam.test_range }}</span>
+                </p>
+            </div>
+            <div class="text-end bg-white p-3 rounded shadow-sm border text-center" style="min-width: 150px;">
+                <div class="small text-muted fw-bold text-uppercase">Current Score</div>
+                <h1 class="fw-bold text-primary mb-0 display-4">{{ exam.score }}</h1>
+            </div>
+        </div>
+
+        <div class="card shadow border-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-center">
+                    <thead class="table-light border-bottom">
+                        <tr>
+                            <th width="5%" class="py-3">#</th>
+                            <th width="20%" class="py-3">문제 (영어)</th>
+                            <th width="20%" class="py-3">정답 (뜻)</th>
+                            <th width="25%" class="py-3">학생 답안</th>
+                            <th width="10%" class="py-3">결과</th>
+                            <th width="20%" class="py-3 bg-light border-start">📝 정정 관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detail in details %}
+                        <tr class="{% if detail.is_correction_requested and not detail.is_resolved %}table-warning border-warning border-2{% endif %}">
+                            <td class="text-muted">{{ forloop.counter }}</td>
+                            <td class="fw-bold text-start ps-4">{{ detail.word_question }}</td>
+                            <td class="text-success text-start ps-4">{{ detail.correct_answer }}</td>
+                            
+                            <td class="text-start ps-4">
+                                {% if detail.is_correct %}
+                                    <span class="text-primary fw-bold">{{ detail.student_answer }}</span>
+                                {% else %}
+                                    <span class="text-danger text-decoration-line-through">{{ detail.student_answer }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if detail.is_correct %}
+                                    <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill text-danger fs-4"></i>
+                                {% endif %}
+                            </td>
+
+                            <td class="border-start">
+                                {% if detail.is_correction_requested and not detail.is_resolved %}
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button onclick="processAnswer('{{ detail.id }}', 'approve')" 
+                                                class="btn btn-success btn-sm shadow-sm fw-bold px-3" title="정답 인정">
+                                            <i class="bi bi-check-lg"></i> 인정
+                                        </button>
+                                        <button onclick="processAnswer('{{ detail.id }}', 'reject')" 
+                                                class="btn btn-secondary btn-sm shadow-sm fw-bold px-3" title="기각">
+                                            <i class="bi bi-x-lg"></i> 기각
+                                        </button>
+                                    </div>
+                                {% elif detail.is_resolved %}
+                                    <span class="badge bg-secondary opacity-50">처리 완료</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TEST_TYPE = "{{ test_type }}"; 
+
+        function processAnswer(detailId, action) {
+            let msg = action === 'approve' ? '⭕ 정답으로 인정하시겠습니까?\n(점수가 복구됩니다)' : '❌ 요청을 거절(기각)하시겠습니까?';
+            if (!confirm(msg)) return;
+
+            const url = action === 'approve' ? '/vocab/api/approve/' : '/vocab/api/reject/';
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    'detail_id': detailId,
+                    'type': TEST_TYPE
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('오류 발생: ' + (data.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(err => console.error(err));
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

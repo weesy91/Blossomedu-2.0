@@ -1,0 +1,40 @@
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3"> <div class="book-card bg-white h-100 position-relative">
+        <div class="book-card-header d-flex align-items-center justify-content-between">
+            <h6 class="fw-bold m-0 text-truncate text-dark" style="font-size: 1.1rem;">{{ book.title }}</h6>
+            <span class="badge bg-light text-muted border" style="font-weight: normal;">{{ book.created_at|date:"m/d" }}</span>
+        </div>
+
+        <div class="p-3">
+            <div class="mb-3">
+                <label class="form-label small text-muted fw-bold mb-1">범위 (Day)</label>
+                <input type="tel" class="form-control range-input bg-light border-0" 
+                       placeholder="예: 1-3, 5" style="padding: 10px; font-size: 1rem;">
+                </div>
+
+            <div class="d-grid gap-2">
+                <button onclick="startExam('{{ book.id }}', 'learning', this)" class="btn btn-success" style="padding: 10px;">
+                    📖 학습하기
+                </button>
+                
+                <div class="row g-2">
+                    <div class="col-6">
+                        <button onclick="startExam('{{ book.id }}', 'practice', this)" class="btn btn-outline-primary w-100" style="padding: 10px;">
+                            연습
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button onclick="startExam('{{ book.id }}', 'challenge', this)" class="btn btn-primary w-100 fw-bold" style="padding: 10px;">
+                            도전
+                        </button>
+                    </div>
+                </div>
+
+                {% if is_monthly_period %}
+                <button onclick="startExam('{{ book.id }}', 'monthly', this)" class="btn btn-warning text-white fw-bold" style="padding: 12px;">
+                    📅 월말평가 시작
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

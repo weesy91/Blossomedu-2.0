@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>오답 집중 학습</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-bottom: 90px; } /* 하단 여백 충분히 */
+        .study-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        
+        .word-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.1s;
+        }
+        .word-card:active { transform: scale(0.98); background-color: #f1f3f5; }
+
+        .word-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* [추가] 스피커 아이콘 스타일 */
+        .speaker-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #e7f1ff;
+            color: #0d6efd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+            flex-shrink: 0; /* 찌그러짐 방지 */
+        }
+        .speaker-btn:active { background-color: #cfe2ff; }
+
+        .eng { font-weight: 800; font-size: 1.1rem; color: #212529; }
+        .kor { font-size: 1rem; color: #0d6efd; font-weight: 600; text-align: right; }
+        
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .btn-start {
+            width: 100%;
+            max-width: 560px;
+            padding: 16px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border-radius: 16px;
+        }
+        .header-box {
+            background-color: #fff5f5;
+            border: 1px solid #ffc9c9;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="study-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold m-0">🚨 오답 집중 학습</h4>
+        <a href="/vocab/" class="btn btn-sm btn-light border rounded-pill">나가기</a>
+    </div>
+
+    <div class="header-box shadow-sm">
+        <h5 class="fw-bold text-danger mb-1">총 {{ count }}개의 취약 단어</h5>
+        <p class="text-muted small m-0">
+            발음을 들으며 확실하게 외워보세요!<br>
+            준비가 되면 아래 버튼을 눌러 시험을 시작합니다.
+        </p>
+    </div>
+
+    <div class="d-flex flex-column gap-2">
+        {% for word in words %}
+        <div class="word-card" onclick="speak('{{ word.english }}')">
+            <div class="word-info">
+                <div class="speaker-btn">🔊</div>
+                <span class="eng">{{ word.english }}</span>
+            </div>
+            <span class="kor">{{ word.korean }}</span>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            오답 단어가 없습니다! 🎉<br>완벽하시네요!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="bottom-bar">
+    <a href="{% url 'vocab:exam' %}?mode=wrong" class="btn btn-danger btn-start shadow">
+        시험 보고 탈출하기 🔥
+    </a>
+</div>
+
+<script>
+    function speak(text) {
+        // 음성 합성 기능 지원 여부 확인
+        if ('speechSynthesis' in window) {
+            // 기존 재생 중인 음성 취소 (연타 시 겹침 방지)
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US'; // 영어 발음 설정
+            utterance.rate = 0.9;     // 속도 (1.0이 기본, 0.9는 약간 또박또박)
+            utterance.pitch = 1.0;    // 톤
+            
+            window.speechSynthesis.speak(utterance);
+        } else {
+            alert("이 브라우저는 음성 재생을 지원하지 않습니다.");
+        }
+    }
+</script>
+
+</body>
+</html>

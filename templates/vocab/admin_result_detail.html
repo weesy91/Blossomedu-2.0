@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>시험 결과 상세</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding: 30px; }
+        .container { max-width: 900px; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .correct-row { background-color: #f0fff4; } /* 정답: 연한 초록 */
+        .wrong-row { background-color: #fff5f5; }   /* 오답: 연한 빨강 */
+        .info-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 15px;
+            height: 100%;
+        }
+        .info-label { font-size: 0.85rem; color: #868e96; margin-bottom: 5px; font-weight: 600; }
+        .info-value { font-size: 1.1rem; font-weight: 700; color: #343a40; word-break: keep-all; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold m-0 text-primary">📄 시험 결과 상세표</h4>
+        <a href="{{ back_url|default:'/admin/vocab/testresult/' }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            ⬅ 목록으로 돌아가기
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="info-box">
+                <div class="info-label">학생 이름</div>
+                <div class="info-value">
+                    {{ result.student.profile.name|default:result.student.username }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-box">
+                <div class="info-label">시험 단어장</div>
+                <div class="info-value">
+                    {{ result.book.title|default:"-" }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <div class="info-label">시험 범위</div>
+                <div class="info-value text-primary">
+                    {% if result.test_range == '오답집중' %}
+                        오답단어
+                    {% else %}
+                        {{ result.test_range }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <div class="info-box text-center" style="background-color: #fff9db; border-color: #ffec99;">
+                <div class="info-label text-warning">점수</div>
+                <div class="info-value" id="totalScore" style="font-size: 1.5rem; color: #e67700;">
+                    {{ result.score }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-end text-muted small mb-2">
+        시험 일시: {{ result.created_at|date:"Y년 m월 d일 H:i" }}
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle border">
+            <thead class="table-light">
+                <tr class="text-center">
+                    <th style="width: 30%;">문제 (영어)</th>
+                    <th style="width: 20%;">학생 답안</th>
+                    <th style="width: 30%;">정답 (한국어)</th>
+                    <th style="width: 10%;">결과</th>
+                    <th style="width: 10%;">관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detail in details %}
+                <tr id="row-{{ detail.id }}" class="{% if detail.is_correct %}correct-row{% else %}wrong-row{% endif %}">
+                    <td class="fw-bold ps-3">{{ detail.word_question }}</td>
+                    <td class="text-center">{{ detail.student_answer }}</td>
+                    <td class="text-center text-primary">{{ detail.correct_answer }}</td>
+                    
+                    <td class="text-center" id="status-{{ detail.id }}">
+                        {% if detail.is_correct %}
+                            <span class="badge bg-success rounded-pill">정답</span>
+                        {% else %}
+                            <span class="badge bg-danger rounded-pill">오답</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-center">
+                        {% if not detail.is_correct %}
+                            <button class="btn btn-sm btn-outline-primary shadow-sm" 
+                                    onclick="approveAnswer({{ detail.id }})"
+                                    style="font-size: 0.8rem;">
+                                🔔 인정하기
+                            </button>
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function approveAnswer(detailId) {
+        if (!confirm("이 오답을 '정답'으로 변경하시겠습니까?\n(점수가 1점 오릅니다)")) return;
+
+        // 버튼 비활성화 (중복 클릭 방지)
+        const row = document.getElementById('row-' + detailId);
+        const btn = row.querySelector('button');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "처리 중...";
+        }
+
+        fetch("{% url 'vocab:approve_answer' %}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ detail_id: detailId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("정답 처리되었습니다. (쿨타임 해제 여부 자동 확인됨)");
+                
+                // UI 업데이트
+                document.getElementById('totalScore').innerText = data.new_score;
+                row.className = 'correct-row';
+                const statusCell = document.getElementById('status-' + detailId);
+                statusCell.innerHTML = '<span class="badge bg-success rounded-pill">정답 (수동)</span>';
+                if(btn) btn.style.display = 'none';
+                
+            } else if (data.status === 'already_correct') {
+                alert("이미 정답 처리된 항목입니다.");
+                location.reload();
+            } else {
+                alert("오류가 발생했습니다: " + data.message);
+                if(btn) { btn.disabled = false; btn.innerText = "🔔 인정하기"; }
+            }
+        })
+        .catch(err => {
+            alert("서버 통신 오류");
+            if(btn) { btn.disabled = false; btn.innerText = "🔔 인정하기"; }
+        });
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>등원 체크</title>
+    <style>
+        /* [핵심 수정] 모든 요소의 크기 계산을 '테두리 포함'으로 변경 */
+        * { box-sizing: border-box; }
+
+        body { font-family: 'Pretendard', sans-serif; text-align: center; background-color: #f0f2f5; padding-top: 50px; margin: 0; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 30px; }
+        
+        /* 입력창 디자인 (이제 딱 맞게 나옵니다) */
+        input[type="text"] {
+            width: 100%; /* 부모 너비에 딱 맞춤 */
+            font-size: 30px; 
+            text-align: center; 
+            padding: 15px;
+            margin-bottom: 20px; 
+            border: 2px solid #ddd; 
+            border-radius: 10px; 
+            letter-spacing: 5px;
+            background-color: #fff;
+        }
+        
+        /* 키패드 디자인 */
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .key {
+            padding: 20px; font-size: 24px; background: #fff; border: 1px solid #ddd;
+            border-radius: 10px; cursor: pointer; transition: 0.2s;
+        }
+        .key:active { background: #eee; transform: scale(0.98); }
+        
+        /* 제출 버튼 */
+        .btn-submit {
+            width: 100%; padding: 20px; font-size: 20px; background: #007bff; color: white;
+            border: none; border-radius: 10px; cursor: pointer; font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn-submit:hover { background: #0056b3; }
+        
+        /* 알림 메시지 */
+        .messages { list-style: none; padding: 0; margin-bottom: 20px; }
+        .messages li { padding: 15px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
+        .messages .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .messages .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .messages .info { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        /* 동명이인 선택 모달 디자인 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popUp 0.3s ease;
+        }
+        @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .candidate-list { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+        .btn-select {
+            padding: 15px; font-size: 18px; background: #e7f1ff; color: #007bff; border: 2px solid #007bff;
+            border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.2s;
+        }
+        .btn-select:hover { background: #007bff; color: white; }
+        .btn-cancel {
+            background: #eee; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏫 등원 체크</h1>
+        
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" id="codeDisplay" name="attendance_code" placeholder="번호 4자리" readonly required>
+            
+            <div class="keypad">
+                <button type="button" class="key" onclick="addNum(1)">1</button>
+                <button type="button" class="key" onclick="addNum(2)">2</button>
+                <button type="button" class="key" onclick="addNum(3)">3</button>
+                <button type="button" class="key" onclick="addNum(4)">4</button>
+                <button type="button" class="key" onclick="addNum(5)">5</button>
+                <button type="button" class="key" onclick="addNum(6)">6</button>
+                <button type="button" class="key" onclick="addNum(7)">7</button>
+                <button type="button" class="key" onclick="addNum(8)">8</button>
+                <button type="button" class="key" onclick="addNum(9)">9</button>
+                <button type="button" class="key" onclick="clearNum()">C</button>
+                <button type="button" class="key" onclick="addNum(0)">0</button>
+                <button type="button" class="key" onclick="backspace()">⬅</button>
+            </div>
+            
+            <button type="submit" class="btn-submit">출석 확인</button>
+        </form>
+    </div>
+
+    {% if candidates %}
+    <div class="modal-overlay">
+        <div class="modal-content">
+            <h2>👋 누구신가요?</h2>
+            <p>같은 번호가 있네요. 본인의 이름을 선택해주세요.</p>
+            <div class="candidate-list">
+                {% for p in candidates %}
+                <form method="POST" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="selected_student_id" value="{{ p.id }}">
+                    <button type="submit" class="btn-select">
+                        {{ p.name }} <small>({{ p.school.name|default:"학교미정" }})</small>
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
+            <button onclick="location.href=''" class="btn-cancel">취소</button>
+        </div>
+    </div>
+    {% endif %}
+    
+    <script>
+        function addNum(num) {
+            const display = document.getElementById('codeDisplay');
+            if (display.value.length < 4) {
+                display.value += num;
+            }
+        }
+        function clearNum() {
+            document.getElementById('codeDisplay').value = '';
+        }
+        function backspace() {
+            const display = document.getElementById('codeDisplay');
+            display.value = display.value.slice(0, -1);
+        }
+    </script>
+</body>
+</html>
