@@ -70,6 +70,11 @@
                                         <a href="{% url 'reports:view' item.report.access_code %}" target="_blank" class="btn btn-sm btn-outline-primary btn-action">
                                             <i class="bi bi-eye"></i> 확인
                                         </a>
+                                        <a href="{% url 'reports:send_notification' item.report.id %}" 
+                                        class="btn btn-sm btn-warning btn-action"
+                                        onclick="return confirm('{{ item.student.name }} 학생 부모님께 성적표 알림톡을 발송하시겠습니까?')">
+                                            <i class="bi bi-chat-dots-fill"></i> 카톡 전송
+                                        </a>
                                         <a href="{% url 'reports:create' item.student.id %}" class="btn btn-sm btn-outline-secondary" onclick="return confirm('성적표를 갱신하시겠습니까? 데이터가 최신으로 업데이트됩니다.')">
                                             <i class="bi bi-arrow-clockwise"></i>
                                         </a>

@@ -9,4 +9,5 @@ urlpatterns = [
     path('dashboard/', views.report_dashboard, name='dashboard'),
     path('create/<int:student_id>/', views.create_monthly_report, name='create'),
     path('view/<uuid:access_code>/', views.report_view, name='view'),
+    path('send/<int:report_id>/', views.send_report_notification, name='send_notification'),
 ]

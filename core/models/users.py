@@ -68,6 +68,21 @@ class StudentProfile(models.Model):
     parent_phone_mom = models.CharField(max_length=15, verbose_name="어머님 연락처", blank=True, null=True)
     parent_phone_dad = models.CharField(max_length=15, verbose_name="아버님 연락처", blank=True, null=True)
     
+    class RecipientType(models.TextChoices):
+        MOM = 'MOM', '어머님만'
+        DAD = 'DAD', '아버님만'
+        BOTH = 'BOTH', '부모님 두 분 다'
+
+    notification_recipient = models.CharField(
+        max_length=10, 
+        choices=RecipientType.choices, 
+        default=RecipientType.MOM, 
+        verbose_name="학부모 알림 수신자"
+    )
+
+    send_attendance_alarm = models.BooleanField(default=True, verbose_name="[알림] 등/하원 문자 발송")
+    send_report_alarm = models.BooleanField(default=True, verbose_name="[알림] 성적표 문자 발송")
+
     # 구문 담당
     syntax_class = models.ForeignKey(
         ClassTime, on_delete=models.SET_NULL, null=True, blank=True,
@@ -138,6 +153,15 @@ class StudentProfile(models.Model):
     def __str__(self):
         return f"[{self.branch.name if self.branch else '지점미정'}] {self.name}"
     
+    # [NEW] 알림 받을 번호 리스트를 반환하는 헬퍼 메서드
+    def get_parent_phones(self):
+        phones = []
+        if self.notification_recipient in ['MOM', 'BOTH'] and self.parent_phone_mom:
+            phones.append(self.parent_phone_mom)
+        if self.notification_recipient in ['DAD', 'BOTH'] and self.parent_phone_dad:
+            phones.append(self.parent_phone_dad)
+        return phones
+
     class Meta:
         verbose_name = "학생 프로필"
         verbose_name_plural = "학생 프로필"

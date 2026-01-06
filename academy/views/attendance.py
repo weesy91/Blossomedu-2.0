@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from academy.models import Attendance
 from core.models import StudentProfile
 from academy.utils import get_today_class_start_time
+from utils.aligo import send_alimtalk
 
 def attendance_kiosk(request):
     if request.method == 'POST':
@@ -64,12 +65,24 @@ def attendance_kiosk(request):
             status=status
         )
         
-        if status == 'PRESENT':
-            messages.success(request, msg_text)
-        elif status == 'LATE':
-            messages.warning(request, msg_text)
-        else:
-            messages.error(request, msg_text)
+        # [NEW] 알림 발송 로직
+        if profile.send_attendance_alarm and status in ['PRESENT', 'LATE']:
+            # 1. 메시지 내용 구성 (템플릿에 맞춰야 함)
+            status_kor = "출석" if status == 'PRESENT' else "지각"
+            check_in_str = now.strftime('%H:%M')
+            
+            msg_content = f"[블라썸에듀] 등원 안내\n{profile.name} 학생이 학원에 도착했습니다.\n\n- 시간: {check_in_str}\n- 상태: {status_kor}\n\n오늘도 열심히 지도하겠습니다."
+            
+            # 2. 부모님 번호 가져오기 (설정에 따라 여러 명일 수 있음)
+            target_phones = profile.get_parent_phones()
+            
+            # 3. 전송
+            for phone in target_phones:
+                send_alimtalk(
+                    receiver_phone=phone,
+                    template_code="WAITING_CODE_1", # 나중에 실제 코드로 변경
+                    context_data={'content': msg_content}
+                )
 
         return render(request, 'academy/kiosk.html', {'status': status})
 

@@ -4,7 +4,7 @@ from django.utils import timezone
 from datetime import datetime
 import json
 import re
-
+from utils.aligo import send_alimtalk
 from academy.models import TemporarySchedule, Textbook, ClassLog, ClassLogEntry
 from vocab.models import WordBook
 from core.models import StudentProfile
@@ -192,13 +192,19 @@ def create_class_log(request, schedule_id):
     return render(request, 'academy/create_class_log.html', context)
 
 def send_homework_notification(class_log):
-    student_name = class_log.student.name 
+    student = class_log.student
+    
+    # 1. 선생님 이름 포맷팅
     teacher_name = "담임 선생님"
     if class_log.teacher:
-        if hasattr(class_log.teacher, 'staff_profile'): teacher_name = class_log.teacher.staff_profile.name
-        else: teacher_name = class_log.teacher.username
+        if hasattr(class_log.teacher, 'staff_profile'): 
+            teacher_name = class_log.teacher.staff_profile.name
+        else: 
+            teacher_name = class_log.teacher.username
 
-    message = f"[블라썸에듀] {student_name} 학생 오늘 수업 리포트\n\n📅 수업일: {class_log.date}\n🧑‍🏫 담당: {teacher_name}\n\n📝 [다음 과제 안내]\n"
+    # 2. 메시지 본문 구성
+    # (주의: 템플릿 심사받은 내용과 구조가 같아야 함)
+    message = f"[블라썸에듀] {student.name} 학생 오늘 수업 리포트\n\n📅 수업일: {class_log.date}\n🧑‍🏫 담당: {teacher_name}\n\n📝 [다음 과제 안내]\n"
     
     if class_log.hw_vocab_range:
         message += f"📕 단어 과제:\n{class_log.hw_vocab_range}\n"
@@ -208,4 +214,14 @@ def send_homework_notification(class_log):
         message += f"\n💬 선생님 말씀:\n{class_log.teacher_comment}\n"
     
     message += "\n꼼꼼하게 준비해서 다음 수업 때 만나요! 💪"
-    print(f"\n{'='*20} [카톡 발송] {'='*20}\n{message}\n{'='*50}\n")
+    
+    # 3. 학생 본인에게 전송 (숙제는 학생이 봐야 하니까요)
+    # 학생 번호가 없으면 어머님 번호로 대체 전송
+    target_phone = student.phone_number or student.parent_phone_mom
+    
+    if target_phone:
+        send_alimtalk(
+            receiver_phone=target_phone,
+            template_code="WAITING_CODE_HOMEWORK", # [중요] 승인된 코드 입력 필요
+            context_data={'content': message}
+        )

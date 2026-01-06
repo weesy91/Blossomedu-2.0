@@ -8,6 +8,8 @@ from academy.models import Attendance, ClassLog
 from vocab.models import TestResult, MonthlyTestResult
 from exam.models import ExamResult
 from mock.models import MockExam
+from django.contrib import messages
+from utils.aligo import send_alimtalk
 import json
 
 @login_required
@@ -185,3 +187,46 @@ def report_dashboard(request):
         'dashboard_data': dashboard_data
     }
     return render(request, 'reports/dashboard.html', context)
+
+@login_required
+def send_report_notification(request, report_id):
+    """
+    [선생님용] 성적표 알림톡 발송 기능
+    """
+    report = get_object_or_404(MonthlyReport, id=report_id)
+    student = report.student
+    
+    if not student.send_report_alarm:
+        messages.warning(request, f"{student.name} 학생은 성적표 알림 수신이 '거부'되어 있습니다.")
+        return redirect('reports:dashboard')
+
+    # 메시지 내용
+    link = request.build_absolute_uri(f"/reports/view/{report.access_code}/")
+    msg_content = f"[블라썸에듀] 월간 성적표 도착\n{student.name} 학생의 {report.month}월 학습 성취도 분석 결과가 발행되었습니다.\n\n아래 버튼을 눌러 상세 리포트를 확인해주세요."
+    
+    # 버튼 데이터 (알리고 규격)
+    button_data = {
+        "name": "성적표 확인하기",
+        "linkType": "WL", # 웹링크
+        "linkTypeName": "성적표 확인하기",
+        "linkMo": link,
+        "linkPc": link
+    }
+
+    target_phones = student.get_parent_phones()
+    success_count = 0
+    
+    for phone in target_phones:
+        if send_alimtalk(
+            receiver_phone=phone,
+            template_code="WAITING_CODE_3",
+            context_data={'content': msg_content, 'button': [button_data]} # 버튼은 리스트 형태
+        ):
+            success_count += 1
+            
+    if success_count > 0:
+        messages.success(request, f"{student.name} 학생 학부모님께 성적표를 전송했습니다.")
+    else:
+        messages.error(request, "전송에 실패했습니다. 번호나 통신 상태를 확인해주세요.")
+        
+    return redirect('reports:dashboard')
