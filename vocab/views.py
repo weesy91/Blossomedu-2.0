@@ -1,5 +1,5 @@
 import json
-import random, datetime
+import random, datetime, calendar
 from datetime import timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
@@ -19,6 +19,13 @@ from core.models import StudentProfile
 # 분리한 파일들 가져오기
 from . import utils
 from . import services
+
+def is_monthly_test_period():
+     now = timezone.now()
+     last_day = calendar.monthrange(now.year, now.month)[1]
+     # 매달 마지막 8일간을 월말평가 기간으로 설정
+     return now.day > (last_day - 8)
+
 # ==========================================
 # [View] 메인 화면
 # ==========================================
@@ -42,50 +49,47 @@ def index(request):
     graph_data = [t.score for t in reversed(recent_tests)]
 
     # ==========================================
-    # [랭킹 시스템] 1. 통합 랭킹 (기존 로직 유지)
+    # 2. [랭킹 시스템] (수정됨: Profile 기준)
     # ==========================================
+    
     now = timezone.now()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    # 이번 달 전체 랭킹 (27점 이상 합산)
+    # (A) 이달의 랭킹
+    # student가 StudentProfile이므로 -> student__name, student__school__name 으로 접근
     total_ranks = TestResult.objects.filter(
         created_at__gte=start_of_month,
         score__gte=27
-    ).values('student__id', 'student__username', 'student__profile__name', 'student__profile__school__name') \
+    ).values('student__name', 'student__school__name', 'student__user__username') \
      .annotate(total_score=Sum('score')) \
      .order_by('-total_score')[:5]
 
     monthly_ranking = []
     for i, r in enumerate(total_ranks, 1):
-        name = r['student__profile__name'] or r['student__username']
-        school = r['student__profile__school__name'] or ""
+        name = r['student__name'] or r['student__user__username']
+        school = r['student__school__name'] or ""
         display_name = f"{name} ({school})" if school else name
         monthly_ranking.append({'rank': i, 'name': display_name, 'score': r['total_score']})
 
-    # ==========================================
-    # [랭킹 시스템] 2. 이벤트 랭킹 (NEW!)
-    # ==========================================
+    # (B) 이벤트 랭킹
     event_ranking = []
-    active_event = RankingEvent.objects.filter(is_active=True).first() # 활성화된 이벤트 하나 가져오기
+    active_event = RankingEvent.objects.filter(is_active=True).first()
     
     if active_event:
-        # 이벤트 기간 + 특정 책 + 27점 이상
         event_ranks = TestResult.objects.filter(
             book=active_event.target_book,
             created_at__date__gte=active_event.start_date,
             created_at__date__lte=active_event.end_date,
             score__gte=27
-        ).values('student__id', 'student__username', 'student__profile__name', 'student__profile__school__name') \
+        ).values('student__name', 'student__school__name', 'student__user__username') \
          .annotate(event_score=Sum('score')) \
          .order_by('-event_score')[:5]
 
         for i, r in enumerate(event_ranks, 1):
-            name = r['student__profile__name'] or r['student__username']
-            school = r['student__profile__school__name'] or ""
+            name = r['student__name'] or r['student__user__username']
+            school = r['student__school__name'] or ""
             display_name = f"{name} ({school})" if school else name
             event_ranking.append({'rank': i, 'name': display_name, 'score': r['event_score']})
-
-    # ==========================================
 
     return render(request, 'vocab/index.html', {
         'publishers': publishers,
@@ -96,10 +100,10 @@ def index(request):
         'graph_labels': json.dumps(graph_labels),
         'graph_data': json.dumps(graph_data),
         
-        # 랭킹 데이터 2개 전달
+        'ranking_list': monthly_ranking,
         'monthly_ranking': monthly_ranking,
         'event_ranking': event_ranking,
-        'active_event': active_event, # 이벤트 제목 표시용
+        'active_event': active_event,
     })
 
     # -------------------------------------------------------------
