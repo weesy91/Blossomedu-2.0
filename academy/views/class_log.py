@@ -8,6 +8,7 @@ from utils.aligo import send_alimtalk
 from academy.models import TemporarySchedule, Textbook, ClassLog, ClassLogEntry
 from vocab.models import WordBook
 from core.models import StudentProfile
+from utils.aligo import send_alimtalk
 
 def create_class_log(request, schedule_id):
     subject = request.GET.get('subject', '')
@@ -194,7 +195,7 @@ def create_class_log(request, schedule_id):
 def send_homework_notification(class_log):
     student = class_log.student
     
-    # 1. 선생님 이름 포맷팅
+    # 1. 선생님 이름
     teacher_name = "담임 선생님"
     if class_log.teacher:
         if hasattr(class_log.teacher, 'staff_profile'): 
@@ -202,8 +203,7 @@ def send_homework_notification(class_log):
         else: 
             teacher_name = class_log.teacher.username
 
-    # 2. 메시지 본문 구성
-    # (주의: 템플릿 심사받은 내용과 구조가 같아야 함)
+    # 2. 메시지 본문 (템플릿과 동일해야 함)
     message = f"[블라썸에듀] {student.name} 학생 오늘 수업 리포트\n\n📅 수업일: {class_log.date}\n🧑‍🏫 담당: {teacher_name}\n\n📝 [다음 과제 안내]\n"
     
     if class_log.hw_vocab_range:
@@ -215,13 +215,13 @@ def send_homework_notification(class_log):
     
     message += "\n꼼꼼하게 준비해서 다음 수업 때 만나요! 💪"
     
-    # 3. 학생 본인에게 전송 (숙제는 학생이 봐야 하니까요)
-    # 학생 번호가 없으면 어머님 번호로 대체 전송
+    # 3. 전송 대상: 학생 본인 우선, 없으면 어머님 번호
     target_phone = student.phone_number or student.parent_phone_mom
     
     if target_phone:
+        # ⚠️ WAITING_CODE_HOMEWORK 부분은 나중에 승인된 템플릿 코드로 바꿔야 합니다.
         send_alimtalk(
             receiver_phone=target_phone,
-            template_code="WAITING_CODE_HOMEWORK", # [중요] 승인된 코드 입력 필요
+            template_code="WAITING_CODE_HOMEWORK", 
             context_data={'content': message}
         )

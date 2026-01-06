@@ -190,43 +190,43 @@ def report_dashboard(request):
 
 @login_required
 def send_report_notification(request, report_id):
-    """
-    [선생님용] 성적표 알림톡 발송 기능
-    """
+    """성적표 알림톡 발송"""
     report = get_object_or_404(MonthlyReport, id=report_id)
     student = report.student
     
+    # 알림 수신 거부 체크
     if not student.send_report_alarm:
         messages.warning(request, f"{student.name} 학생은 성적표 알림 수신이 '거부'되어 있습니다.")
         return redirect('reports:dashboard')
 
-    # 메시지 내용
+    # 메시지 및 링크 준비
     link = request.build_absolute_uri(f"/reports/view/{report.access_code}/")
     msg_content = f"[블라썸에듀] 월간 성적표 도착\n{student.name} 학생의 {report.month}월 학습 성취도 분석 결과가 발행되었습니다.\n\n아래 버튼을 눌러 상세 리포트를 확인해주세요."
     
-    # 버튼 데이터 (알리고 규격)
     button_data = {
         "name": "성적표 확인하기",
-        "linkType": "WL", # 웹링크
+        "linkType": "WL",
         "linkTypeName": "성적표 확인하기",
         "linkMo": link,
         "linkPc": link
     }
 
+    # 수신자(부모님) 가져오기
     target_phones = student.get_parent_phones()
     success_count = 0
     
     for phone in target_phones:
+        # ⚠️ WAITING_CODE_REPORT 부분은 나중에 승인된 템플릿 코드로 바꿔야 합니다.
         if send_alimtalk(
             receiver_phone=phone,
-            template_code="WAITING_CODE_3",
-            context_data={'content': msg_content, 'button': [button_data]} # 버튼은 리스트 형태
+            template_code="WAITING_CODE_REPORT",
+            context_data={'content': msg_content, 'button': [button_data]}
         ):
             success_count += 1
             
     if success_count > 0:
-        messages.success(request, f"{student.name} 학생 학부모님께 성적표를 전송했습니다.")
+        messages.success(request, f"✅ {student.name} 학생 학부모님께 성적표를 전송했습니다.")
     else:
-        messages.error(request, "전송에 실패했습니다. 번호나 통신 상태를 확인해주세요.")
+        messages.error(request, "❌ 전송 실패: 등록된 학부모님 번호가 없거나 통신 오류입니다.")
         
     return redirect('reports:dashboard')

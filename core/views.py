@@ -48,10 +48,11 @@ def index(request):
 def login_dispatch(request):
     print(f"로그인 감지! 사용자: {request.user}, 슈퍼유저여부: {request.user.is_superuser}")
 
-    if request.user.is_superuser:
-        return redirect('admin:index')
+    # [수정됨] 슈퍼유저일 때 관리자 페이지로 가는 코드 삭제 (이제 선생님 홈으로 갑니다)
+    # if request.user.is_superuser:
+    #     return redirect('admin:index')
     
-    # 선생님(스태프)이면 선생님 홈으로
+    # 선생님(스태프) 또는 슈퍼유저이면 선생님 홈으로
     if request.user.is_staff:
         return redirect('core:teacher_home')
         
@@ -197,13 +198,14 @@ def student_home(request):
     # ==========================================
     # [2] 출석 현황 (오늘)
     # ==========================================
+    # student=user -> student=profile 로 수정 완료
     attendance = Attendance.objects.filter(student=profile, date=today).first()
 
 
     # ==========================================
     # [3] 최신 과제 (숙제) 가져오기
     # ==========================================
-    # 가장 최근에 작성된 일지를 가져옵니다. (오늘 작성된 게 있다면 오늘 것, 아니면 지난 수업 것)
+    # student=user -> student=profile 로 수정 완료
     last_log = ClassLog.objects.filter(student=profile).order_by('-date', '-created_at').first()
 
 
