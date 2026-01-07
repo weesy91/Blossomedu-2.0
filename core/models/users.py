@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import datetime
 
 # 방금 만든 organization 파일에서 조직 정보를 가져옵니다
@@ -182,3 +184,26 @@ class StudentUser(User):
         app_label = 'auth'
         verbose_name = "학생 계정"
         verbose_name_plural = "학생 계정 관리"
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_user_profile(sender, instance, created, **kwargs):
+    """
+    유저 생성 시 자동으로 프로필 생성
+    - 관리자(superuser)나 스태프(staff)가 아닐 때만 StudentProfile 생성
+    """
+    if created:
+        # 강사나 관리자는 StudentProfile을 만들지 않음
+        if instance.is_staff or instance.is_superuser:
+            return
+            
+        # 이미 프로필이 있다면 건너뜀 (안전장치)
+        if not hasattr(instance, 'profile'):
+            StudentProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def save_user_profile(sender, instance, **kwargs):
+    """
+    유저 저장 시 프로필도 함께 저장
+    """
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
