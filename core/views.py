@@ -230,5 +230,6 @@ def student_home(request):
         'schedules': schedules,
         'attendance': attendance,
         'last_log': last_log,
+        'popups': active_popups,
     })
 

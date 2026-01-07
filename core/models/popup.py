@@ -17,8 +17,10 @@ class Popup(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # 👇 [수정] branch가 없을 때 "전체"라고 표시하도록 변경
     def __str__(self):
-        return f"[{self.branch.name}] {self.title}"
+        branch_name = self.branch.name if self.branch else "전체"
+        return f"[{branch_name}] {self.title}"
 
     class Meta:
         verbose_name = "메인 팝업 관리"

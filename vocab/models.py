@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
+from core.models import Branch
 from datetime import timedelta
 
 # ==========================================
@@ -233,6 +234,16 @@ class PersonalWrongWord(models.Model):
 class RankingEvent(models.Model):
     title = models.CharField(max_length=100, verbose_name="이벤트 타이틀", help_text="예: 🌞 여름방학 능률보카 격파왕")
     target_book = models.ForeignKey(WordBook, on_delete=models.CASCADE, verbose_name="이벤트 대상 단어장")
+    
+    # 👇 [추가] 지점 선택 필드 (비워두면 전체 공개)
+    branch = models.ForeignKey(
+        Branch, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        verbose_name="진행 지점 (비워두면 전체)"
+    )
+    
     start_date = models.DateField(verbose_name="시작일")
     end_date = models.DateField(verbose_name="종료일")
     is_active = models.BooleanField(default=True, verbose_name="현재 진행 중")
@@ -242,4 +253,6 @@ class RankingEvent(models.Model):
         verbose_name_plural = "🏆 랭킹 이벤트 설정"
 
     def __str__(self):
-        return f"{self.title} ({self.target_book.title})"
+        # 관리자 페이지에서 알아보기 쉽게 표시
+        branch_name = self.branch.name if self.branch else "전체 지점"
+        return f"[{branch_name}] {self.title}"

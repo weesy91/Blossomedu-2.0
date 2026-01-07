@@ -56,6 +56,13 @@
             background-color: #e9ecef;
         }
 
+        /* 랭킹 카드 탭 스타일 */
+        .card-header-pills .nav-link {
+            border-radius: 20px;
+            font-size: 0.85rem;
+            padding: 6px 16px;
+        }
+
         /* 히트맵 컨테이너 */
         #cal-heatmap-container {
             width: 100%;
@@ -132,7 +139,7 @@
                 </a>
                 <h4 class="fw-bold m-0 text-primary">📝 시험 설정</h4>
             </div>
-            </div>
+        </div>
 
         <div class="d-flex justify-content-end mb-3" style="max-width: 700px; margin: 0 auto;">
             <a href="{% url 'vocab:search_word_page' %}" class="btn btn-outline-primary shadow-sm fw-bold">
@@ -162,15 +169,57 @@
                             <div class="card h-100 shadow-sm border bg-white">
                                 <div class="card-header bg-transparent border-0 pt-3 px-3">
                                     <ul class="nav nav-pills card-header-pills" id="rankingTabs" role="tablist">
-                                        <li class="nav-item" role="presentation">
-                                            <button class="nav-link {% if active_event %}active{% endif %} py-1 px-3 small fw-bold" 
-                                                    id="event-rank-tab" data-bs-toggle="tab" data-bs-target="#event-rank" type="button">
-                                                🏆 이벤트
-                                            </button>
-                                        </li>
-                                        <li class="nav-item" role="presentation">
-                                            <button class="nav-link {% if not active_event %}active{% endif %} py-1 px-3 small fw-bold" 
-                                                    id="month-rank-tab" data-bs-toggle="tab" data-bs-target="#month-rank" type="button">
+                                        
+                                        {% if event_list|length > 1 %}
+                                            <li class="nav-item dropdown">
+                                                <a class="nav-link dropdown-toggle {% if event_list %}active{% endif %} fw-bold" 
+                                                   data-bs-toggle="dropdown" 
+                                                   href="#" 
+                                                   role="button" 
+                                                   aria-expanded="false">
+                                                    🏆 이벤트
+                                                </a>
+                                                <ul class="dropdown-menu shadow border-0">
+                                                    {% for item in event_list %}
+                                                    <li>
+                                                        <a class="dropdown-item small fw-bold {% if forloop.first %}active{% endif %}" 
+                                                           data-bs-toggle="tab" 
+                                                           data-bs-target="#event-{{ item.info.id }}" 
+                                                           type="button">
+                                                            {{ item.info.title }}
+                                                        </a>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </li>
+                                        {% else %}
+                                            <li class="nav-item">
+                                                {% if event_list %}
+                                                    <button class="nav-link active fw-bold" 
+                                                            id="event-single-tab" 
+                                                            data-bs-toggle="tab" 
+                                                            data-bs-target="#event-{{ event_list.0.info.id }}" 
+                                                            type="button">
+                                                        🏆 이벤트
+                                                    </button>
+                                                {% else %}
+                                                    <button class="nav-link fw-bold" 
+                                                            id="event-empty-tab" 
+                                                            data-bs-toggle="tab" 
+                                                            data-bs-target="#event-empty" 
+                                                            type="button">
+                                                        🏆 이벤트
+                                                    </button>
+                                                {% endif %}
+                                            </li>
+                                        {% endif %}
+
+                                        <li class="nav-item ms-1">
+                                            <button class="nav-link {% if not event_list %}active{% endif %} fw-bold" 
+                                                    id="month-rank-tab" 
+                                                    data-bs-toggle="tab" 
+                                                    data-bs-target="#month-rank" 
+                                                    type="button">
                                                 🔥 이달의 왕
                                             </button>
                                         </li>
@@ -180,37 +229,62 @@
                                 <div class="card-body p-3 pt-2">
                                     <div class="tab-content" id="rankingTabContent">
                                         
-                                        <div class="tab-pane fade {% if active_event %}show active{% endif %}" id="event-rank" role="tabpanel">
-                                            {% if active_event %}
-                                                <div class="alert alert-warning py-2 px-2 mb-3 d-flex align-items-center" style="font-size: 0.85rem;">
-                                                    <span class="fs-5 me-2">📢</span>
-                                                    <div>
-                                                        <strong class="d-block text-dark">{{ active_event.title }}</strong>
-                                                        <span class="text-muted">대상: {{ active_event.target_book.title }}</span>
+                                        {% if event_list %}
+                                            {% for item in event_list %}
+                                            <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" 
+                                                 id="event-{{ item.info.id }}" 
+                                                 role="tabpanel">
+                                                
+                                                <div class="alert alert-warning py-2 px-3 mb-3 border-warning" style="background-color: #fffbf0;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <strong class="d-block text-dark mb-1" style="font-size: 0.9rem;">
+                                                                {{ item.info.title }}
+                                                            </strong>
+                                                            <span class="text-muted small">
+                                                                <i class="bi bi-book me-1"></i>대상: {{ item.info.target_book.title }}
+                                                            </span>
+                                                        </div>
+                                                        <span class="badge bg-warning text-dark border border-warning">진행중</span>
                                                     </div>
                                                 </div>
+
                                                 <ul class="list-group list-group-flush small">
-                                                    {% for ranker in event_ranking %}
+                                                    {% for ranker in item.rankings %}
                                                     <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-1 py-2">
-                                                        <div>
-                                                            {% if ranker.rank == 1 %}🥇{% elif ranker.rank == 2 %}🥈{% elif ranker.rank == 3 %}🥉{% else %}<span class="badge bg-light text-dark border ms-1">{{ ranker.rank }}</span>{% endif %}
-                                                            <span class="fw-bold ms-2">{{ ranker.name }}</span>
+                                                        <div class="d-flex align-items-center">
+                                                            {% if ranker.rank == 1 %}
+                                                                <span class="fs-5 me-2">🥇</span>
+                                                            {% elif ranker.rank == 2 %}
+                                                                <span class="fs-5 me-2">🥈</span>
+                                                            {% elif ranker.rank == 3 %}
+                                                                <span class="fs-5 me-2">🥉</span>
+                                                            {% else %}
+                                                                <span class="badge bg-light text-dark border me-2" style="width: 24px;">{{ ranker.rank }}</span>
+                                                            {% endif %}
+                                                            <span class="fw-bold">{{ ranker.name }}</span>
                                                         </div>
                                                         <span class="text-danger fw-bold">{{ ranker.score }} 점</span>
                                                     </li>
                                                     {% empty %}
-                                                    <li class="text-center text-muted py-4 small">아직 이벤트 참여자가 없습니다.<br>1등을 노려보세요!</li>
+                                                    <li class="text-center text-muted py-4 small">
+                                                        아직 참여자가 없습니다.<br>1등의 주인공이 되어보세요! 🏃‍♂️
+                                                    </li>
                                                     {% endfor %}
                                                 </ul>
-                                            {% else %}
+                                            </div>
+                                            {% endfor %}
+                                        
+                                        {% else %}
+                                            <div class="tab-pane fade" id="event-empty" role="tabpanel">
                                                 <div class="text-center py-5 text-muted small">
                                                     <i class="bi bi-gift fs-1 mb-2 d-block opacity-50"></i>
-                                                    진행 중인 이벤트가 없습니다.<br>다음 이벤트를 기대해주세요! 🎁
+                                                    현재 진행 중인 이벤트가 없습니다.<br>다음 이벤트를 기대해주세요! 🎁
                                                 </div>
-                                            {% endif %}
-                                        </div>
+                                            </div>
+                                        {% endif %}
 
-                                        <div class="tab-pane fade {% if not active_event %}show active{% endif %}" id="month-rank" role="tabpanel">
+                                        <div class="tab-pane fade {% if not event_list %}show active{% endif %}" id="month-rank" role="tabpanel">
                                             <div class="mb-3 text-secondary small fw-bold ps-1">
                                                 📅 이번 달 누적 점수 TOP 5
                                             </div>

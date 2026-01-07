@@ -48,6 +48,30 @@ def index(request):
     graph_labels = [t.created_at.strftime('%m/%d') for t in reversed(recent_tests)]
     graph_data = [t.score for t in reversed(recent_tests)]
 
+    # -------------------------------------------------------------
+    # [NEW] 1. 히트맵(잔디 심기) 데이터 생성 (위치 이동됨)
+    # -------------------------------------------------------------
+    one_year_ago = timezone.now() - timedelta(days=365)
+    
+    # 날짜별 시험 응시 횟수 집계
+    heatmap_qs = TestResult.objects.filter(
+        student=profile,
+        created_at__gte=one_year_ago
+    ).annotate(
+        date=TruncDate('created_at')
+    ).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')
+
+    # Cal-Heatmap 라이브러리용 JSON 데이터 (timestamp(초): count)
+    heatmap_data = {}
+    for item in heatmap_qs:
+        # date 객체 -> timestamp(초) 변환
+        dt = datetime.datetime.combine(item['date'], datetime.datetime.min.time())
+        timestamp = int(dt.timestamp())
+        heatmap_data[timestamp] = item['count']
+    # -------------------------------------------------------------
+
     # ==========================================
     # 2. [랭킹 시스템] (수정됨: Profile 기준)
     # ==========================================
@@ -72,25 +96,38 @@ def index(request):
         monthly_ranking.append({'rank': i, 'name': display_name, 'score': r['total_score']})
 
     # (B) 이벤트 랭킹
-    event_ranking = []
-    active_event = RankingEvent.objects.filter(is_active=True).first()
+    event_list = [] 
     
-    if active_event:
+    # 👇 [수정됨] 내 지점(profile.branch)이거나, 지점이 설정되지 않은(전체) 이벤트만 가져옴
+    active_events = RankingEvent.objects.filter(
+        Q(branch=profile.branch) | Q(branch__isnull=True), 
+        is_active=True
+    ).order_by('-start_date')
+    
+    for event in active_events:
+        # 랭킹 산출 로직 (그대로 유지)
         event_ranks = TestResult.objects.filter(
-            book=active_event.target_book,
-            created_at__date__gte=active_event.start_date,
-            created_at__date__lte=active_event.end_date,
+            book=event.target_book,
+            created_at__date__gte=event.start_date,
+            created_at__date__lte=event.end_date,
             score__gte=27
         ).values('student__name', 'student__school__name', 'student__user__username') \
          .annotate(event_score=Sum('score')) \
          .order_by('-event_score')[:5]
 
+        ranking_data = []
         for i, r in enumerate(event_ranks, 1):
             name = r['student__name'] or r['student__user__username']
             school = r['student__school__name'] or ""
             display_name = f"{name} ({school})" if school else name
-            event_ranking.append({'rank': i, 'name': display_name, 'score': r['event_score']})
+            ranking_data.append({'rank': i, 'name': display_name, 'score': r['event_score']})
+            
+        event_list.append({
+            'info': event,
+            'rankings': ranking_data
+        })
 
+    # [최종 통합 Render] 여기서 한 번만 리턴합니다.
     return render(request, 'vocab/index.html', {
         'publishers': publishers,
         'etc_books': etc_books,
@@ -99,65 +136,14 @@ def index(request):
         'wrong_count': len(wrong_words),
         'graph_labels': json.dumps(graph_labels),
         'graph_data': json.dumps(graph_data),
+        'heatmap_data': json.dumps(heatmap_data), # 히트맵 데이터 추가
         
-        'ranking_list': monthly_ranking,
+        'ranking_list': monthly_ranking, # 이달의 랭킹
         'monthly_ranking': monthly_ranking,
-        'event_ranking': event_ranking,
-        'active_event': active_event,
+        
+        'event_list': event_list, # 이벤트 랭킹 리스트
     })
 
-    # -------------------------------------------------------------
-    # [NEW] 1. 히트맵(잔디 심기) 데이터 생성 (최근 1년치)
-    # -------------------------------------------------------------
-    one_year_ago = timezone.now() - timedelta(days=365)
-    
-    # 날짜별 시험 응시 횟수 집계
-    heatmap_qs = TestResult.objects.filter(
-        student=profile,
-        created_at__gte=one_year_ago
-    ).annotate(
-        date=TruncDate('created_at')
-    ).values('date').annotate(
-        count=Count('id')
-    ).order_by('date')
-
-    # Cal-Heatmap 라이브러리용 JSON 데이터 (timestamp(초): count)
-    heatmap_data = {}
-    for item in heatmap_qs:
-        # date 객체 -> timestamp(초) 변환
-        dt = datetime.datetime.combine(item['date'], datetime.datetime.min.time())
-        timestamp = int(dt.timestamp())
-        heatmap_data[timestamp] = item['count']
-    # -------------------------------------------------------------
-
-    now = timezone.now()
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0)
-    
-    # 랭킹 로직 수정
-    raw_records = TestResult.objects.filter(created_at__gte=start_of_month, score__gte=27).select_related('student')
-    
-    ranking_map = {}
-    for r in raw_records:
-        # r.student는 이제 Profile 객체입니다.
-        pid = r.student.id 
-        if pid not in ranking_map:
-            name = r.student.name # Profile.name
-            ranking_map[pid] = {'name': name, 'score': 0}
-        ranking_map[pid]['score'] += r.score
-    
-    ranking_list = sorted(ranking_map.values(), key=lambda x: x['score'], reverse=True)[:5]
-    for i, item in enumerate(ranking_list, 1): item['rank'] = i
-
-    return render(request, 'vocab/index.html', {
-        'publishers': publishers,
-        'etc_books': etc_books,
-        'is_monthly_period': utils.is_monthly_test_period(),
-        'is_wrong_mode_active': len(wrong_words) >= 30, 
-        'wrong_count': len(wrong_words),
-        'graph_labels': json.dumps(graph_labels),
-        'graph_data': json.dumps(graph_data),
-        'ranking_list': ranking_list,
-    })
 
 # ==========================================
 # [View] 시험 페이지 (Exam)
@@ -742,7 +728,8 @@ def api_date_history(request):
             'time': r.created_at.strftime('%H:%M'), # 응시 시간
             'book_title': r.book.title,
             'score': r.score,
-            'total': r.total_count, # 만약 total_count 필드가 없다면 30 등으로 고정
+            # [수정] total 필드가 없으므로 계산해서 사용 (맞은 개수 + 틀린 개수)
+            'total': r.score + r.wrong_count, 
             'wrong_words': wrong_words, # 틀린 단어 리스트
             'wrong_count': r.wrong_count
         })
