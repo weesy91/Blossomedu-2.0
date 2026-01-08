@@ -12,16 +12,16 @@
         .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { color: #333; margin-bottom: 30px; }
         
-        /* 입력창 디자인 (이제 딱 맞게 나옵니다) */
+        /* 입력창 디자인 */
         input[type="text"] {
-            width: 100%; /* 부모 너비에 딱 맞춤 */
+            width: 100%;
             font-size: 30px; 
             text-align: center; 
             padding: 15px;
             margin-bottom: 20px; 
             border: 2px solid #ddd; 
             border-radius: 10px; 
-            letter-spacing: 5px;
+            letter-spacing: 3px; /* 8자리라 자간 살짝 줄임 */
             background-color: #fff;
         }
         
@@ -47,7 +47,8 @@
         .messages .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .messages .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .messages .info { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
-        /* 동명이인 선택 모달 디자인 */
+
+        /* 동명이인 모달 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;
@@ -82,7 +83,7 @@
 
         <form method="POST">
             {% csrf_token %}
-            <input type="text" id="codeDisplay" name="attendance_code" placeholder="번호 4자리" readonly required>
+            <input type="text" id="codeDisplay" name="attendance_code" placeholder="전화번호 8자리 (예:12345678)" readonly required>
             
             <div class="keypad">
                 <button type="button" class="key" onclick="addNum(1)">1</button>
@@ -107,7 +108,7 @@
     <div class="modal-overlay">
         <div class="modal-content">
             <h2>👋 누구신가요?</h2>
-            <p>같은 번호가 있네요. 본인의 이름을 선택해주세요.</p>
+            <p>번호가 같은 학생이 있네요.<br>본인의 이름을 선택해주세요.</p>
             <div class="candidate-list">
                 {% for p in candidates %}
                 <form method="POST" style="display:inline;">
@@ -127,7 +128,8 @@
     <script>
         function addNum(num) {
             const display = document.getElementById('codeDisplay');
-            if (display.value.length < 4) {
+            // 👇 수정된 부분: 4 -> 8로 변경
+            if (display.value.length < 8) {
                 display.value += num;
             }
         }
