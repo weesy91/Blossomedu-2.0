@@ -98,15 +98,15 @@ class StudentProfileValidationForm(forms.ModelForm):
 
 class StudentProfileInline(admin.StackedInline):
     model = StudentProfile
-    form = StudentProfileValidationForm
+    # form = StudentProfileValidationForm  <-- (기존에 있다면 유지)
     can_delete = False
     verbose_name_plural = '학생 상세 정보'
     fk_name = 'user'
     autocomplete_fields = ['school']
     readonly_fields = ('attendance_code', 'current_grade_display')
-    
-    # 🌟 [UI 설정] 시간표 필드는 검색창(Select2) 대신 표준 드롭다운(Select) 사용
-    # 이유: Select2는 'disabled' 속성을 시각적으로 제대로 표현하지 못함.
+
+    # [핵심 1] 시간표 필드들은 'Select2(자동완성)'를 끄고 '표준 Select' 사용 강제
+    # 이렇게 해야 JavaScript가 설정한 disabled 속성이 화면에 보입니다.
     formfield_overrides = {
         ClassTime: {'widget': Select}, 
     }
@@ -125,7 +125,7 @@ class StudentProfileInline(admin.StackedInline):
             )
         }),
         ('수업 및 담당 강사', {
-            'description': '⚠️ <b>[필수] 담당 선생님을 먼저 선택해주세요.</b> 그래야 마감된 시간표가 회색으로 표시됩니다.',
+            'description': '⚠️ <b>담당 선생님을 먼저 선택</b>하면, 중복된(1:1) 시간표는 <b>회색으로 비활성화</b> 됩니다.',
             'fields': (
                 ('syntax_teacher', 'syntax_class'), 
                 ('reading_teacher', 'reading_class'),
@@ -138,16 +138,15 @@ class StudentProfileInline(admin.StackedInline):
     class Media:
         js = (
             'admin/js/jquery.init.js',
-            'admin/js/class_time_filter.js', # 통합 스크립트 하나만!
+            'admin/js/class_time_filter.js', # 통합된 JS 파일 하나만 사용
         )
 
-    # 선생님 목록 표시할 때 이름+ID 같이 나오게 하는 편의 기능
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # 시간표 필드 스타일 지정 (너비 조정)
+        # [핵심 2] 시간표 드롭다운 너비 조정 (표준 위젯은 작게 나올 수 있으므로)
         if db_field.name in ['syntax_class', 'reading_class', 'extra_class']:
             kwargs['widget'] = Select(attrs={'style': 'width: 300px;'})
 
-        # 선생님 선택 필드 커스텀
+        # 선생님 선택 시 이름+ID 표시
         if db_field.name in ['syntax_teacher', 'reading_teacher', 'extra_class_teacher']:
             class TeacherChoiceField(forms.ModelChoiceField):
                 def label_from_instance(self, obj):

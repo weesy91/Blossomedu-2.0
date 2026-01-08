@@ -216,55 +216,54 @@ def student_home(request):
 # 👇 [수정됨] 기존 get_classtimes_by_branch 삭제하고 이 함수로 대체!
 def get_classtimes_with_availability(request):
     """
-    [통합 API] 지점(Branch)의 시간표를 반환하되, 
-    특정 선생님(Teacher)의 해당 과목(Subject) 중복 여부를 'disabled' 필드에 담아 반환함.
+    [AJAX] 지점 시간표를 반환하되, 특정 선생님의 중복 여부(disabled)를 포함함.
     """
     branch_id = request.GET.get('branch_id')
     teacher_id = request.GET.get('teacher_id')
     role = request.GET.get('role')  # syntax, reading, extra
     current_student_id = request.GET.get('student_id')
 
-    # 1. 지점이 없으면 빈 리스트 반환
     if not branch_id:
         return JsonResponse([], safe=False)
 
-    # 2. 해당 지점의 모든 시간표 조회 (요일 -> 시간 순 정렬)
+    # 1. 시간표 조회
     times = ClassTime.objects.filter(branch_id=branch_id).order_by('day', 'start_time')
     
-    # 3. 마감된 시간표 ID 찾기 (선생님이 선택된 경우에만)
+    # 2. 마감된 시간표 ID 찾기
     occupied_ids = set()
     
-    if teacher_id and role:
-        # (A) 정규 구문 수업 점유
-        # 구문(1:1)은 무조건 겹치면 안 되므로, role이 뭐든 간에 이 선생님의 정규 구문 시간은 마감으로 간주
-        regular_qs = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
+    if teacher_id:
+        # (A) 구문(Syntax) 수업 체크: 구문은 1:1이므로 선생님이 이미 구문 수업 중이면 마감
+        # 선생님이 맡고 있는 모든 '구문' 학생들의 시간표를 가져옴
+        syntax_qs = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
         if current_student_id:
-            regular_qs = regular_qs.exclude(id=current_student_id)
-        occupied_ids.update(list(regular_qs.values_list('syntax_class_id', flat=True)))
+            syntax_qs = syntax_qs.exclude(id=current_student_id)
+        
+        occupied_ids.update(list(syntax_qs.values_list('syntax_class_id', flat=True)))
 
-        # (B) 보강/추가 수업 중 '구문' 타입 점유
+        # (B) 추가 수업(Extra) 중 '구문' 타입 체크
         extra_qs = StudentProfile.objects.filter(
             extra_class_teacher_id=teacher_id,
             extra_class_type='SYNTAX'
         )
         if current_student_id:
             extra_qs = extra_qs.exclude(id=current_student_id)
+            
         occupied_ids.update(list(extra_qs.values_list('extra_class_id', flat=True)))
-        
-        # (C) [독해 수업일 경우]
-        # 독해 수업은 중복 가능(1:N) 하므로, 현재 배정하려는 과목이 'reading'이면 마감 체크를 해제합니다.
-        # 단, "내가 구문을 잡으려는데 선생님이 독해 수업 중"인 경우는 물리적으로 불가능하므로 막아야 할 수도 있으나,
-        # 선생님의 요청사항(독해는 중복 허용)에 따라 독해 타임은 occupied에 넣지 않습니다.
-        
-        if role == 'reading':
-            occupied_ids = set() # 독해는 중복 허용이므로 마감 목록 초기화
 
-    # 4. 데이터 조립
+        # [조건 적용]
+        # 독해(Reading) 수업을 잡으려는 경우: 1:N 이므로 중복 허용 -> 마감 목록 비움
+        # 단, "구문"을 잡으려는데 "독해" 수업 중인 시간은? (물리적 불가) 
+        # -> 선생님 요청("독해는 중복 가능")에 따라 독해 배정 시에는 disable을 하지 않습니다.
+        if role == 'reading':
+            occupied_ids = set()
+
+    # 3. 데이터 조립
     data = []
     for t in times:
+        # 마감 여부 체크
         is_disabled = (t.id in occupied_ids)
         
-        # 라벨 생성
         day_str = t.get_day_display()
         time_str = t.start_time.strftime('%H:%M')
         label = f"[{day_str}] {time_str} ({t.name})"
@@ -275,8 +274,8 @@ def get_classtimes_with_availability(request):
         data.append({
             'id': t.id,
             'name': label,
-            'disabled': is_disabled,  # 프론트엔드에서 이것만 보고 처리
-            'raw_name': t.name # 필터링용 원본 이름
+            'disabled': is_disabled, # JS가 이걸 보고 disable 처리함
+            'raw_name': t.name       # JS 필터링용 (구문/독해 텍스트 구분)
         })
         
     return JsonResponse(data, safe=False)
