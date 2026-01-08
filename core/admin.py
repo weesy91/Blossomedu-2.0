@@ -105,23 +105,49 @@ class StudentProfileInline(admin.StackedInline):
     autocomplete_fields = ['school']
     readonly_fields = ('attendance_code', 'current_grade_display')
     
+    # 🌟 [UI 설정] 시간표 필드는 검색창(Select2) 대신 표준 드롭다운(Select) 사용
+    # 이유: Select2는 'disabled' 속성을 시각적으로 제대로 표현하지 못함.
     formfield_overrides = {
-        ClassTime: {'widget': Select}, # ClassTime 모델에 대해 Select 위젯 강제
+        ClassTime: {'widget': Select}, 
     }
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        day_order = Case(
-            When(day='Mon', then=0), When(day='Tue', then=1), When(day='Wed', then=2),
-            When(day='Thu', then=3), When(day='Fri', then=4), When(day='Sat', then=5),
-            When(day='Sun', then=6), output_field=IntegerField(),
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('branch', 'name', 'school', 'base_year', 'base_grade', 'current_grade_display', 'phone_number', 'attendance_code')
+        }),
+        ('학부모 연락처 & 알림 설정', {
+            'fields': (
+                'parent_phone_mom', 
+                'parent_phone_dad',
+                'notification_recipient',
+                'send_attendance_alarm',
+                'send_report_alarm',
+            )
+        }),
+        ('수업 및 담당 강사', {
+            'description': '⚠️ <b>[필수] 담당 선생님을 먼저 선택해주세요.</b> 그래야 마감된 시간표가 회색으로 표시됩니다.',
+            'fields': (
+                ('syntax_teacher', 'syntax_class'), 
+                ('reading_teacher', 'reading_class'),
+                ('extra_class_teacher', 'extra_class_type', 'extra_class'),
+            )
+        }),
+        ('기타', {'fields': ('memo',)}),
+    )
+    
+    class Media:
+        js = (
+            'admin/js/jquery.init.js',
+            'admin/js/class_time_filter.js', # 통합 스크립트 하나만!
         )
-        if db_field.name == "syntax_class":
-            kwargs["queryset"] = ClassTime.objects.filter(name__contains='구문').annotate(day_order=day_order).order_by('day_order', 'start_time')
-        elif db_field.name == "reading_class":
-            kwargs["queryset"] = ClassTime.objects.filter(name__contains='독해').annotate(day_order=day_order).order_by('day_order', 'start_time')
-        elif db_field.name == "extra_class":
-            kwargs["queryset"] = ClassTime.objects.annotate(day_order=day_order).order_by('day_order', 'start_time', 'name')
 
+    # 선생님 목록 표시할 때 이름+ID 같이 나오게 하는 편의 기능
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # 시간표 필드 스타일 지정 (너비 조정)
+        if db_field.name in ['syntax_class', 'reading_class', 'extra_class']:
+            kwargs['widget'] = Select(attrs={'style': 'width: 300px;'})
+
+        # 선생님 선택 필드 커스텀
         if db_field.name in ['syntax_teacher', 'reading_teacher', 'extra_class_teacher']:
             class TeacherChoiceField(forms.ModelChoiceField):
                 def label_from_instance(self, obj):
@@ -133,6 +159,7 @@ class StudentProfileInline(admin.StackedInline):
 
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+    
 @admin.register(StudentUser)
 class StudentUserAdmin(BaseUserAdmin):
     inlines = (StudentProfileInline,)
