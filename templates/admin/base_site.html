@@ -1,26 +1,18 @@
 {% extends "admin/base.html" %}
-{% load static %}
+
+{% block title %}블라썸에듀 관리자 페이지{% endblock %}
 
 {% block branding %}
 <h1 id="site-name">
-    <a href="{% url 'admin:index' %}">블라썸에듀 관리자</a>
+    <a href="{% url 'admin:index' %}">🌸 블라썸에듀 관리자</a>
 </h1>
 {% endblock %}
 
 {% block userlinks %}
-{% if user.is_superuser %}
-    <a href="{% url 'academy:director_dashboard' %}" style="margin-right: 15px; color: #ffc107; font-weight: 600; text-decoration: none;">
-        👑 총괄 현황
+    <a href="{% url 'core:teacher_home' %}" style="color: #fff; font-weight: bold; background-color: #4f46e5; padding: 5px 10px; border-radius: 5px; text-decoration: none;">
+        🏠 선생님 홈으로
     </a>
-{% endif %}
-{% if user.is_authenticated %}
-    <form method="post" action="{% url 'core:logout' %}" style="display: inline; margin: 0; padding: 0;">
-        {% csrf_token %}
-        <button type="submit" style="background: none; border: none; color: #fff; cursor: pointer; text-decoration: underline; padding: 0; margin: 0; font-size: 11px;">
-            <i class="bi bi-box-arrow-right"></i> 로그아웃
-        </button>
-    </form>
-{% endif %}
-{{ block.super }}
+    &nbsp;&nbsp;&nbsp;
+    
+    {{ block.super }}
 {% endblock %}
-
