@@ -83,7 +83,7 @@ def attendance_kiosk(request):
                     template_code="WAITING_CODE_1", # 나중에 실제 코드로 변경
                     context_data={'content': msg_content}
                 )
-
+        messages.success(request, msg_text)
         return render(request, 'academy/kiosk.html', {'status': status})
 
     return render(request, 'academy/kiosk.html')
