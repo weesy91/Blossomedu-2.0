@@ -2,39 +2,68 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>일일 총괄 대시보드</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
-        body {
-            background-color: #f0f2f5;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
+        body { background-color: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding-bottom: 80px; }
+        
         .dashboard-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            color: white; padding: 25px 20px; border-radius: 0 0 25px 25px;
+            margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
-        .table-container {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+        /* 날짜 선택기 스타일 */
+        .date-input-group {
+            background: rgba(255, 255, 255, 0.2); border-radius: 30px; padding: 8px 15px;
+            display: inline-flex; align-items: center; backdrop-filter: blur(5px); cursor: pointer;
         }
-        .table thead {
-            background-color: #f8f9fa;
+        .date-input-group input {
+            background: transparent; border: none; color: white; font-weight: bold; font-size: 1.1rem;
+            width: 130px; text-align: center; cursor: pointer;
         }
-        .table thead th {
-            font-weight: 600;
-            color: #495057;
-            border-bottom: 2px solid #dee2e6;
+        .date-input-group input:focus { outline: none; }
+
+        /* 📱 모바일 카드 뷰 변환 (핵심!) */
+        @media (max-width: 768px) {
+            .table-container { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+            .table thead { display: none; } /* 표 헤더 숨김 */
+            
+            .student-row {
+                display: block;
+                background: white; border-radius: 15px; margin-bottom: 15px; padding: 20px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
+            }
+            
+            .table tbody td {
+                display: block; padding: 5px 0; border: none;
+            }
+            
+            /* 1번째 칸: 이름 (강조) */
+            .table tbody td:nth-child(1) {
+                border-bottom: 1px solid #f0f0f0; margin-bottom: 10px; padding-bottom: 10px;
+            }
+            
+            /* 라벨 붙이기 */
+            .table tbody td:nth-child(2)::before { content: "수업: "; color: #888; font-size: 0.9rem; }
+            .table tbody td:nth-child(3)::before { content: "담당: "; color: #888; font-size: 0.9rem; }
+            
+            /* 배지들 한 줄로 정렬 */
+            .table tbody td:nth-child(4), .table tbody td:nth-child(5), .table tbody td:nth-child(6) {
+                display: inline-block; width: auto; margin-right: 5px;
+            }
         }
-        /* 배지 스타일 */
+        
+        /* PC에서는 원래대로 표 보이기 */
+        @media (min-width: 769px) {
+            .table-container { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }
+            .student-row:hover { background-color: #f8f9fa; }
+        }
+
+        /* 공통 배지 스타일 */
         .badge-present { background-color: #28a745; color: white; }
         .badge-absent { background-color: #dc3545; color: white; }
         .badge-pending { background-color: #ffc107; color: #212529; }
@@ -42,171 +71,110 @@
         .badge-log-missing { background-color: #dc3545; color: white; }
         .badge-makeup-needed { background-color: #ffc107; color: #212529; }
         .badge-makeup-scheduled { background-color: #17a2b8; color: white; }
-
-        /* 날짜 선택 인풋 커스텀 */
-        .date-input-group {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 30px;
-            padding: 5px 15px;
-            display: inline-flex;
-            align-items: center;
-            backdrop-filter: blur(5px);
-        }
-        .date-input-group input {
-            background: transparent;
-            border: none;
-            color: white;
-            font-weight: bold;
-            font-size: 1.1rem;
-            width: 140px;
-            text-align: center;
-            cursor: pointer;
-        }
-        .date-input-group input:focus { outline: none; }
-        .date-input-group i { color: rgba(255, 255, 255, 0.8); }
     </style>
 </head>
 <body>
-    <div class="container mt-4 mb-5">
-        <div class="dashboard-header">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div>
-                    <h2 class="mb-2"><i class="bi bi-clipboard-data me-2"></i>일일 총괄 대시보드</h2>
-                    
-                    <div class="date-input-group">
-                        <i class="bi bi-calendar-event me-2"></i>
-                        <input type="text" id="datepicker" value="{{ today|date:'Y-m-d' }}">
-                        <i class="bi bi-chevron-down ms-2" style="font-size: 0.8rem;"></i>
-                    </div>
-                </div>
-                
-                <div class="d-flex gap-2">
-                    <a href="?date={{ today|date:'Y-m-d' }}" class="btn btn-outline-light btn-sm rounded-pill px-3">오늘 보기</a>
-                    <a href="{% url 'core:teacher_home' %}" class="btn btn-light btn-sm rounded-pill px-3">
-                        <i class="bi bi-house me-1"></i> 메인으로
-                    </a>
-                </div>
+    
+    <div class="dashboard-header">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="m-0 fw-bold"><i class="bi bi-clipboard-data me-2"></i>총괄 현황</h4>
+            <a href="{% url 'core:teacher_home' %}" class="btn btn-sm btn-light rounded-pill px-3 opacity-75">
+                <i class="bi bi-house"></i>
+            </a>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="date-input-group">
+                <i class="bi bi-calendar-event me-2"></i>
+                <input type="text" id="datepicker" value="{{ today|date:'Y-m-d' }}">
             </div>
+            <a href="?date={% now 'Y-m-d' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">오늘</a>
+        </div>
+    </div>
+
+    <div class="container px-3">
+        <div class="mb-3">
+            <input type="text" id="studentSearch" class="form-control rounded-pill border-0 shadow-sm" placeholder="🔍 학생 이름 검색..." style="padding: 12px 20px;">
         </div>
 
         <div class="table-container">
-            <div class="mb-3 d-flex justify-content-end">
-                <div class="input-group" style="max-width: 300px;">
-                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" id="studentSearch" class="form-control border-start-0 bg-light" placeholder="학생 이름 검색...">
-                </div>
-            </div>
-
             {% if dashboard_data %}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle" id="dashboardTable">
-                        <thead>
-                            <tr>
-                                <th>학생명 / 단어상태</th>
-                                <th>과목 / 시간</th>
-                                <th>담당 선생님</th>
-                                <th>등원 여부</th>
-                                <th>일지 상태</th>
-                                <th>보강 여부</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in dashboard_data %}
-                            <tr class="student-row">
-                                <td class="student-name-cell">
-                                    <div class="d-flex align-items-center">
-                                        <div>
-                                            <a href="{% url 'academy:student_history' item.student.id %}" class="text-decoration-none text-dark fw-bold">
-                                                {{ item.student.name }}
-                                            </a>
-                                            <div class="small text-muted">
-                                                {{ item.student.school.name|default:"-" }} 
-                                                <span class="ms-1 text-secondary">({{ item.student.current_grade_display }})</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="ms-2">
-                                            {% if item.vocab_days is not None %}
-                                                {% if item.vocab_days >= 5 %}
-                                                    <span class="badge rounded-pill bg-danger" style="font-size: 0.65em;">
-                                                        🔥 {{ item.vocab_days }}일째 미응시
-                                                    </span>
-                                                {% elif item.vocab_days >= 3 %}
-                                                    <span class="badge rounded-pill bg-warning text-dark" style="font-size: 0.65em;">
-                                                        ⚠️ {{ item.vocab_days }}일째 미응시
-                                                    </span>
-                                                {% endif %}
-                                            {% else %}
-                                                {% endif %}
-                                        </div>
+                <table class="table align-middle" id="dashboardTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>학생명 / 상태</th>
+                            <th>과목 / 시간</th>
+                            <th>담당 T</th>
+                            <th>등원</th>
+                            <th>일지</th>
+                            <th>보강</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in dashboard_data %}
+                        <tr class="student-row">
+                            <td>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <a href="{% url 'academy:student_history' item.student.id %}" class="text-dark fw-bold text-decoration-none fs-5">
+                                            {{ item.student.name }}
+                                        </a>
+                                        <span class="small text-muted ms-1">{{ item.student.current_grade_display }}</span>
                                     </div>
-                                </td>
-                                <td>
-                                    {% if item.subject == 'SYNTAX' or '구문' in item.subject %}
-                                        <span class="badge bg-success">구문</span>
-                                    {% elif item.subject == 'READING' or '독해' in item.subject %}
-                                        <span class="badge bg-warning text-dark">독해</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">{{ item.subject }}</span>
+                                    
+                                    {% if item.vocab_days is not None and item.vocab_days >= 3 %}
+                                        <span class="badge rounded-pill bg-danger" style="font-size: 0.7em;">
+                                            🔥 단어 {{ item.vocab_days }}일째 X
+                                        </span>
                                     {% endif %}
-
-                                    {% if '(추가)' in item.subject %}
-                                        <span class="badge bg-danger ms-1">보강</span>
-                                    {% endif %}
-                                    <br>
-                                    <small class="text-muted">{{ item.time.start_time|time:"H:i" }}</small>
-                                </td>
-                                <td>
-                                    {% if item.teacher_name %}
-                                        <span class="text-dark">{{ item.teacher_name }}</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if item.attendance_status == 'PRESENT' %}
-                                        <span class="badge badge-present">🟢 등원</span>
-                                    {% elif item.attendance_status == 'LATE' %}
-                                        <span class="badge badge-pending">🟡 지각</span>
-                                    {% elif item.attendance_status == 'ABSENT' %}
-                                        <span class="badge badge-absent">🔴 결석/시간초과</span>
-                                    {% elif item.attendance_status == 'NONE' %}
-                                        <span class="badge bg-secondary">⚪ 미등원</span>
-                                    {% else %}
-                                        <span class="badge badge-pending">⏳ 대기</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if item.log_status %}
-                                        <span class="badge badge-log-done">🔵 작성됨</span>
-                                    {% else %}
-                                        {% if item.attendance_status == 'PRESENT' or item.attendance_status == 'LATE' %}
-                                            <span class="badge badge-log-missing">🔴 미작성</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">-</span>
-                                        {% endif %}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if item.makeup_status == 'Needed' %}
-                                        <span class="badge badge-makeup-needed">⚠️ 보강 필요</span>
-                                    {% elif item.makeup_status == 'Scheduled' %}
-                                        <span class="badge badge-makeup-scheduled">✓ 보강 예정</span>
-                                    {% elif item.makeup_status == 'Not_Needed' %}
-                                        <span class="badge bg-secondary">-</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge {% if '구문' in item.subject or item.subject == 'SYNTAX' %}bg-success{% else %}bg-warning text-dark{% endif %} me-1">
+                                    {{ item.subject }}
+                                </span>
+                                <span class="fw-bold text-dark">{{ item.time.start_time|time:"H:i" }}</span>
+                            </td>
+                            <td>
+                                <span class="text-secondary fw-bold">{{ item.teacher_name }} T</span>
+                            </td>
+                            <td>
+                                {% if item.attendance_status == 'PRESENT' %}
+                                    <span class="badge badge-present">🟢 등원</span>
+                                {% elif item.attendance_status == 'LATE' %}
+                                    <span class="badge badge-pending">🟡 지각</span>
+                                {% elif item.attendance_status == 'ABSENT' %}
+                                    <span class="badge badge-absent">🔴 결석</span>
+                                {% else %}
+                                    <span class="badge bg-light text-secondary border">대기</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.log_status %}
+                                    <span class="badge badge-log-done">작성됨</span>
+                                {% else %}
+                                    {% if item.attendance_status == 'PRESENT' or item.attendance_status == 'LATE' %}
+                                        <span class="badge badge-log-missing">미작성</span>
                                     {% else %}
                                         <span class="badge bg-light text-muted">-</span>
                                     {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.makeup_status == 'Needed' %}
+                                    <span class="badge badge-makeup-needed">보강필요</span>
+                                {% elif item.makeup_status == 'Scheduled' %}
+                                    <span class="badge badge-makeup-scheduled">보강예정</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             {% else %}
                 <div class="text-center py-5 text-muted">
-                    <i class="bi bi-calendar-x fs-1 mb-3 d-block"></i>
-                    <p>선택한 날짜에 예정된 수업이 없습니다.</p>
+                    <i class="bi bi-calendar-x fs-1 mb-3 d-block opacity-50"></i>
+                    <p>예정된 수업이 없습니다.</p>
                 </div>
             {% endif %}
         </div>
@@ -215,37 +183,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
-
     <script>
-        // 1. 날짜 선택기 초기화
         flatpickr("#datepicker", {
-            locale: "ko",
-            dateFormat: "Y-m-d",
-            disableMobile: "true",
-            onChange: function(selectedDates, dateStr, instance) {
-                // 날짜 변경 시 페이지 새로고침 (쿼리 파라미터 전달)
-                window.location.href = "?date=" + dateStr;
-            }
+            locale: "ko", dateFormat: "Y-m-d", disableMobile: "true",
+            onChange: function(d, s) { window.location.href = "?date=" + s; }
         });
-
-        // 2. 실시간 검색 기능 (자바스크립트 필터링)
         const searchInput = document.getElementById('studentSearch');
-        const tableRows = document.querySelectorAll('.student-row');
-
         if (searchInput) {
             searchInput.addEventListener('keyup', function() {
                 const query = this.value.toLowerCase().trim();
-
-                tableRows.forEach(row => {
-                    // 학생 이름 텍스트 가져오기
-                    const nameCell = row.querySelector('.student-name-cell');
-                    const nameText = nameCell.textContent.toLowerCase();
-
-                    if (nameText.includes(query)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
+                document.querySelectorAll('.student-row').forEach(row => {
+                    row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
                 });
             });
         }
