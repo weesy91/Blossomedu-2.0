@@ -214,54 +214,61 @@ def student_home(request):
     })
 
 # 👇 [수정됨] 기존 get_classtimes_by_branch 삭제하고 이 함수로 대체!
+# core/views.py
+
+from django.http import JsonResponse
+from .models import ClassTime, StudentProfile
+
 def get_classtimes_with_availability(request):
     """
-    [AJAX] 지점 시간표를 반환하되, 특정 선생님의 중복 여부(disabled)를 포함함.
+    [AJAX] 지점 시간표를 반환하되, '구문' 수업인 경우 선생님의 중복 시간을 계산하여 disabled 처리함.
     """
     branch_id = request.GET.get('branch_id')
     teacher_id = request.GET.get('teacher_id')
-    role = request.GET.get('role')  # syntax, reading, extra
+    role = request.GET.get('role')   # syntax, reading, extra
+    extra_type = request.GET.get('type') # SYNTAX, READING (보충수업일 때만 옴)
     current_student_id = request.GET.get('student_id')
 
     if not branch_id:
         return JsonResponse([], safe=False)
 
-    # 1. 시간표 조회
+    # 1. 해당 지점의 시간표 조회
     times = ClassTime.objects.filter(branch_id=branch_id).order_by('day', 'start_time')
     
-    # 2. 마감된 시간표 ID 찾기
+    # 2. 마감(중복)된 시간표 ID 찾기
     occupied_ids = set()
     
+    # [중복 검사 조건]
+    # 선생님이 선택되어 있고, 
+    # '정규 구문 수업'이거나 OR '보충 구문 수업'을 잡으려는 경우에만 검사
+    should_check_overlap = False
+    
     if teacher_id:
-        # (A) 구문(Syntax) 수업 체크: 구문은 1:1이므로 선생님이 이미 구문 수업 중이면 마감
-        # 선생님이 맡고 있는 모든 '구문' 학생들의 시간표를 가져옴
-        syntax_qs = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
+        if role == 'syntax':
+            should_check_overlap = True
+        elif role == 'extra' and extra_type == 'SYNTAX':
+            should_check_overlap = True
+            
+    if should_check_overlap:
+        # (A) 선생님의 '정규 구문' 학생들 시간 조회
+        qs1 = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
         if current_student_id:
-            syntax_qs = syntax_qs.exclude(id=current_student_id)
-        
-        occupied_ids.update(list(syntax_qs.values_list('syntax_class_id', flat=True)))
+            qs1 = qs1.exclude(id=current_student_id)
+        occupied_ids.update(list(qs1.values_list('syntax_class_id', flat=True)))
 
-        # (B) 추가 수업(Extra) 중 '구문' 타입 체크
-        extra_qs = StudentProfile.objects.filter(
-            extra_class_teacher_id=teacher_id,
+        # (B) 선생님의 '보충 구문' 학생들 시간 조회
+        qs2 = StudentProfile.objects.filter(
+            extra_class_teacher_id=teacher_id, 
             extra_class_type='SYNTAX'
         )
         if current_student_id:
-            extra_qs = extra_qs.exclude(id=current_student_id)
-            
-        occupied_ids.update(list(extra_qs.values_list('extra_class_id', flat=True)))
-
-        # [조건 적용]
-        # 독해(Reading) 수업을 잡으려는 경우: 1:N 이므로 중복 허용 -> 마감 목록 비움
-        # 단, "구문"을 잡으려는데 "독해" 수업 중인 시간은? (물리적 불가) 
-        # -> 선생님 요청("독해는 중복 가능")에 따라 독해 배정 시에는 disable을 하지 않습니다.
-        if role == 'reading':
-            occupied_ids = set()
+            qs2 = qs2.exclude(id=current_student_id)
+        occupied_ids.update(list(qs2.values_list('extra_class_id', flat=True)))
 
     # 3. 데이터 조립
     data = []
     for t in times:
-        # 마감 여부 체크
+        # 내가 계산한 '바쁜 시간(occupied_ids)'에 포함되면 disabled
         is_disabled = (t.id in occupied_ids)
         
         day_str = t.get_day_display()
@@ -274,8 +281,8 @@ def get_classtimes_with_availability(request):
         data.append({
             'id': t.id,
             'name': label,
-            'disabled': is_disabled, # JS가 이걸 보고 disable 처리함
-            'raw_name': t.name       # JS 필터링용 (구문/독해 텍스트 구분)
+            'disabled': is_disabled, 
+            'raw_name': t.name 
         })
         
     return JsonResponse(data, safe=False)

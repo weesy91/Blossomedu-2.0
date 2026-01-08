@@ -1,7 +1,6 @@
 /* static/admin/js/class_time_filter.js */
 
 (function($) {
-    // 과목별 설정: 어떤 선생님 필드와 연결되는지, 어떤 키워드(구문/독해)를 보여줄지
     const FIELD_RULES = [
         { suffix: 'syntax_class', teacherSuffix: 'syntax_teacher', keyword: '구문', role: 'syntax', typeDependency: false },
         { suffix: 'reading_class', teacherSuffix: 'reading_teacher', keyword: '독해', role: 'reading', typeDependency: false },
@@ -9,10 +8,10 @@
     ];
 
     $(document).ready(function() {
-        // 1. 페이지 로드 시 초기화
-        $('select[name$="-branch"]').each(function() { initializeRow($(this)); });
+        console.log("🚀 [System V6] 구문 1:1 중복방지 필터 가동");
 
-        // 2. '추가' 버튼으로 행이 늘어날 때 초기화
+        // 초기화
+        $('select[name$="-branch"]').each(function() { initializeRow($(this)); });
         $(document).on('formset:added', function(e, $row) {
             $row.find('select[name$="-branch"]').each(function() { initializeRow($(this)); });
         });
@@ -35,30 +34,32 @@
                     $el: $timeSelect, 
                     $teacherEl: $teacherSelect,
                     $dayFilter: $dayFilter,
-                    rule: rule, 
-                    prefix: prefix 
+                    rule: rule 
                 };
 
-                // (2) 추가수업은 '타입(구문/독해)' 선택 박스도 찾음
+                // (2) 보충수업용 타입 선택 박스 찾기
                 if (rule.typeDependency) {
                     targetObj.$typeEl = $('#' + prefix + '-extra_class_type');
                 }
 
-                // (3) 이벤트 연결: 지점/선생님/타입이 바뀌면 -> 서버에서 목록 새로 받기
+                // (3) 이벤트 연결: 조건이 바뀌면 무조건 서버에 다시 물어봄
+                // 지점 변경
                 $branchSelect.on('change', () => fetchTimes(targetObj, $branchSelect.val()));
                 
+                // 선생님 변경 (마감 정보가 달라지므로 필수)
                 if ($teacherSelect.length) {
                     $teacherSelect.on('change', () => fetchTimes(targetObj, $branchSelect.val()));
                 }
 
+                // 타입 변경 (구문이냐 독해냐에 따라 마감 여부가 달라지므로 필수)
                 if (targetObj.$typeEl) {
                     targetObj.$typeEl.on('change', () => fetchTimes(targetObj, $branchSelect.val()));
                 }
 
-                // (4) 요일 변경 시 -> 서버 요청 없이 화면만 다시 그림 (속도 향상)
+                // 요일 변경 (서버 안 가고 화면에서만 거름)
                 $dayFilter.on('change', () => renderOptions(targetObj));
 
-                // (5) 수정 모드(이미 값이 있는 경우) 초기 실행
+                // 초기 실행
                 if ($branchSelect.val()) {
                     fetchTimes(targetObj, $branchSelect.val());
                 }
@@ -66,7 +67,6 @@
         });
     }
 
-    // [UI] 요일 필터 생성
     function createDayFilter($select) {
         if ($select.prev('.day-filter-box').length > 0) return $select.prev('.day-filter-box');
         
@@ -84,7 +84,6 @@
         return $filter;
     }
 
-    // [AJAX] 서버에서 시간표(+마감정보) 가져오기
     function fetchTimes(target, branchId) {
         if (!branchId) {
             target.$el.html('<option value="">---------</option>');
@@ -93,24 +92,29 @@
 
         const teacherId = target.$teacherEl ? target.$teacherEl.val() : '';
         const currentStudentId = (window.location.pathname.match(/studentuser\/(\d+)\/change/) || [])[1] || '';
+        
+        // [핵심] 보충수업일 경우, 현재 선택된 타입(구문/독해)을 서버에 알려줌
+        let extraType = '';
+        if (target.rule.typeDependency && target.$typeEl) {
+            extraType = target.$typeEl.val(); // 'SYNTAX' or 'READING'
+        }
 
         $.ajax({
             url: '/core/api/get-classtimes/',
             data: {
                 'branch_id': branchId,
                 'teacher_id': teacherId,
-                'role': target.rule.role,
+                'role': target.rule.role, // 'syntax', 'reading', 'extra'
+                'type': extraType,        // [NEW] 보충수업 타입 전달
                 'student_id': currentStudentId
             },
             success: function(data) {
-                // 데이터를 DOM에 저장해두고, 요일 필터 시 재사용
                 target.$el.data('cached-times', data);
                 renderOptions(target);
             }
         });
     }
 
-    // [Render] 저장된 데이터를 화면에 그리기
     function renderOptions(target) {
         const data = target.$el.data('cached-times');
         if (!data) return;
@@ -118,7 +122,7 @@
         const currentVal = target.$el.val();
         const selectedDay = target.$dayFilter.val();
 
-        // 키워드 결정 (구문/독해)
+        // 필터링 키워드 결정
         let keyword = target.rule.keyword;
         if (target.rule.typeDependency && target.$typeEl) {
             const typeVal = target.$typeEl.val();
@@ -129,18 +133,17 @@
         let html = '<option value="">---------</option>';
 
         data.forEach(function(item) {
-            // (A) 키워드 필터 (구문 vs 독해)
+            // 키워드 필터
             if (keyword && item.raw_name.indexOf(keyword) === -1) return;
-
-            // (B) 요일 필터
+            // 요일 필터
             if (selectedDay && item.name.indexOf(selectedDay) === -1) return;
 
-            // (C) 마감(Disabled) 처리
-            // 내 수업(현재 선택값)은 마감이어도 선택 유지, 아니면 비활성화
+            // [마감 처리]
             const isSelected = (String(item.id) === String(currentVal));
             let disabledAttr = '';
             let styleAttr = '';
 
+            // 내 수업이 아니고, disabled 플래그가 있으면 -> 비활성화
             if (item.disabled && !isSelected) {
                 disabledAttr = 'disabled';
                 styleAttr = 'style="color:#ccc; background-color:#f0f0f0; font-style:italic;"';
