@@ -3,58 +3,39 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db.models import Q # [필수] Q 객체 추가
 from datetime import datetime, timedelta
 import json
 
-from core.models import StudentProfile, ClassTime # ClassTime 임포트 확인
+from core.models import StudentProfile, ClassTime
 from academy.models import TemporarySchedule
+
+# ... (schedule_change 함수 등 위쪽 코드는 기존과 동일하게 유지) ...
 
 @login_required
 def schedule_change(request, student_id):
+    # (기존 코드 유지)
     student = get_object_or_404(StudentProfile, id=student_id)
     initial_subject = request.GET.get('subject', 'SYNTAX') 
 
-    # 1. 시간 슬롯 생성 헬퍼 함수
     def generate_slots(start_str, end_str, interval_min):
         slots = []
         current = datetime.strptime(start_str, "%H:%M")
-        end = datetime.strptime(end_str, "%H:%M") # 이 시간 '이전'까지만 생성 (end 포함하려면 로직 조정 필요)
-        
-        # end_str 시간에 딱 시작하는 수업까지 포함하고 싶으면 <= 사용
-        # 여기서는 안전하게 end 시간 "이전"에 시작하는 것들만 담습니다.
+        end = datetime.strptime(end_str, "%H:%M")
         while current <= end:
             slots.append(current.strftime("%H:%M"))
             current += timedelta(minutes=interval_min)
         return slots
 
-    # =========================================================
-    # [수정된 로직] 
-    # 1. 구문 (Syntax): 40분 간격
-    #    - 오전: 09:00 ~ 12:20 (12:20 시작이 막타임)
-    #    - 오후: 13:20 ~ 20:40 (20:40 시작이 막타임)
-    # =========================================================
     syntax_morning = generate_slots("09:00", "12:20", 40)
     syntax_afternoon = generate_slots("13:20", "20:40", 40)
     full_syntax_slots = syntax_morning + syntax_afternoon
-
-    # =========================================================
-    # [수정된 로직]
-    # 2. 독해 (Reading): 30분 간격
-    #    - 전체: 09:00 ~ 20:30 (20:30 시작이 막타임)
-    # =========================================================
     full_reading_slots = generate_slots("09:00", "20:30", 30)
 
-    # ---------------------------------------------------------
-    # [중요] 기존 JS 코드와의 호환성을 위해 변수명은 유지하되,
-    # 내용은 위에서 만든 '새 규칙'으로 덮어씌웁니다.
-    # (평일/주말 구분 없이 학원 규칙이 통일되었다면 이렇게 하는 게 확실합니다)
-    # ---------------------------------------------------------
     weekday_syntax = full_syntax_slots
-    weekend_syntax = full_syntax_slots # 주말도 동일하게 적용
-    
+    weekend_syntax = full_syntax_slots
     weekday_reading = full_reading_slots
-    weekend_reading = full_reading_slots # 주말도 동일하게 적용
-
+    weekend_reading = full_reading_slots
 
     if request.method == 'POST':
         subject = request.POST.get('subject')
@@ -67,12 +48,9 @@ def schedule_change(request, student_id):
             new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
             new_time = datetime.strptime(new_time_str, '%H:%M').time()
             
-            # [추가] 선택한 시간과 일치하는 ClassTime 객체 찾기 (DB 연결)
-            # 폼에서는 시간(Text)만 넘어오므로, DB에서 해당 요일/시간의 객체를 찾아 연결해주는 것이 좋습니다.
             weekday_map = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
             day_code = weekday_map[new_date.weekday()]
             
-            # 이름에 '구문' 혹은 '독해'가 포함된 시간표 중 매칭되는 것 검색
             target_class_obj = ClassTime.objects.filter(
                 day=day_code, 
                 start_time=new_time,
@@ -84,7 +62,7 @@ def schedule_change(request, student_id):
                 subject=subject, 
                 new_date=new_date, 
                 new_start_time=new_time,
-                target_class=target_class_obj, # [중요] DB 객체 연결 (없으면 None)
+                target_class=target_class_obj,
                 is_extra_class=is_extra, 
                 note=note
             )
@@ -102,8 +80,9 @@ def schedule_change(request, student_id):
         'weekend_reading_json': json.dumps(weekend_reading),
     })
 
-# 아래 함수들은 기존 그대로 유지 (변경 없음)
+# ... (check_availability 함수 등 기존 코드 유지) ...
 def check_availability(request):
+    # (기존 코드 유지)
     student_id = request.GET.get('student_id')
     subject = request.GET.get('subject')
     date_str = request.GET.get('date')
@@ -115,7 +94,6 @@ def check_availability(request):
         target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         student = StudentProfile.objects.get(id=student_id)
         
-        # 구문(SYNTAX)일 때만 1:1 중복 체크 진행
         if subject != 'SYNTAX': 
             return JsonResponse({'booked': []})
 
@@ -127,18 +105,15 @@ def check_availability(request):
         weekday_map = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
         day_code = weekday_map[target_date.weekday()]
         
-        # [1] 정규 수업 중복 체크: 해당 선생님의 다른 구문 학생들 조사
         other_syntax_students = StudentProfile.objects.filter(
             syntax_teacher=teacher, 
             syntax_class__day=day_code
         ).exclude(id=student.id).select_related('syntax_class')
 
         for s in other_syntax_students:
-            # 해당 날짜에 보강으로 인해 정규 수업이 '이동(취소)'되지 않은 경우만 추가
             if not TemporarySchedule.objects.filter(student=s, original_date=target_date, subject='SYNTAX').exists():
                 booked_times.add(s.syntax_class.start_time.strftime('%H:%M'))
 
-        # [2] 보강 스케줄 중복 체크: 해당 날짜에 이미 잡힌 선생님의 다른 구문 보강
         temp_schedules = TemporarySchedule.objects.filter(
             new_date=target_date, 
             subject='SYNTAX'
@@ -153,26 +128,50 @@ def check_availability(request):
     except Exception as e:
         return JsonResponse({'booked': []})
 
+
+# 👇 [핵심 수정] 이 함수를 아래 내용으로 완전히 교체하세요!
 def get_occupied_times(request):
+    """
+    특정 선생님의 '구문(1:1)' 수업으로 선점된 시간표 ID 목록을 반환합니다.
+    - 정규 구문 수업
+    - 보강(추가) 수업 중 '구문' 타입
+    """
     teacher_id = request.GET.get('teacher_id')
-    subject = request.GET.get('subject')
+    # subject 파라미터는 더 이상 'syntax'인지 체크하는 용도로 쓰지 않고, 
+    # 무조건 해당 선생님의 1:1(구문) 점유 시간을 반환합니다.
+    
     current_student_id = request.GET.get('current_student_id') 
 
-    if not teacher_id or subject != 'syntax': # 구문만 1:1 체크
+    if not teacher_id:
         return JsonResponse({'occupied_ids': []})
 
     try:
-        # 이 선생님의 다른 구문 학생들을 찾음
-        occupied_qs = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
-        
+        # 1. 정규 구문 수업 (Regular Syntax)
+        regular_qs = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
         if current_student_id:
-            occupied_qs = occupied_qs.exclude(id=current_student_id)
+            regular_qs = regular_qs.exclude(id=current_student_id)
+        
+        regular_ids = list(regular_qs.values_list('syntax_class_id', flat=True))
 
-        # 배정된 ClassTime의 ID 리스트 반환
-        occupied_ids = list(occupied_qs.values_list('syntax_class_id', flat=True))
-        # None(미지정) 값 제거
-        occupied_ids = [i for i in occupied_ids if i is not None]
+        # 2. 보강(추가) 수업 중 '구문' 타입 (Extra Class - Syntax)
+        # [조건] extra_class_teacher가 이 선생님이고 + 타입이 'SYNTAX'인 경우
+        extra_qs = StudentProfile.objects.filter(
+            extra_class_teacher_id=teacher_id,
+            extra_class_type='SYNTAX'
+        )
+        if current_student_id:
+            extra_qs = extra_qs.exclude(id=current_student_id)
+            
+        extra_ids = list(extra_qs.values_list('extra_class_id', flat=True))
 
-        return JsonResponse({'occupied_ids': occupied_ids})
-    except Exception:
+        # 3. 합치기 (중복 제거 및 None 제거)
+        all_ids = set(regular_ids + extra_ids)
+        if None in all_ids:
+            all_ids.remove(None)
+
+        # 리스트로 변환하여 반환
+        return JsonResponse({'occupied_ids': list(all_ids)})
+
+    except Exception as e:
+        print(f"Error in get_occupied_times: {e}")
         return JsonResponse({'occupied_ids': []})
