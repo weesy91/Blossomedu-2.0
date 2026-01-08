@@ -1,4 +1,5 @@
 from django import forms
+from django.forms import Select
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User, Group 
@@ -104,36 +105,9 @@ class StudentProfileInline(admin.StackedInline):
     autocomplete_fields = ['school']
     readonly_fields = ('attendance_code', 'current_grade_display')
     
-    fieldsets = (
-        ('기본 정보', {
-            'fields': ('branch', 'name', 'school', 'base_year', 'base_grade', 'current_grade_display', 'phone_number', 'attendance_code')
-        }),
-        # ▼ '부모님 연락처' 그룹을 '알림 설정'까지 포함하도록 수정
-        ('학부모 연락처 & 알림 설정', {
-            'fields': (
-                'parent_phone_mom', 
-                'parent_phone_dad',
-                'notification_recipient',   # [추가됨] 수신 대상 (엄마/아빠/둘다)
-                'send_attendance_alarm',    # [추가됨] 등하원 알림 ON/OFF
-                'send_report_alarm',        # [추가됨] 성적표 알림 ON/OFF
-            )
-        }),
-        ('수업 및 담당 강사', {
-            'description': '⚠️ 선생님을 먼저 선택하면, 이미 마감된 시간은 비활성화(회색) 처리됩니다.',
-            'fields': (
-                ('syntax_teacher', 'syntax_class'), 
-                ('reading_teacher', 'reading_class'),
-                ('extra_class_teacher', 'extra_class_type', 'extra_class'),
-            )
-        }),
-        ('기타', {'fields': ('memo',)}),
-    )
-    
-    class Media:
-        js = (
-            'admin/js/jquery.init.js',
-            'admin/js/class_time_filter.js',
-        )
+    formfield_overrides = {
+        ClassTime: {'widget': Select}, # ClassTime 모델에 대해 Select 위젯 강제
+    }
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         day_order = Case(

@@ -49,16 +49,12 @@ def index(request):
 
 def login_dispatch(request):
     print(f"로그인 감지! 사용자: {request.user}, 슈퍼유저여부: {request.user.is_superuser}")
-
-    # [수정됨] 슈퍼유저일 때 관리자 페이지로 가는 코드 삭제 (이제 선생님 홈으로 갑니다)
-    # if request.user.is_superuser:
-    #     return redirect('admin:index')
     
     # 선생님(스태프) 또는 슈퍼유저이면 선생님 홈으로
     if request.user.is_staff:
         return redirect('core:teacher_home')
         
-    # [변경] 학생이면 '학생 홈'으로 이동
+    # 학생이면 '학생 홈'으로 이동
     return redirect('core:student_home')
 
 @login_required(login_url='core:login')
@@ -130,9 +126,6 @@ def student_home(request):
     schedules = []
 
     # 1-1. 정규 수업 (구문/독해/추가)
-    # -> 오늘 요일에 해당하는 수업이 있는지 확인
-    # -> 단, "오늘 날짜로 보강이 잡혀서 다른 날로 이동한 경우(moved_away)"는 제외해야 함
-    
     # (A) 구문 수업
     if profile.syntax_class and profile.syntax_class.day == today_code:
         is_moved = TemporarySchedule.objects.filter(
@@ -184,39 +177,25 @@ def student_home(request):
         schedules.append({
             'type': label_type,
             'subject': ts.get_subject_display(),
-            'time_obj': ts, # 템플릿에서 start_time 처리를 위해 객체 통째로 넘김
-            'start_time': ts.new_start_time, # 정렬용
+            'time_obj': ts,
+            'start_time': ts.new_start_time,
             'teacher': teacher
         })
 
-    # 1-3. 시간순 정렬 (정규 수업은 class_time.start_time, 보강은 new_start_time 기준)
+    # 1-3. 시간순 정렬
     def get_start_time(item):
         if 'start_time' in item: return item['start_time']
         return item['time'].start_time
     
     schedules.sort(key=get_start_time)
 
-
-    # ==========================================
     # [2] 출석 현황 (오늘)
-    # ==========================================
-    # student=user -> student=profile 로 수정 완료
     attendance = Attendance.objects.filter(student=profile, date=today).first()
 
-
-    # ==========================================
     # [3] 최신 과제 (숙제) 가져오기
-    # ==========================================
-    # student=user -> student=profile 로 수정 완료
     last_log = ClassLog.objects.filter(student=profile).order_by('-date', '-created_at').first()
 
-
-    # ==========================================
-    # [4] 지점별 팝업 가져오기 (NEW)
-    # ==========================================
-    # 1. 내 지점(branch)의 팝업 중
-    # 2. 활성화(is_active) 되어 있고
-    # 3. 현재 시간이 시작일과 종료일 사이인 것만 조회
+    # [4] 지점별 팝업 가져오기
     current_time = timezone.now()
     active_popups = Popup.objects.filter(
         Q(branch=profile.branch) | Q(branch__isnull=True),
@@ -234,29 +213,70 @@ def student_home(request):
         'popups': active_popups,
     })
 
-def get_classtimes_by_branch(request):
+# 👇 [수정됨] 기존 get_classtimes_by_branch 삭제하고 이 함수로 대체!
+def get_classtimes_with_availability(request):
     """
-    [AJAX] 분원(Branch) 선택 시 해당 분원의 시간표만 반환하는 함수
+    [통합 API] 지점(Branch)의 시간표를 반환하되, 
+    특정 선생님(Teacher)의 해당 과목(Subject) 중복 여부를 'disabled' 필드에 담아 반환함.
     """
     branch_id = request.GET.get('branch_id')
-    if branch_id:
-        # 1. 해당 분원(branch_id)의 시간표를 찾습니다.
-        # 2. 요일(day), 시작시간(start_time) 순서로 정렬합니다.
-        times = ClassTime.objects.filter(branch_id=branch_id).order_by('day', 'start_time')
-        
-        data = []
-        for t in times:
-            # 예시 출력: "월 19:00 (구문 - 기초)"
-            day_str = t.get_day_display() 
-            time_str = t.start_time.strftime('%H:%M')
-            label = f"{day_str} {time_str} ({t.name})"
-            
-            data.append({
-                'id': t.id, 
-                'name': label
-            })
-            
-        return JsonResponse(data, safe=False)
+    teacher_id = request.GET.get('teacher_id')
+    role = request.GET.get('role')  # syntax, reading, extra
+    current_student_id = request.GET.get('student_id')
+
+    # 1. 지점이 없으면 빈 리스트 반환
+    if not branch_id:
+        return JsonResponse([], safe=False)
+
+    # 2. 해당 지점의 모든 시간표 조회 (요일 -> 시간 순 정렬)
+    times = ClassTime.objects.filter(branch_id=branch_id).order_by('day', 'start_time')
     
-    # 분원이 선택되지 않았으면 빈 리스트 반환
-    return JsonResponse([], safe=False)
+    # 3. 마감된 시간표 ID 찾기 (선생님이 선택된 경우에만)
+    occupied_ids = set()
+    
+    if teacher_id and role:
+        # (A) 정규 구문 수업 점유
+        # 구문(1:1)은 무조건 겹치면 안 되므로, role이 뭐든 간에 이 선생님의 정규 구문 시간은 마감으로 간주
+        regular_qs = StudentProfile.objects.filter(syntax_teacher_id=teacher_id)
+        if current_student_id:
+            regular_qs = regular_qs.exclude(id=current_student_id)
+        occupied_ids.update(list(regular_qs.values_list('syntax_class_id', flat=True)))
+
+        # (B) 보강/추가 수업 중 '구문' 타입 점유
+        extra_qs = StudentProfile.objects.filter(
+            extra_class_teacher_id=teacher_id,
+            extra_class_type='SYNTAX'
+        )
+        if current_student_id:
+            extra_qs = extra_qs.exclude(id=current_student_id)
+        occupied_ids.update(list(extra_qs.values_list('extra_class_id', flat=True)))
+        
+        # (C) [독해 수업일 경우]
+        # 독해 수업은 중복 가능(1:N) 하므로, 현재 배정하려는 과목이 'reading'이면 마감 체크를 해제합니다.
+        # 단, "내가 구문을 잡으려는데 선생님이 독해 수업 중"인 경우는 물리적으로 불가능하므로 막아야 할 수도 있으나,
+        # 선생님의 요청사항(독해는 중복 허용)에 따라 독해 타임은 occupied에 넣지 않습니다.
+        
+        if role == 'reading':
+            occupied_ids = set() # 독해는 중복 허용이므로 마감 목록 초기화
+
+    # 4. 데이터 조립
+    data = []
+    for t in times:
+        is_disabled = (t.id in occupied_ids)
+        
+        # 라벨 생성
+        day_str = t.get_day_display()
+        time_str = t.start_time.strftime('%H:%M')
+        label = f"[{day_str}] {time_str} ({t.name})"
+        
+        if is_disabled:
+            label += " ⛔(마감)"
+
+        data.append({
+            'id': t.id,
+            'name': label,
+            'disabled': is_disabled,  # 프론트엔드에서 이것만 보고 처리
+            'raw_name': t.name # 필터링용 원본 이름
+        })
+        
+    return JsonResponse(data, safe=False)
