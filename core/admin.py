@@ -132,7 +132,6 @@ class StudentProfileInline(admin.StackedInline):
     class Media:
         js = (
             'admin/js/jquery.init.js',
-            'admin/js/custom_schedule_filter.js',
             'admin/js/class_time_filter.js',
         )
 
