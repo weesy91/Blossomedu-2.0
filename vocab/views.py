@@ -744,33 +744,35 @@ def api_search_word(request):
 @csrf_exempt
 @login_required
 def api_add_personal_wrong(request):
+    """선택한 단어를 내 오답노트에 추가 (외부 단어 자동 등록 포함)"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             profile = request.user.profile
             
-            # (A) DB에 있는 단어인 경우 (기존 로직)
+            word = None
+
+            # [CASE A] DB에 이미 있는 단어 (ID로 찾기)
             if 'word_id' in data and data['word_id']:
                 word = get_object_or_404(Word, id=data['word_id'])
                 
-            # (B) DB에 없는 외부 단어인 경우 (새로직)
+            # [CASE B] DB에 없는 외부 단어 (새로 만들기)
             elif 'english' in data and 'korean' in data:
                 english = data['english'].strip()
                 korean = data['korean'].strip()
                 
-                # 1. '외부 검색 단어'용 단어장을 찾거나 생성 (없으면 만듦)
-                # (관리자 계정 하나를 등록자로 지정하거나, 시스템 계정을 사용)
-                system_user = User.objects.filter(is_superuser=True).first() # 관리자 계정 찾기
+                # 1. 관리자(superuser) 계정 하나 찾기 (등록자용)
+                system_user = User.objects.filter(is_superuser=True).first()
                 if not system_user:
-                    # 안전장치: 현재 요청한 유저를 등록자로 사용
-                    system_user = request.user 
+                    system_user = request.user # 없으면 현재 유저로
 
+                # 2. '[자동저장] 외부 검색 단어' 단어장 찾기 or 생성
                 ext_book, _ = WordBook.objects.get_or_create(
                     title="[자동저장] 외부 검색 단어",
                     defaults={'uploaded_by': system_user}
                 )
                 
-                # 2. 해당 단어장에 단어 생성 (이미 있으면 가져옴)
+                # 3. 단어 생성 (중복이면 가져오기)
                 word, _ = Word.objects.get_or_create(
                     book=ext_book,
                     english=english,
@@ -780,7 +782,7 @@ def api_add_personal_wrong(request):
             else:
                 return JsonResponse({'status': 'error', 'message': '잘못된 요청입니다.'})
             
-            # 3. 오답노트에 추가 (공통 로직)
+            # [공통] 오답노트에 추가
             from .models import PersonalWrongWord
             obj, created = PersonalWrongWord.objects.get_or_create(
                 student=profile,
@@ -788,7 +790,7 @@ def api_add_personal_wrong(request):
             )
             
             if created:
-                return JsonResponse({'status': 'success', 'message': f"'{word.english}' 추가 완료! (외부사전)"})
+                return JsonResponse({'status': 'success', 'message': f"'{word.english}' 추가 완료! 📝"})
             else:
                 return JsonResponse({'status': 'info', 'message': '이미 오답 노트에 있는 단어입니다.'})
                 
