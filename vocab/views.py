@@ -8,8 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils import timezone
 from django.contrib.admin.views.decorators import staff_member_required
-
-# [핵심 수정] 이 두 줄이 정확히 들어가야 에러가 나지 않습니다.
+from django.contrib.auth.models import User
 from django.db.models import Avg, Q, Max, Count, Sum
 from django.db.models.functions import TruncDate 
 
@@ -706,40 +705,82 @@ def search_word_page(request):
 
 @login_required
 def api_search_word(request):
-    """단어 검색 API (영어 단어로 검색)"""
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'results': []})
     
-    # 영어 단어가 포함된 모든 결과를 찾음 (대소문자 무시)
-    # 단어장 이름도 같이 반환
-    words = Word.objects.filter(english__icontains=query).select_related('book')[:20]
-    
     results = []
-    for w in words:
+    
+    # 1. 내부 DB 검색
+    db_words = Word.objects.filter(english__icontains=query).select_related('book')[:5]
+    for w in db_words:
         results.append({
             'id': w.id,
             'english': w.english,
             'korean': w.korean,
             'book_title': w.book.title,
-            'book_publisher': w.book.publisher.name if w.book.publisher else "기타"
+            'book_publisher': w.book.publisher.name if w.book.publisher else "기타",
+            'is_db': True  # DB에 있는 단어 표시
         })
+        
+    # 2. 결과가 없거나 적으면 외부 사전 검색 시도
+    # (이미 DB에 완벽하게 일치하는 단어가 있으면 생략할 수도 있음)
+    if not any(r['english'].lower() == query.lower() for r in results):
+        external_word = utils.crawl_daum_dic(query)
+        if external_word:
+            # 이미 검색된 결과에 중복되지 않게 추가
+            if not any(r['english'] == external_word['english'] for r in results):
+                results.append({
+                    'id': None, # DB에 없으므로 ID 없음
+                    'english': external_word['english'],
+                    'korean': external_word['korean'],
+                    'book_title': "인터넷 사전 검색",
+                    'book_publisher': "Daum",
+                    'is_db': False
+                })
     
     return JsonResponse({'results': results})
 
 @csrf_exempt
 @login_required
 def api_add_personal_wrong(request):
-    """선택한 단어를 내 오답노트에 추가"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            word_id = data.get('word_id')
             profile = request.user.profile
             
-            word = get_object_or_404(Word, id=word_id)
+            # (A) DB에 있는 단어인 경우 (기존 로직)
+            if 'word_id' in data and data['word_id']:
+                word = get_object_or_404(Word, id=data['word_id'])
+                
+            # (B) DB에 없는 외부 단어인 경우 (새로직)
+            elif 'english' in data and 'korean' in data:
+                english = data['english'].strip()
+                korean = data['korean'].strip()
+                
+                # 1. '외부 검색 단어'용 단어장을 찾거나 생성 (없으면 만듦)
+                # (관리자 계정 하나를 등록자로 지정하거나, 시스템 계정을 사용)
+                system_user = User.objects.filter(is_superuser=True).first() # 관리자 계정 찾기
+                if not system_user:
+                    # 안전장치: 현재 요청한 유저를 등록자로 사용
+                    system_user = request.user 
+
+                ext_book, _ = WordBook.objects.get_or_create(
+                    title="[자동저장] 외부 검색 단어",
+                    defaults={'uploaded_by': system_user}
+                )
+                
+                # 2. 해당 단어장에 단어 생성 (이미 있으면 가져옴)
+                word, _ = Word.objects.get_or_create(
+                    book=ext_book,
+                    english=english,
+                    defaults={'korean': korean, 'number': 1}
+                )
+                
+            else:
+                return JsonResponse({'status': 'error', 'message': '잘못된 요청입니다.'})
             
-            # 이미 추가된 단어인지 확인
+            # 3. 오답노트에 추가 (공통 로직)
             from .models import PersonalWrongWord
             obj, created = PersonalWrongWord.objects.get_or_create(
                 student=profile,
@@ -747,7 +788,7 @@ def api_add_personal_wrong(request):
             )
             
             if created:
-                return JsonResponse({'status': 'success', 'message': '오답 노트에 추가되었습니다! 📝'})
+                return JsonResponse({'status': 'success', 'message': f"'{word.english}' 추가 완료! (외부사전)"})
             else:
                 return JsonResponse({'status': 'info', 'message': '이미 오답 노트에 있는 단어입니다.'})
                 

@@ -361,11 +361,15 @@
                                 <option value="" selected disabled>-- 출판사 먼저 --</option>
                                 {% for pub in publishers %}
                                     {% for book in pub.wordbook_set.all %}
-                                    <option value="{{ book.id }}" class="book-option pub-{{ pub.id }} d-none-custom">{{ book.title }}</option>
+                                        <option value="{{ book.id }}" data-publisher="{{ pub.id }}">
+                                            {{ book.title }}
+                                        </option>
                                     {% endfor %}
                                 {% endfor %}
                                 {% for book in etc_books %}
-                                <option value="{{ book.id }}" class="book-option pub-etc d-none-custom">{{ book.title }}</option>
+                                    <option value="{{ book.id }}" data-publisher="etc">
+                                        {{ book.title }}
+                                    </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -373,7 +377,7 @@
 
                     <div class="mb-4">
                         <div class="section-label">3. Day 범위 설정</div>
-                        <input type="tel" id="rangeInput" class="form-control" placeholder="예: 1-5, 7 (비워두면 전체)">
+                        <input type="text" id="rangeInput" class="form-control" placeholder="예: 1-5, 7 (비워두면 전체)">
                     </div>
 
                     <div>
@@ -460,36 +464,47 @@
     <script>
         // 전역 변수 및 함수
         let selectedMode = null;
+        
+        // [추가] 페이지 로딩 시점에 모든 단어장 옵션을 백업해둡니다.
+        const originalBookSelect = document.getElementById('bookSelect');
+        // 첫 번째 옵션('-- 출판사 먼저 --')을 제외하고 데이터가 있는 옵션들만 저장
+        const allBookOptions = Array.from(originalBookSelect.querySelectorAll('option')).filter(opt => opt.value !== "");
 
+        // [수정] 단어장 필터링 함수 (숨기는 게 아니라 다시 그리는 방식)
         function filterBooks() {
             const pubSelect = document.getElementById('publisherSelect');
             const bookSelect = document.getElementById('bookSelect');
             const selectedPubId = pubSelect.value;
-            const options = document.querySelectorAll('.book-option');
 
-            bookSelect.value = "";
+            // 1. 기존 목록 싹 비우기
+            bookSelect.innerHTML = '';
             bookSelect.disabled = false;
-            
+
+            // 2. 기본 안내 문구 추가
+            const defaultOpt = document.createElement('option');
+            defaultOpt.text = "-- 선택하세요 --";
+            defaultOpt.value = "";
+            defaultOpt.disabled = true;
+            defaultOpt.selected = true;
+            bookSelect.appendChild(defaultOpt);
+
+            // 3. 백업해둔 목록 중에서 출판사가 일치하는 것만 다시 추가
             let hasBooks = false;
-            options.forEach(opt => {
-                if (opt.classList.contains('pub-' + selectedPubId)) {
-                    opt.classList.remove('d-none-custom');
+            allBookOptions.forEach(opt => {
+                // HTML에서 설정한 data-publisher 값을 가져옴
+                const bookPubId = opt.getAttribute('data-publisher');
+
+                if (bookPubId === selectedPubId) {
+                    // 옵션을 복사해서 추가 (그냥 추가하면 원본 배열에서 사라질 수 있음)
+                    bookSelect.appendChild(opt.cloneNode(true));
                     hasBooks = true;
-                } else {
-                    opt.classList.add('d-none-custom');
                 }
             });
 
+            // 4. 결과가 없으면 안내 문구 표시
             if (!hasBooks) {
-                bookSelect.innerHTML = '<option value="" disabled selected>단어장이 없습니다</option>';
+                bookSelect.innerHTML = '<option value="" disabled selected>🚫 해당 단어장이 없습니다</option>';
                 bookSelect.disabled = true;
-            } else {
-                const defaultOpt = document.createElement('option');
-                defaultOpt.text = "-- 선택하세요 --";
-                defaultOpt.value = "";
-                defaultOpt.disabled = true;
-                defaultOpt.selected = true;
-                if(bookSelect.options[0].text !== defaultOpt.text) bookSelect.prepend(defaultOpt);
             }
         }
 

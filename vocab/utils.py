@@ -1,8 +1,9 @@
 # vocab/utils.py
 
-import calendar
+import calendar, requests
 from django.utils import timezone
 from .models import TestResultDetail, MonthlyTestResultDetail, Word, TestResult, PersonalWrongWord
+from bs4 import BeautifulSoup
 
 def get_vulnerable_words(profile):
     """
@@ -70,3 +71,47 @@ def is_monthly_test_period():
     now = timezone.now()
     last_day = calendar.monthrange(now.year, now.month)[1]
     return now.day > (last_day - 8)
+
+def crawl_daum_dic(query):
+    """
+    다음 어학사전에서 단어의 뜻을 검색하여 반환합니다.
+    """
+    try:
+        url = f"https://dic.daum.net/search.do?q={query}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=3)
+        
+        if response.status_code != 200:
+            return None
+            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 검색 결과 중 '단어' 영역 파싱 (첫 번째 결과만)
+        # (사이트 구조 변경에 따라 선택자는 바뀔 수 있음)
+        search_box = soup.select_one('.search_box')
+        if not search_box:
+            return None
+            
+        # 단어 (영어)
+        word_eng = search_box.select_one('.txt_clebsch')
+        if not word_eng:
+            return None
+        english = word_eng.text.strip()
+        
+        # 뜻 (여러 개일 경우 콤마로 연결)
+        meanings = search_box.select('.txt_search')
+        korean_list = [m.text.strip() for m in meanings]
+        korean = ", ".join(korean_list)
+        
+        if not english or not korean:
+            return None
+            
+        return {
+            'english': english,
+            'korean': korean,
+            'source': 'external'
+        }
+        
+    except Exception as e:
+        print(f"Crawler Error: {e}")
+        return None

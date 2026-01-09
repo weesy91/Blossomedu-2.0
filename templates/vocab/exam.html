@@ -362,13 +362,51 @@
     }
 
     // === TTS ===
+    let voices = [];
+
+    // 기기의 목소리 목록을 가져오는 함수
+    function setVoiceList() {
+        voices = window.speechSynthesis.getVoices();
+    }
+
+    // 목소리 목록은 비동기로 로드되므로 이벤트 리스너 등록
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = setVoiceList;
+    }
+
     window.speakWord = function(event) {
         if(event) event.stopPropagation();
+        
         if ('speechSynthesis' in window) {
+            // 기존 대기열 취소
             window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(words[currentIndex].english);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.9;
+
+            const text = words[currentIndex].english;
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 1. 기본 언어 설정
+            utterance.lang = 'en-US'; 
+            utterance.rate = 0.9; // 속도 (0.1 ~ 10)
+
+            // 2. [핵심] 미국 영어 목소리 강제 찾기
+            // 목소리 목록이 로드되지 않았을 경우를 대비해 다시 호출
+            if (voices.length === 0) {
+                voices = window.speechSynthesis.getVoices();
+            }
+
+            // 우선순위: 
+            // 1. "Samantha" (아이폰의 대표적인 미국 여성 목소리)
+            // 2. 이름에 "US"나 "United States"가 들어간 목소리
+            // 3. 언어 코드가 "en-US"인 목소리
+            const targetVoice = voices.find(v => v.name === 'Samantha') || 
+                                voices.find(v => v.lang === 'en-US' && v.name.includes('US')) ||
+                                voices.find(v => v.lang === 'en-US');
+
+            // 찾은 목소리가 있으면 적용
+            if (targetVoice) {
+                utterance.voice = targetVoice;
+            }
+
             window.speechSynthesis.speak(utterance);
         }
     }
