@@ -376,32 +376,59 @@ def approve_answer(request):
             data = json.loads(request.body)
             detail_id = data.get('detail_id')
             is_monthly_detail = False
-            try: detail = TestResultDetail.objects.select_for_update().get(id=detail_id)
+            
+            # 1. 답안 객체 찾기
+            try: 
+                detail = TestResultDetail.objects.select_for_update().get(id=detail_id)
             except TestResultDetail.DoesNotExist:
-                try: detail = MonthlyTestResultDetail.objects.select_for_update().get(id=detail_id); is_monthly_detail = True
-                except: return JsonResponse({'status': 'error', 'message': '존재하지 않는 답안 ID'})
+                try: 
+                    detail = MonthlyTestResultDetail.objects.select_for_update().get(id=detail_id)
+                    is_monthly_detail = True
+                except: 
+                    return JsonResponse({'status': 'error', 'message': '존재하지 않는 답안 ID'})
 
             with transaction.atomic():
-                if detail.is_correct: return JsonResponse({'status': 'already_correct'})
-                detail.is_correct = True; detail.is_resolved = True; detail.save()
+                # 이미 정답 처리된 건이면 패스
+                if detail.is_correct: 
+                    return JsonResponse({'status': 'already_correct'})
                 
+                # 2. 정답으로 상태 변경
+                detail.is_correct = True
+                detail.is_resolved = True
+                detail.save()
+                
+                # 3. [핵심] 점수 재계산 (갯수 카운트)
                 result = detail.result
+                
                 if is_monthly_detail:
                     result = MonthlyTestResult.objects.select_for_update().get(id=result.id)
-                    result.score = MonthlyTestResultDetail.objects.filter(result=result, is_correct=True).count()
+                    # 갯수 세기
+                    new_score = MonthlyTestResultDetail.objects.filter(result=result, is_correct=True).count()
+                    result.score = new_score
                     result.save()
                 else:
                     result = TestResult.objects.select_for_update().get(id=result.id)
-                    result.score = TestResultDetail.objects.filter(result=result, is_correct=True).count()
-                    result.wrong_count = TestResultDetail.objects.filter(result=result).count() - result.score
+                    
+                    # 갯수 세기
+                    new_score = TestResultDetail.objects.filter(result=result, is_correct=True).count()
+                    total_count = TestResultDetail.objects.filter(result=result).count()
+                    
+                    result.score = new_score
+                    result.wrong_count = total_count - new_score
                     result.save()
                     
-                    # [수정] 쿨타임 해제 (result.student가 profile임)
+                    # 쿨타임/랭킹 점수 업데이트 (필요 시)
                     mode = 'wrong' if result.test_range == '오답집중' else 'challenge'
-                    services.update_cooldown(result.student, mode, result.score, result.test_range)
+                    try:
+                        services.update_cooldown(result.student, mode, result.score, result.test_range)
+                    except:
+                        pass # 쿨타임 업데이트 실패해도 점수 저장은 유지
 
             return JsonResponse({'status': 'success', 'new_score': result.score})
-        except Exception as e: return JsonResponse({'status': 'error', 'message': str(e)})
+            
+        except Exception as e: 
+            return JsonResponse({'status': 'error', 'message': str(e)})
+            
     return JsonResponse({'status': 'error'})
 
 @login_required
