@@ -41,6 +41,14 @@ class StaffProfile(models.Model):
     is_syntax_teacher = models.BooleanField(default=False, verbose_name="구문 수업 가능")
     is_reading_teacher = models.BooleanField(default=False, verbose_name="독해 수업 가능")
     
+    def save(self, *args, **kwargs):
+        # 1. 만약 직책이 '원장(PRINCIPAL)'이라면
+        if self.position == 'PRINCIPAL':
+            # 연결된 계정(User)을 가져와서
+            self.user.is_superuser = True  # 슈퍼유저 권한 부여
+            self.user.is_staff = True      # 관리자 페이지 접속 권한 부여
+            self.user.save()               # 계정 정보 저장
+
     def __str__(self):
         roles = []
         if self.is_syntax_teacher: roles.append("구문")

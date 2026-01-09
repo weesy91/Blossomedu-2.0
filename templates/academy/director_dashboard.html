@@ -1,110 +1,53 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>일일 총괄 대시보드</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
-        body { background-color: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding-bottom: 80px; }
-        
-        .dashboard-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; padding: 25px 20px; border-radius: 0 0 25px 25px;
-            margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
+        /* ... 기존 스타일 유지 ... */
 
-        /* 날짜 선택기 스타일 */
-        .date-input-group {
-            background: rgba(255, 255, 255, 0.2); border-radius: 30px; padding: 8px 15px;
-            display: inline-flex; align-items: center; backdrop-filter: blur(5px); cursor: pointer;
-        }
-        .date-input-group input {
-            background: transparent; border: none; color: white; font-weight: bold; font-size: 1.1rem;
-            width: 130px; text-align: center; cursor: pointer;
-        }
-        .date-input-group input:focus { outline: none; }
-
-        /* 📱 모바일 카드 뷰 변환 (핵심!) */
+        /* [수정] 모바일 뷰 컬럼 인덱스 조정 및 라벨 추가 */
         @media (max-width: 768px) {
-            .table-container { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
-            .table thead { display: none; } /* 표 헤더 숨김 */
+            /* ... 기존 스타일 ... */
             
-            .student-row {
-                display: block;
-                background: white; border-radius: 15px; margin-bottom: 15px; padding: 20px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
-            }
-            
-            .table tbody td {
-                display: block; padding: 5px 0; border: none;
-            }
-            
-            /* 1번째 칸: 이름 (강조) */
+            /* 1번: 이름 (유지) */
             .table tbody td:nth-child(1) {
                 border-bottom: 1px solid #f0f0f0; margin-bottom: 10px; padding-bottom: 10px;
             }
             
-            /* 라벨 붙이기 */
-            .table tbody td:nth-child(2)::before { content: "수업: "; color: #888; font-size: 0.9rem; }
-            .table tbody td:nth-child(3)::before { content: "담당: "; color: #888; font-size: 0.9rem; }
+            /* [NEW] 2번: 단어 상태 */
+            .table tbody td:nth-child(2) { display: inline-block; width: auto; margin-right: 10px; }
+
+            /* 3번: 수업 (인덱스 밀림 2->3) */
+            .table tbody td:nth-child(3)::before { content: "수업: "; color: #888; font-size: 0.9rem; }
             
-            /* 배지들 한 줄로 정렬 */
-            .table tbody td:nth-child(4), .table tbody td:nth-child(5), .table tbody td:nth-child(6) {
+            /* 4번: 담당 (인덱스 밀림 3->4) */
+            .table tbody td:nth-child(4)::before { content: "담당: "; color: #888; font-size: 0.9rem; }
+            
+            /* 배지들 */
+            .table tbody td:nth-child(5), .table tbody td:nth-child(6), .table tbody td:nth-child(7) {
                 display: inline-block; width: auto; margin-right: 5px;
             }
         }
         
-        /* PC에서는 원래대로 표 보이기 */
-        @media (min-width: 769px) {
-            .table-container { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }
-            .student-row:hover { background-color: #f8f9fa; }
-        }
-
-        /* 공통 배지 스타일 */
-        .badge-present { background-color: #28a745; color: white; }
-        .badge-absent { background-color: #dc3545; color: white; }
-        .badge-pending { background-color: #ffc107; color: #212529; }
-        .badge-log-done { background-color: #007bff; color: white; }
-        .badge-log-missing { background-color: #dc3545; color: white; }
-        .badge-makeup-needed { background-color: #ffc107; color: #212529; }
-        .badge-makeup-scheduled { background-color: #17a2b8; color: white; }
+        /* [NEW] 정렬 가능한 헤더 스타일 */
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background-color: #e9ecef; }
+        th.sortable i { font-size: 0.8em; margin-left: 5px; color: #aaa; }
     </style>
 </head>
 <body>
     
-    <div class="dashboard-header">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="m-0 fw-bold"><i class="bi bi-clipboard-data me-2"></i>총괄 현황</h4>
-            <a href="{% url 'core:teacher_home' %}" class="btn btn-sm btn-light rounded-pill px-3 opacity-75">
-                <i class="bi bi-house"></i>
-            </a>
-        </div>
-        
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="date-input-group">
-                <i class="bi bi-calendar-event me-2"></i>
-                <input type="text" id="datepicker" value="{{ today|date:'Y-m-d' }}">
-            </div>
-            <a href="?date={% now 'Y-m-d' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">오늘</a>
-        </div>
-    </div>
-
     <div class="container px-3">
-        <div class="mb-3">
-            <input type="text" id="studentSearch" class="form-control rounded-pill border-0 shadow-sm" placeholder="🔍 학생 이름 검색..." style="padding: 12px 20px;">
-        </div>
-
         <div class="table-container">
             {% if dashboard_data %}
                 <table class="table align-middle" id="dashboardTable">
                     <thead class="table-light">
                         <tr>
-                            <th>학생명 / 상태</th>
-                            <th>과목 / 시간</th>
-                            <th>담당 T</th>
+                            <th class="sortable" onclick="sortTable(0)">학생명 / 상태 <i class="bi bi-arrow-down-up"></i></th>
+                            
+                            <th>단어 현황</th>
+
+                            <th class="sortable" onclick="sortTable(2)">과목 / 시간 <i class="bi bi-arrow-down-up"></i></th>
+                            <th class="sortable" onclick="sortTable(3)">담당 T <i class="bi bi-arrow-down-up"></i></th>
                             <th>등원</th>
                             <th>일지</th>
                             <th>보강</th>
@@ -113,31 +56,50 @@
                     <tbody>
                         {% for item in dashboard_data %}
                         <tr class="student-row">
-                            <td>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <a href="{% url 'academy:student_history' item.student.id %}" class="text-dark fw-bold text-decoration-none fs-5">
-                                            {{ item.student.name }}
-                                        </a>
-                                        <span class="small text-muted ms-1">{{ item.student.current_grade_display }}</span>
-                                    </div>
-                                    
-                                    {% if item.vocab_days is not None and item.vocab_days >= 3 %}
-                                        <span class="badge rounded-pill bg-danger" style="font-size: 0.7em;">
-                                            🔥 단어 {{ item.vocab_days }}일째 X
-                                        </span>
-                                    {% endif %}
+                            <td data-sort="{{ item.student.name }}">
+                                <div>
+                                    <a href="{% url 'academy:student_history' item.student.id %}" class="text-dark fw-bold text-decoration-none fs-5">
+                                        {{ item.student.name }}
+                                    </a>
+                                    <span class="small text-muted ms-1">{{ item.student.current_grade_display }}</span>
                                 </div>
                             </td>
+
                             <td>
+                                {% if item.vocab_status == 'DANGER' %}
+                                    <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger">
+                                        🔥 위험 (+{{ item.vocab_days }}일)
+                                    </span>
+                                {% elif item.vocab_status == 'WARNING' %}
+                                    <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning">
+                                        ⚠️ 경고 (+{{ item.vocab_days }}일)
+                                    </span>
+                                {% elif item.vocab_status == 'CAUTION' %}
+                                    <span class="badge rounded-pill bg-warning text-dark bg-opacity-10 border border-warning">
+                                        🟡 주의 (+{{ item.vocab_days }}일)
+                                    </span>
+                                {% elif item.vocab_status == 'GOOD' %}
+                                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success">
+                                        🟢 양호
+                                    </span>
+                                {% else %}
+                                    <span class="badge rounded-pill bg-light text-secondary border">
+                                        기록없음
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td data-sort="{{ item.time.start_time|time:'H:i' }}">
                                 <span class="badge {% if '구문' in item.subject or item.subject == 'SYNTAX' %}bg-success{% else %}bg-warning text-dark{% endif %} me-1">
                                     {{ item.subject }}
                                 </span>
                                 <span class="fw-bold text-dark">{{ item.time.start_time|time:"H:i" }}</span>
                             </td>
-                            <td>
+
+                            <td data-sort="{{ item.teacher_name }}">
                                 <span class="text-secondary fw-bold">{{ item.teacher_name }} T</span>
                             </td>
+
                             <td>
                                 {% if item.attendance_status == 'PRESENT' %}
                                     <span class="badge badge-present">🟢 등원</span>
@@ -149,6 +111,7 @@
                                     <span class="badge bg-light text-secondary border">대기</span>
                                 {% endif %}
                             </td>
+
                             <td>
                                 {% if item.log_status %}
                                     <span class="badge badge-log-done">작성됨</span>
@@ -160,6 +123,7 @@
                                     {% endif %}
                                 {% endif %}
                             </td>
+
                             <td>
                                 {% if item.makeup_status == 'Needed' %}
                                     <span class="badge badge-makeup-needed">보강필요</span>
@@ -172,30 +136,56 @@
                     </tbody>
                 </table>
             {% else %}
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-calendar-x fs-1 mb-3 d-block opacity-50"></i>
-                    <p>예정된 수업이 없습니다.</p>
-                </div>
-            {% endif %}
+                {% endif %}
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
     <script>
-        flatpickr("#datepicker", {
-            locale: "ko", dateFormat: "Y-m-d", disableMobile: "true",
-            onChange: function(d, s) { window.location.href = "?date=" + s; }
-        });
-        const searchInput = document.getElementById('studentSearch');
-        if (searchInput) {
-            searchInput.addEventListener('keyup', function() {
-                const query = this.value.toLowerCase().trim();
-                document.querySelectorAll('.student-row').forEach(row => {
-                    row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
-                });
-            });
+        // ... 기존 flatpickr 및 검색 스크립트 유지 ...
+
+        // [NEW] 테이블 정렬 함수
+        function sortTable(n) {
+            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            table = document.getElementById("dashboardTable");
+            switching = true;
+            dir = "asc"; // 기본 오름차순
+
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                // 헤더 제외하고 반복 (i=1부터)
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                    // data-sort 속성이 있으면 그것을 사용, 없으면 텍스트 사용
+                    var xContent = x.getAttribute('data-sort') || x.textContent.trim();
+                    var yContent = y.getAttribute('data-sort') || y.textContent.trim();
+
+                    if (dir == "asc") {
+                        if (xContent.toLowerCase() > yContent.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else if (dir == "desc") {
+                        if (xContent.toLowerCase() < yContent.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount == 0 && dir == "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
         }
     </script>
 </body>

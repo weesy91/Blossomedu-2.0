@@ -507,51 +507,62 @@ def admin_event_check(request):
     return render(request, 'vocab/admin_event_check.html', {'challengers': result_list, 'total_days': 30})
 
 @staff_member_required
+@staff_member_required
 def grading_list(request):
     sort_by = request.GET.get('sort', 'date')
     user = request.user
     
-    # [수정] 조교(TA) 여부 확인
-    is_ta = hasattr(user, 'staff_profile') and user.staff_profile.position == 'TA'
+    # StaffProfile 및 직책 확인
+    staff_profile = getattr(user, 'staff_profile', None)
+    position = staff_profile.position if staff_profile else None
+
+    # [공통 조건] 내가 담당(수업)하는 학생인지 확인하는 필터
+    my_assign_condition = Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
     
-    # ---------------------------------------------------------
-    # 1. 학생 및 답안지 필터링 로직 분기
-    # ---------------------------------------------------------
-    if is_ta:
-        # [조교] 모든 학생, 모든 답안지 조회 (필터 없음)
-        my_students_qs = StudentProfile.objects.all()
-        
-        pending_tests = TestResult.objects.filter(
-            details__is_correction_requested=True, 
-            details__is_resolved=False
-        ).distinct().select_related('student', 'book')
+    # 쿼리셋 초기화
+    stats_qs = StudentProfile.objects.none() # 학습현황용 (Tab 2)
+    pending_filter = Q(pk__in=[])            # 채점대기용 (Tab 1)
 
-        pending_monthly = MonthlyTestResult.objects.filter(
-            details__is_correction_requested=True, 
-            details__is_resolved=False
-        ).distinct().select_related('student', 'book')
+    # ---------------------------------------------------------
+    # 1. 직책별 범위 설정 (채점명단 vs 학습현황 분리)
+    # ---------------------------------------------------------
+    if position == 'TA':
+        # [조교] : 모두 전체 공개
+        stats_qs = StudentProfile.objects.all()
+        pending_filter = Q() 
+
+    elif position == 'PRINCIPAL':
+        # [원장] 
+        # (1) 채점 대기 명단: 우리 분원 전체 학생 (기존 유지)
+        if staff_profile and staff_profile.branch:
+            pending_filter = Q(student__branch=staff_profile.branch)
         
+        # (2) 학습 현황: "내가 수업하는" 담당 학생만 (요청사항 적용)
+        stats_qs = StudentProfile.objects.filter(my_assign_condition).distinct()
+
     else:
-        # [일반 강사/원장] 기존 로직 유지 (내 담당 or 필터링 된 학생)
-        # (원래 코드 그대로 사용)
-        my_student_filter = Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
-        my_students_qs = StudentProfile.objects.filter(my_student_filter).distinct()
-
-        pending_filter = Q(student__syntax_teacher=user) | Q(student__reading_teacher=user) | Q(student__extra_class_teacher=user)
-
-        pending_tests = TestResult.objects.filter(
-            details__is_correction_requested=True, 
-            details__is_resolved=False
-        ).filter(pending_filter).distinct().select_related('student', 'book')
-
-        pending_monthly = MonthlyTestResult.objects.filter(
-            details__is_correction_requested=True, 
-            details__is_resolved=False
-        ).filter(pending_filter).distinct().select_related('student', 'book')
+        # [일반 강사 / 부원장] : 둘 다 담당 학생만
+        stats_qs = StudentProfile.objects.filter(my_assign_condition).distinct()
+        
+        pending_filter = (
+            Q(student__syntax_teacher=user) | 
+            Q(student__reading_teacher=user) | 
+            Q(student__extra_class_teacher=user)
+        )
 
     # ---------------------------------------------------------
-    # [TAB 1] 채점 대기 목록 데이터 구성
+    # [TAB 1] 채점 대기 목록 (pending_filter 적용)
     # ---------------------------------------------------------
+    pending_tests = TestResult.objects.filter(
+        details__is_correction_requested=True, 
+        details__is_resolved=False
+    ).filter(pending_filter).distinct().select_related('student', 'book')
+
+    pending_monthly = MonthlyTestResult.objects.filter(
+        details__is_correction_requested=True, 
+        details__is_resolved=False
+    ).filter(pending_filter).distinct().select_related('student', 'book')
+
     exam_list = []
     def add_to_list(queryset, q_type):
         for exam in queryset:
@@ -572,47 +583,48 @@ def grading_list(request):
     else: exam_list.sort(key=lambda x: x['created_at'], reverse=True)
 
     # ---------------------------------------------------------
-    # [TAB 2] 학생별 학습 현황 통계 (날짜 데이터 확실하게 처리)
+    # [TAB 2] 학습 현황 (stats_qs 적용)
     # ---------------------------------------------------------
     now = timezone.now()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0)
     
-    student_stats = []
-    
-    # 쿼리 최적화를 위해 annotate 사용 (마지막 시험일)
-    my_students_qs = my_students_qs.annotate(
-        last_test_dt=Max('test_results__created_at')
+    # 27점 이상 통과한 마지막 날짜 조회
+    stats_qs = stats_qs.annotate(
+        last_passed_dt=Max(
+            'test_results__created_at',
+            filter=Q(test_results__score__gte=27)
+        )
     )
 
-    for student in my_students_qs:
-        # 이번 달 응시 횟수 별도 조회
+    student_stats = []
+    
+    for student in stats_qs:
+        # 이번 달 응시 횟수
         month_count = TestResult.objects.filter(student=student, created_at__gte=start_of_month).count()
         
-        last_date = student.last_test_dt
+        last_date = student.last_passed_dt
         days_since = 999 
         
         if last_date:
             diff = now - last_date
             days_since = diff.days
             
-        # 상태 판별 로직
         status = 'GOOD'
         if last_date is None: status = 'NONE'
-        elif days_since >= 6: status = 'DANGER'   # 6일 이상
-        elif days_since >= 4: status = 'WARNING'  # 4일 이상
-        elif days_since >= 2: status = 'CAUTION'  # 2일 이상
+        elif days_since >= 6: status = 'DANGER'
+        elif days_since >= 4: status = 'WARNING'
+        elif days_since >= 2: status = 'CAUTION'
         
         student_stats.append({
             'id': student.id,
             'name': student.name,
             'school': student.school.name if student.school else "",
-            'last_test_date': last_date, # 템플릿에서 {{ stat.last_test_date|date:"Y-m-d" }} 로 사용
+            'last_test_date': last_date, 
             'days_since': days_since,
             'month_count': month_count,
             'status': status
         })
     
-    # 정렬: '오래된 순' (관리가 필요한 학생이 위로)
     student_stats.sort(key=lambda x: (x['status'] == 'NONE', -x['days_since']), reverse=True)
 
     context = {
@@ -653,19 +665,34 @@ def api_check_grading_status(request):
     [API] 현재 대기 중인 정답 정정 요청 건수를 반환합니다.
     """
     user = request.user
+    staff_profile = getattr(user, 'staff_profile', None)
+    position = staff_profile.position if staff_profile else None
 
+    # 기본 쿼리셋 (요청 있고, 해결 안 된 것)
     qs_normal = TestResultDetail.objects.filter(is_correction_requested=True, is_resolved=False)
     qs_monthly = MonthlyTestResultDetail.objects.filter(is_correction_requested=True, is_resolved=False)
 
-    # [수정] 원장님(Director) 이거나 조교(TA)라면 전체 카운트
-    is_director = user.is_superuser or (
-        hasattr(user, 'staff_profile') and user.staff_profile.position == 'PRINCIPAL'
-    )
-    is_ta = hasattr(user, 'staff_profile') and user.staff_profile.position == 'TA'
+    # 1. [조교 (TA)] : 전체 통과 (필터 없음)
+    if position == 'TA':
+        pass 
+    
+    # 2. [원장 (PRINCIPAL)] : 내 지점 학생만 필터링
+    elif position == 'PRINCIPAL':
+        if staff_profile and staff_profile.branch:
+            qs_normal = qs_normal.filter(result__student__branch=staff_profile.branch)
+            qs_monthly = qs_monthly.filter(result__student__branch=staff_profile.branch)
+        else:
+            # 지점이 없는 원장은 0건 처리
+            qs_normal = qs_normal.none()
+            qs_monthly = qs_monthly.none()
 
-    if not (is_director or is_ta):
-        # 일반 강사는 내 담당만
-        my_student_filter = Q(result__student__syntax_teacher=user) | Q(result__student__reading_teacher=user)
+    # 3. [그 외 (일반 강사, 부원장)] : 내 담당 학생만 필터링
+    else:
+        my_student_filter = (
+            Q(result__student__syntax_teacher=user) | 
+            Q(result__student__reading_teacher=user) |
+            Q(result__student__extra_class_teacher=user)
+        )
         qs_normal = qs_normal.filter(my_student_filter)
         qs_monthly = qs_monthly.filter(my_student_filter)
     

@@ -16,6 +16,26 @@ from academy.models import TemporarySchedule
 def schedule_change(request, student_id):
     # (기존 코드 유지)
     student = get_object_or_404(StudentProfile, id=student_id)
+    user = request.user
+    
+    # 1. 내 학생인지 확인 (구문, 독해, 특강 중 하나라도 담당이면 통과)
+    is_my_student = (
+        student.syntax_teacher == user or 
+        student.reading_teacher == user or 
+        student.extra_class_teacher == user
+    )
+    
+    # 2. 관리자(원장/부원장) 권한 확인
+    is_admin = user.is_superuser or (
+        hasattr(user, 'staff_profile') and 
+        user.staff_profile.position in ['PRINCIPAL', 'VICE']
+    )
+    
+    # 3. 권한 없으면 쫓아내기
+    if not (is_my_student or is_admin):
+        messages.error(request, "🚫 담당 학생의 시간표만 변경할 수 있습니다.")
+        return redirect('academy:class_management')
+    
     initial_subject = request.GET.get('subject', 'SYNTAX') 
 
     def generate_slots(start_str, end_str, interval_min):

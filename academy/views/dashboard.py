@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Q, Max  # [중요] Max 추가됨
+from django.db.models import Q, Max 
 from datetime import datetime, time, timedelta
 
 from core.models import StudentProfile
@@ -141,18 +141,18 @@ def director_dashboard(request):
     weekday_map = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
     today_day_code = weekday_map[today.weekday()]
     
-    # [수정 1] annotate 추가 (Max import 필수)
+    # [수정 1] "27점 이상(통과)"인 시험 중 가장 최근 날짜 조회
     students = StudentProfile.objects.filter(
         Q(syntax_class__day=today_day_code) | 
         Q(reading_class__day=today_day_code) |
         Q(extra_class__day=today_day_code) |
         Q(temp_schedules__new_date=today)
     ).distinct().annotate(
-        last_vocab_date=Max('test_results__created_at')
+        last_passed_at=Max('test_results__created_at', filter=Q(test_results__score__gte=27))
     )
     
     dashboard_data = []
-    now = timezone.now() # 경과일 계산용
+    now = timezone.now()
     
     for student in students:
         attendance = Attendance.objects.filter(student=student, date=today).first()
@@ -168,11 +168,37 @@ def director_dashboard(request):
         def check_log(subj_type):
             return ClassLog.objects.filter(student=student, subject=subj_type, date=today).exists()
 
-        # [NEW] 단어 시험 경과일 계산
-        vocab_days = None
-        if student.last_vocab_date:
-            diff = now - student.last_vocab_date
+        # [NEW] 단어 시험 상태 계산 (통과일 기준)
+        vocab_days = 0
+        vocab_status = 'NONE' # 기본값
+        
+        if student.last_passed_at:
+            diff = now - student.last_passed_at
             vocab_days = diff.days
+            
+            if vocab_days >= 6: vocab_status = 'DANGER'
+            elif vocab_days >= 4: vocab_status = 'WARNING'
+            elif vocab_days >= 2: vocab_status = 'CAUTION'
+            else: vocab_status = 'GOOD'
+        else:
+            # 한번도 통과 기록이 없는 경우 (신규생 등)
+            # 여기선 NONE 처리하지만, 필요하면 DANGER로 처리 가능
+            vocab_status = 'NONE'
+
+        # 공통 데이터 딕셔너리에 추가할 함수
+        def add_data(subj_name, class_time, teacher_profile, is_temp=False):
+            t_name = teacher_profile.name if teacher_profile else "미지정"
+            dashboard_data.append({
+                'student': student,
+                'subject': subj_name,
+                'time': class_time,
+                'start_time_raw': class_time.start_time if class_time else None, # 정렬용
+                'teacher_name': t_name,
+                'attendance_status': status_code,
+                'log_status': check_log(student.extra_class_type if '추가' in subj_name and not is_temp else ('SYNTAX' if '구문' in subj_name else 'READING')),
+                'vocab_days': vocab_days,   # [추가]
+                'vocab_status': vocab_status # [추가]
+            })
 
         # [A] 보강 스케줄
         today_temps = TemporarySchedule.objects.filter(student=student, new_date=today)
@@ -180,17 +206,24 @@ def director_dashboard(request):
             t_user = None
             if ts.subject == 'SYNTAX': t_user = student.syntax_teacher
             elif ts.subject == 'READING': t_user = student.reading_teacher
-            t_name = t_user.staff_profile.name if t_user and hasattr(t_user, 'staff_profile') else "미지정"
+            
+            t_profile = t_user.staff_profile if t_user and hasattr(t_user, 'staff_profile') else None
+            subj_display = f"{ts.get_subject_display()} (보강)"
+            
+            # 보강은 check_log 로직을 조금 수동으로
+            l_status = check_log(ts.subject)
+            t_name = t_profile.name if t_profile else "미지정"
             
             dashboard_data.append({
                 'student': student,
-                'subject': f"{ts.get_subject_display()} (보강)",
-                'time': ts.target_class if ts.target_class else ts.new_start_time,
+                'subject': subj_display,
+                'time': ts.target_class,
                 'start_time_raw': ts.new_start_time,
                 'teacher_name': t_name,
                 'attendance_status': status_code,
-                'log_status': check_log(ts.subject),
-                'vocab_days': vocab_days # [추가됨]
+                'log_status': l_status,
+                'vocab_days': vocab_days,
+                'vocab_status': vocab_status
             })
 
         # [B] 정규 수업
@@ -198,45 +231,49 @@ def director_dashboard(request):
             is_moved = TemporarySchedule.objects.filter(
                 student=student, original_date=today, subject='SYNTAX', is_extra_class=False
             ).exists()
-            
             if not is_moved:
-                t_name = student.syntax_teacher.staff_profile.name if student.syntax_teacher and hasattr(student.syntax_teacher, 'staff_profile') else "미지정"
+                t_prof = student.syntax_teacher.staff_profile if student.syntax_teacher and hasattr(student.syntax_teacher, 'staff_profile') else None
                 dashboard_data.append({
                     'student': student, 'subject': '구문', 'time': student.syntax_class, 
                     'start_time_raw': student.syntax_class.start_time,
-                    'teacher_name': t_name, 'attendance_status': status_code, 
-                    'log_status': check_log('SYNTAX'), # [수정됨] 쉼표 추가!
-                    'vocab_days': vocab_days           # [추가됨]
+                    'teacher_name': t_prof.name if t_prof else "미지정", 
+                    'attendance_status': status_code, 
+                    'log_status': check_log('SYNTAX'),
+                    'vocab_days': vocab_days,
+                    'vocab_status': vocab_status
                 })
 
         if student.reading_class and student.reading_class.day == today_day_code:
             is_moved = TemporarySchedule.objects.filter(
                 student=student, original_date=today, subject='READING', is_extra_class=False
             ).exists()
-            
             if not is_moved:
-                t_name = student.reading_teacher.staff_profile.name if student.reading_teacher and hasattr(student.reading_teacher, 'staff_profile') else "미지정"
+                t_prof = student.reading_teacher.staff_profile if student.reading_teacher and hasattr(student.reading_teacher, 'staff_profile') else None
                 dashboard_data.append({
                     'student': student, 'subject': '독해', 'time': student.reading_class, 
                     'start_time_raw': student.reading_class.start_time,
-                    'teacher_name': t_name, 'attendance_status': status_code, 
-                    'log_status': check_log('READING'), # [수정됨] 쉼표 추가!
-                    'vocab_days': vocab_days            # [추가됨]
+                    'teacher_name': t_prof.name if t_prof else "미지정", 
+                    'attendance_status': status_code, 
+                    'log_status': check_log('READING'),
+                    'vocab_days': vocab_days,
+                    'vocab_status': vocab_status
                 })
 
         if student.extra_class and student.extra_class.day == today_day_code:
-            t_name = student.extra_class_teacher.staff_profile.name if student.extra_class_teacher and hasattr(student.extra_class_teacher, 'staff_profile') else "미지정"
+            t_prof = student.extra_class_teacher.staff_profile if student.extra_class_teacher and hasattr(student.extra_class_teacher, 'staff_profile') else None
             dashboard_data.append({
                 'student': student, 
                 'subject': f"{student.get_extra_class_type_display()} (추가)", 
                 'time': student.extra_class, 
                 'start_time_raw': student.extra_class.start_time,
-                'teacher_name': t_name, 
+                'teacher_name': t_prof.name if t_prof else "미지정", 
                 'attendance_status': status_code, 
-                'log_status': check_log(student.extra_class_type), # [수정됨] 쉼표 추가!
-                'vocab_days': vocab_days                           # [추가됨]
+                'log_status': check_log(student.extra_class_type),
+                'vocab_days': vocab_days,
+                'vocab_status': vocab_status
             })
 
+    # 기본 정렬: 시간순
     dashboard_data.sort(key=lambda x: x['start_time_raw'] if x['start_time_raw'] else time(23, 59))
     
     return render(request, 'academy/director_dashboard.html', {'dashboard_data': dashboard_data, 'today': today})
@@ -256,13 +293,13 @@ def vice_dashboard(request):
     weekday_map = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
     target_day_code = weekday_map[target_date.weekday()]
     
-    # [수정] annotate 추가
+    # [수정] 통과일 기준 Max 조회
     students = StudentProfile.objects.filter(
         Q(syntax_teacher__in=my_teachers, syntax_class__day=target_day_code) |
         Q(reading_teacher__in=my_teachers, reading_class__day=target_day_code) |
         Q(extra_class_teacher__in=my_teachers, extra_class__day=target_day_code)
     ).distinct().annotate(
-        last_vocab_date=Max('test_results__created_at')
+        last_passed_at=Max('test_results__created_at', filter=Q(test_results__score__gte=27))
     )
 
     dashboard_data = []
@@ -275,11 +312,19 @@ def vice_dashboard(request):
         def check_log(subj_type, teacher_list):
             return ClassLog.objects.filter(student=student, subject=subj_type, date=target_date, teacher__in=teacher_list).exists()
             
-        # [NEW] 단어 경과일 계산
-        vocab_days = None
-        if student.last_vocab_date:
-            diff = now - student.last_vocab_date
+        # [NEW] 단어 상태 계산
+        vocab_days = 0
+        vocab_status = 'NONE'
+        
+        if student.last_passed_at:
+            diff = now - student.last_passed_at
             vocab_days = diff.days
+            if vocab_days >= 6: vocab_status = 'DANGER'
+            elif vocab_days >= 4: vocab_status = 'WARNING'
+            elif vocab_days >= 2: vocab_status = 'CAUTION'
+            else: vocab_status = 'GOOD'
+        else:
+            vocab_status = 'NONE'
 
         if student.syntax_teacher in my_teachers and student.syntax_class and student.syntax_class.day == target_day_code:
              dashboard_data.append({
@@ -287,7 +332,8 @@ def vice_dashboard(request):
                  'teacher': student.syntax_teacher, 
                  'log_status': check_log('SYNTAX', my_teachers), 
                  'attendance_status': status_code,
-                 'vocab_days': vocab_days # [추가됨]
+                 'vocab_days': vocab_days,
+                 'vocab_status': vocab_status
              })
 
         if student.reading_teacher in my_teachers and student.reading_class and student.reading_class.day == target_day_code:
@@ -296,7 +342,8 @@ def vice_dashboard(request):
                  'teacher': student.reading_teacher, 
                  'log_status': check_log('READING', my_teachers), 
                  'attendance_status': status_code,
-                 'vocab_days': vocab_days # [추가됨]
+                 'vocab_days': vocab_days,
+                 'vocab_status': vocab_status
              })
             
         if student.extra_class_teacher in my_teachers and student.extra_class and student.extra_class.day == target_day_code:
@@ -305,7 +352,8 @@ def vice_dashboard(request):
                  'time': student.extra_class, 'teacher': student.extra_class_teacher, 
                  'log_status': check_log(student.extra_class_type, my_teachers), 
                  'attendance_status': status_code,
-                 'vocab_days': vocab_days # [추가됨]
+                 'vocab_days': vocab_days,
+                 'vocab_status': vocab_status
              })
 
     dashboard_data.sort(key=lambda x: x['time'].start_time if x['time'] else time(23, 59))
@@ -318,19 +366,18 @@ def student_history(request, student_id):
     logs = ClassLog.objects.filter(student=student).select_related('teacher', 'hw_vocab_book', 'hw_main_book').order_by('-date')
     attendances = Attendance.objects.filter(student=student).order_by('-date')
 
-    # [NEW] 단어 학습 상태 계산 (상세 페이지용)
-    # 학생 한 명만 조회하므로 annotate 대신 간단히 쿼리
-    last_test = student.test_results.order_by('-created_at').first()
+    # [NEW] 상세 페이지도 통과일 기준으로 수정
+    last_passed = student.test_results.filter(score__gte=27).order_by('-created_at').first()
     
     vocab_days = None
-    if last_test:
-        diff = timezone.now() - last_test.created_at
+    if last_passed:
+        diff = timezone.now() - last_passed.created_at
         vocab_days = diff.days
 
     context = {
         'student': student,
         'logs': logs,
         'attendances': attendances,
-        'vocab_days': vocab_days, # 템플릿으로 전달
+        'vocab_days': vocab_days, 
     }
     return render(request, 'academy/student_history.html', context)
