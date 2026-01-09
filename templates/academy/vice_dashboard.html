@@ -1,64 +1,75 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>부원장 대시보드</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
     <style>
-        /* ... 기존 스타일 유지 ... */
-
-        /* [수정] 모바일 뷰 컬럼 인덱스 조정 */
-        @media (max-width: 768px) {
-            /* ... 기존 스타일 ... */
-            
-            /* 1번: 이름 (유지) */
-            .table tbody td:nth-child(1) {
-                border-bottom: 1px solid #f0f0f0; margin-bottom: 10px; padding-bottom: 10px;
-            }
-
-            /* [NEW] 2번: 단어 상태 */
-            .table tbody td:nth-child(2) { display: inline-block; width: auto; margin-right: 10px; }
-            
-            /* 3번: 수업 (2->3) */
-            .table tbody td:nth-child(3)::before { content: "수업: "; color: #888; font-size: 0.9rem; }
-            
-            /* 4번: 담당 (3->4) */
-            .table tbody td:nth-child(4)::before { content: "담당: "; color: #888; font-size: 0.9rem; }
-            
-            /* 나머지 배지들 */
-            .table tbody td:nth-child(5), .table tbody td:nth-child(6) { 
-                display: inline-block; width: auto; margin-right: 5px; 
-            }
-        }
+        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .table-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         
-        /* [NEW] 정렬 스타일 */
-        th.sortable { cursor: pointer; user-select: none; }
+        /* 배지 스타일 */
+        .badge-present { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .badge-pending { background-color: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
+        .badge-absent { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .badge-log-done { background-color: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+        .badge-log-missing { background-color: #f3e5f5; color: #7b1fa2; border: 1px solid #ce93d8; }
+
+        th.sortable { cursor: pointer; user-select: none; transition: background 0.2s; }
         th.sortable:hover { background-color: #e9ecef; }
+
+        @media (max-width: 768px) {
+            .table thead { display: none; }
+            .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+            .table tr { margin-bottom: 15px; background: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #dee2e6; }
+            .table td { text-align: right; padding: 5px 0; border: none; display: flex; justify-content: space-between; align-items: center; }
+            .table td:before { content: attr(data-label); font-weight: bold; color: #6c757d; font-size: 0.9rem; }
+            .table tbody td:nth-child(1) { border-bottom: 1px solid #f0f0f0; margin-bottom: 10px; padding-bottom: 10px; justify-content: flex-start; }
+            .table tbody td:nth-child(1):before { display: none; } 
+        }
     </style>
 </head>
 <body>
+    
+    <nav class="navbar navbar-dark bg-secondary mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{% url 'core:teacher_home' %}">
+                <i class="bi bi-people-fill me-2"></i>부원장 팀 관리
+            </a>
+            <span class="text-white-50 small">{{ target_date|date:"Y-m-d" }}</span>
+        </div>
+    </nav>
+
     <div class="container px-3 mb-5">
         <div class="table-container">
             {% if dashboard_data %}
-                <table class="table align-middle" id="viceTable">
+                <table class="table align-middle table-hover" id="viceTable">
                     <thead class="table-light">
                         <tr>
-                            <th class="sortable" onclick="sortTable(0)">학생명 <i class="bi bi-arrow-down-up small text-muted"></i></th>
+                            <th class="sortable" onclick="sortTable(0)">학생명 <i class="bi bi-arrow-down-up"></i></th>
                             <th>단어 현황</th>
-                            <th class="sortable" onclick="sortTable(2)">과목 / 시간 <i class="bi bi-arrow-down-up small text-muted"></i></th>
-                            <th class="sortable" onclick="sortTable(3)">담당 T <i class="bi bi-arrow-down-up small text-muted"></i></th>
+                            <th class="sortable" onclick="sortTable(2)">과목 / 시간 <i class="bi bi-arrow-down-up"></i></th>
+                            <th class="sortable" onclick="sortTable(3)">담당 T <i class="bi bi-arrow-down-up"></i></th>
                             <th>등원</th>
                             <th>일지</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in dashboard_data %}
-                        <tr class="student-row">
+                        <tr>
                             <td data-sort="{{ item.student.name }}">
-                                <a href="{% url 'academy:student_history' item.student.id %}" class="text-dark fw-bold text-decoration-none fs-5">
-                                    {{ item.student.name }}
-                                </a>
-                                <span class="small text-muted ms-1">{{ item.student.current_grade_display }}</span>
+                                <div class="d-flex align-items-center">
+                                    <a href="{% url 'academy:student_history' item.student.id %}" class="text-dark fw-bold text-decoration-none fs-5 me-2">
+                                        {{ item.student.name }}
+                                    </a>
+                                    <span class="badge bg-light text-secondary border">{{ item.student.current_grade_display }}</span>
+                                </div>
                             </td>
 
-                            <td>
+                            <td data-label="단어 현황">
                                 {% if item.vocab_status == 'DANGER' %}
                                     <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger">
                                         🔥 위험 (+{{ item.vocab_days }})
@@ -80,37 +91,39 @@
                                 {% endif %}
                             </td>
 
-                            <td data-sort="{{ item.time.start_time|time:'H:i' }}">
-                                <span class="badge {% if '구문' in item.subject or item.subject == 'SYNTAX' %}bg-success{% else %}bg-warning text-dark{% endif %} me-1">
-                                    {{ item.subject }}
-                                </span>
-                                <span class="fw-bold">{{ item.time.start_time|time:"H:i" }}</span>
+                            <td data-sort="{{ item.time.start_time|time:'H:i' }}" data-label="과목/시간">
+                                <div class="d-flex align-items-center justify-content-end justify-content-md-start">
+                                    <span class="badge {% if '구문' in item.subject or item.subject == 'SYNTAX' %}bg-success{% else %}bg-warning text-dark{% endif %} me-2">
+                                        {{ item.subject }}
+                                    </span>
+                                    <span class="fw-bold">{{ item.time.start_time|time:"H:i" }}</span>
+                                </div>
                             </td>
 
-                            <td data-sort="{{ item.teacher.staff_profile.name }}">
+                            <td data-sort="{{ item.teacher.staff_profile.name }}" data-label="담당 선생님">
                                 <span class="text-secondary fw-bold">{{ item.teacher.staff_profile.name }} T</span>
                             </td>
 
-                            <td>
+                            <td data-label="등원 여부">
                                 {% if item.attendance_status == 'PRESENT' %}
-                                    <span class="badge badge-present">🟢 등원</span>
+                                    <span class="badge badge-present rounded-pill">🟢 등원</span>
                                 {% elif item.attendance_status == 'LATE' %}
-                                    <span class="badge badge-pending">🟡 지각</span>
+                                    <span class="badge badge-pending rounded-pill">🟡 지각</span>
                                 {% elif item.attendance_status == 'ABSENT' %}
-                                    <span class="badge badge-absent">🔴 결석</span>
+                                    <span class="badge badge-absent rounded-pill">🔴 결석</span>
                                 {% else %}
-                                    <span class="badge bg-light text-secondary border">대기</span>
+                                    <span class="badge bg-light text-secondary border rounded-pill">대기</span>
                                 {% endif %}
                             </td>
 
-                            <td>
+                            <td data-label="수업 일지">
                                 {% if item.log_status %}
-                                    <span class="badge badge-log-done">작성됨</span>
+                                    <span class="badge badge-log-done rounded-pill">📝 작성됨</span>
                                 {% else %}
                                     {% if item.attendance_status == 'PRESENT' or item.attendance_status == 'LATE' %}
-                                        <span class="badge badge-log-missing">미작성</span>
+                                        <span class="badge badge-log-missing rounded-pill">⚠️ 미작성</span>
                                     {% else %}
-                                        <span class="badge bg-light text-muted">-</span>
+                                        <span class="text-muted small">-</span>
                                     {% endif %}
                                 {% endif %}
                             </td>
@@ -126,10 +139,11 @@
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function sortTable(n) {
             var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-            table = document.getElementById("viceTable"); // ID 주의
+            table = document.getElementById("viceTable"); 
             switching = true;
             dir = "asc"; 
             while (switching) {
