@@ -132,6 +132,7 @@
             <p class="opacity-75 small">오늘도 힘찬 하루 되세요! 💪</p>
         </div>
         
+        {% if user.staff_profile.position != 'TA' %}
         <div class="row g-3 mb-3">
             <div class="col-6">
                 <a href="{% url 'academy:class_management' %}" class="card-button mb-0">
@@ -148,6 +149,7 @@
                 </a>
             </div>
         </div>
+        {% endif %}
         
         <a href="{% url 'vocab:grading' %}" class="card-button" id="grading-card">
             <div class="card-icon">💯</div>
@@ -212,41 +214,43 @@
             </a>
         {% endif %}
 
-        {% if user.is_superuser or user.staff_profile.position == 'PRINCIPAL' or is_exam_period %}
-            
-            {% if is_exam_period %}
-            <div class="alert alert-primary d-flex align-items-center mb-3 shadow-sm border-0 py-2" role="alert" style="background-color: #e0e7ff; color: #4338ca;">
-                <i class="bi bi-calendar-event me-2"></i>
-                <div class="small fw-bold">
-                    월말평가 기간입니다 (~말일까지)
+        {% if user.staff_profile.position != 'TA' %}
+            {% if user.is_superuser or user.staff_profile.position == 'PRINCIPAL' or is_exam_period %}
+                
+                {% if is_exam_period %}
+                <div class="alert alert-primary d-flex align-items-center mb-3 shadow-sm border-0 py-2" role="alert" style="background-color: #e0e7ff; color: #4338ca;">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    <div class="small fw-bold">
+                        월말평가 기간입니다 (~말일까지)
+                    </div>
                 </div>
-            </div>
+                {% endif %}
+
+                <a href="{% url 'exam:exam_wizard' %}" class="card-button exam-mode">
+                    <div class="card-icon">🖨️</div>
+                    <div>
+                        <h2 class="card-title">월말평가 출제</h2>
+                        <p class="card-subtitle">개념/구문 문제 시험지 생성</p>
+                    </div>
+                </a>
+
+                <a href="{% url 'exam:grading_list' %}" class="card-button">
+                    <div class="card-icon">✍️</div>
+                    <div>
+                        <h2 class="card-title">월말평가 성적입력</h2>
+                        <p class="card-subtitle">시험지 채점 결과 입력 (O/X)</p>
+                    </div>
+                </a>
+
+                <a href="{% url 'reports:dashboard' %}" class="card-button">
+                    <div class="card-icon">📊</div>
+                    <div>
+                        <h2 class="card-title">성적표 센터</h2>
+                        <p class="card-subtitle">월간 리포트 생성 및 전송</p>
+                    </div>
+                </a>
+
             {% endif %}
-
-            <a href="{% url 'exam:exam_wizard' %}" class="card-button exam-mode">
-                <div class="card-icon">🖨️</div>
-                <div>
-                    <h2 class="card-title">월말평가 출제</h2>
-                    <p class="card-subtitle">개념/구문 문제 시험지 생성</p>
-                </div>
-            </a>
-
-            <a href="{% url 'exam:grading_list' %}" class="card-button">
-                <div class="card-icon">✍️</div>
-                <div>
-                    <h2 class="card-title">월말평가 성적입력</h2>
-                    <p class="card-subtitle">시험지 채점 결과 입력 (O/X)</p>
-                </div>
-            </a>
-
-            <a href="{% url 'reports:dashboard' %}" class="card-button">
-                <div class="card-icon">📊</div>
-                <div>
-                    <h2 class="card-title">성적표 센터</h2>
-                    <p class="card-subtitle">월간 리포트 생성 및 전송</p>
-                </div>
-            </a>
-
         {% endif %}
 
     </div>

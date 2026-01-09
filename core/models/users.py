@@ -24,6 +24,7 @@ class StaffProfile(models.Model):
         ('TEACHER', '일반 강사'),
         ('VICE', '부원장'),
         ('PRINCIPAL', '원장'),
+        ('TA', '조교'),
     ]
     position = models.CharField(max_length=10, choices=POSITION_CHOICES, default='TEACHER', verbose_name="직책")
 

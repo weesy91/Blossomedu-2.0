@@ -511,30 +511,43 @@ def grading_list(request):
     sort_by = request.GET.get('sort', 'date')
     user = request.user
     
-    # =========================================================
-    # [핵심 수정] 관리자(원장)라도 '어휘 센터'에서는 
-    # 오직 '내 담당 학생'만 보이도록 강제 필터링 적용
-    # =========================================================
+    # [수정] 조교(TA) 여부 확인
+    is_ta = hasattr(user, 'staff_profile') and user.staff_profile.position == 'TA'
     
-    # 1. 내 담당 학생 필터 조건 (구문 or 독해 or 특강)
-    my_student_filter = Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
-    
-    # 2. 학생 리스트 가져오기 (Tab 2: 학습 현황용)
-    my_students_qs = StudentProfile.objects.filter(my_student_filter).distinct()
+    # ---------------------------------------------------------
+    # 1. 학생 및 답안지 필터링 로직 분기
+    # ---------------------------------------------------------
+    if is_ta:
+        # [조교] 모든 학생, 모든 답안지 조회 (필터 없음)
+        my_students_qs = StudentProfile.objects.all()
+        
+        pending_tests = TestResult.objects.filter(
+            details__is_correction_requested=True, 
+            details__is_resolved=False
+        ).distinct().select_related('student', 'book')
 
-    # 3. 채점 대기 목록 필터링 (Tab 1: 채점 대기용)
-    # TestResult -> StudentProfile 접근 시 필터 적용
-    pending_filter = Q(student__syntax_teacher=user) | Q(student__reading_teacher=user) | Q(student__extra_class_teacher=user)
+        pending_monthly = MonthlyTestResult.objects.filter(
+            details__is_correction_requested=True, 
+            details__is_resolved=False
+        ).distinct().select_related('student', 'book')
+        
+    else:
+        # [일반 강사/원장] 기존 로직 유지 (내 담당 or 필터링 된 학생)
+        # (원래 코드 그대로 사용)
+        my_student_filter = Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
+        my_students_qs = StudentProfile.objects.filter(my_student_filter).distinct()
 
-    pending_tests = TestResult.objects.filter(
-        details__is_correction_requested=True, 
-        details__is_resolved=False
-    ).filter(pending_filter).distinct().select_related('student', 'book')
+        pending_filter = Q(student__syntax_teacher=user) | Q(student__reading_teacher=user) | Q(student__extra_class_teacher=user)
 
-    pending_monthly = MonthlyTestResult.objects.filter(
-        details__is_correction_requested=True, 
-        details__is_resolved=False
-    ).filter(pending_filter).distinct().select_related('student', 'book')
+        pending_tests = TestResult.objects.filter(
+            details__is_correction_requested=True, 
+            details__is_resolved=False
+        ).filter(pending_filter).distinct().select_related('student', 'book')
+
+        pending_monthly = MonthlyTestResult.objects.filter(
+            details__is_correction_requested=True, 
+            details__is_resolved=False
+        ).filter(pending_filter).distinct().select_related('student', 'book')
 
     # ---------------------------------------------------------
     # [TAB 1] 채점 대기 목록 데이터 구성
@@ -638,30 +651,25 @@ def reject_answer(request):
 def api_check_grading_status(request):
     """
     [API] 현재 대기 중인 정답 정정 요청 건수를 반환합니다.
-    브라우저 알림(Polling)용으로 사용됩니다.
     """
     user = request.user
 
-    # 1. 기본 쿼리셋 (요청 대기 중인 상세 답안들)
     qs_normal = TestResultDetail.objects.filter(is_correction_requested=True, is_resolved=False)
     qs_monthly = MonthlyTestResultDetail.objects.filter(is_correction_requested=True, is_resolved=False)
 
-    # 2. [핵심 수정] 권한별 필터링
+    # [수정] 원장님(Director) 이거나 조교(TA)라면 전체 카운트
     is_director = user.is_superuser or (
         hasattr(user, 'staff_profile') and user.staff_profile.position == 'PRINCIPAL'
     )
+    is_ta = hasattr(user, 'staff_profile') and user.staff_profile.position == 'TA'
 
-    if not is_director:
-        # 내 담당 학생의 답안지만 카운트
-        # Detail -> Result -> Student(Profile) -> Teacher 순으로 접근
+    if not (is_director or is_ta):
+        # 일반 강사는 내 담당만
         my_student_filter = Q(result__student__syntax_teacher=user) | Q(result__student__reading_teacher=user)
-        
         qs_normal = qs_normal.filter(my_student_filter)
         qs_monthly = qs_monthly.filter(my_student_filter)
     
-    # 3. 개수 합산
     total_pending = qs_normal.count() + qs_monthly.count()
-    
     return JsonResponse({'status': 'success', 'pending_count': total_pending})
 
 @login_required
