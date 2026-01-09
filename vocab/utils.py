@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from django.utils import timezone
-from .models import TestResultDetail, MonthlyTestResultDetail
+from .models import TestResultDetail, MonthlyTestResultDetail, Word, TestResult, PersonalWrongWord
 
 def get_vulnerable_words(profile):
     """
@@ -47,11 +47,10 @@ def is_monthly_test_period():
 
 def crawl_daum_dic(query):
     """
-    다음 어학사전에서 단어의 뜻을 검색하여 반환합니다. (개선된 버전)
+    다음 어학사전에서 단어의 뜻을 검색하여 반환합니다. (개선된 버전 V2)
     """
-    print(f"--- [DEBUG] 크롤링 시작: {query} ---") # 로그 추가
+    print(f"--- [DEBUG] 크롤링 시작: {query} ---")
     try:
-        # dic=eng 파라미터를 추가하여 '영어사전' 결과만 우선 조회
         url = f"https://dic.daum.net/search.do?q={query}&dic=eng"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -64,32 +63,39 @@ def crawl_daum_dic(query):
             
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # [수정된 선택자]
-        # 1. 가장 정확한 단어 카드 영역 찾기 (class="cleanword_type")
-        search_result = soup.select_one('.cleanword_type')
+        # [전략 변경] 특정 컨테이너(cleanword_type)에 의존하지 않고, 핵심 클래스를 바로 찾습니다.
         
-        # 만약 cleanword_type이 없으면 다른 구조(card_word) 시도
-        if not search_result:
-            search_result = soup.select_one('.card_word[data-tiara-layer="word eng"]')
-
-        if not search_result:
-            print("--- [DEBUG] 검색 결과 영역(.cleanword_type)을 찾을 수 없음 ---")
-            return None
+        # 1. 영어 단어 추출 (class="txt_clebsch")
+        # 검색 결과 페이지에서 가장 먼저 나오는 '헤드워드'를 찾습니다.
+        word_element = soup.select_one('.txt_clebsch')
+        
+        # 만약 txt_clebsch가 없으면 tit_clebsch 등 다른 이름 시도 (혹은 검색 결과 없음)
+        if not word_element:
+            word_element = soup.select_one('.tit_clebsch')
             
-        # 2. 영어 단어 추출 (class="txt_clebsch")
-        word_element = search_result.select_one('.txt_clebsch')
         if not word_element:
             print("--- [DEBUG] 단어 텍스트(.txt_clebsch)를 찾을 수 없음 ---")
             return None
+            
         english = word_element.text.strip()
         
-        # 3. 뜻 추출 (class="list_search" 내부의 "txt_search")
-        meanings_list = search_result.select('.list_search .txt_search')
+        # 2. 뜻 추출 (class="list_search" 내부의 "txt_search")
+        # 단어 바로 근처에 있는 뜻 목록을 찾아야 정확도가 높습니다.
+        # word_element의 부모나 형제 요소 중에서 list_search를 찾는 것이 안전하지만,
+        # 일단 가장 먼저 나오는 뜻 목록을 가져옵니다.
+        meanings_list = soup.select('.list_search .txt_search')
+        
+        # 만약 list_search 구조가 아니면, 일반 list_mean 구조 시도
+        if not meanings_list:
+            meanings_list = soup.select('.list_mean .txt_mean')
+
         if not meanings_list:
             print("--- [DEBUG] 뜻(.txt_search)을 찾을 수 없음 ---")
             return None
             
-        korean = ", ".join([m.text.strip() for m in meanings_list])
+        # 상위 3개 뜻만 가져오기
+        korean_list = [m.text.strip() for m in meanings_list[:3]]
+        korean = ", ".join(korean_list)
         
         print(f"--- [DEBUG] 크롤링 성공: {english} -> {korean} ---")
         
