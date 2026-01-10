@@ -188,7 +188,7 @@
 </div>
 
 <script>
-    // 데이터 로드
+    // 1. 기본 데이터 로드
     const syntaxBooks = {{ syntax_books_json|safe|default:"[]" }};
     const readingBooks = {{ reading_books_json|safe|default:"[]" }};
     const grammarBooks = {{ grammar_books_json|safe|default:"[]" }};
@@ -203,7 +203,7 @@
 
     const isReadonly = {{ is_readonly|yesno:"true,false" }};
 
-    // [기능 1] 단어장 목록 필터링
+    // 2. 단어장 필터링 함수
     function filterVocabBooks(publisherSelect) {
         const bookEntry = publisherSelect.closest('.card-entry'); 
         const bookSelect = bookEntry.querySelector('.vocab-book-select');
@@ -219,7 +219,7 @@
         } else { bookSelect.disabled = true; }
     }
 
-    // [기능 2] 교재 목록 필터링
+    // 3. 교재 필터링 함수
     function filterBooks(subjectSelect) {
         const bookSelect = subjectSelect.closest('.card-entry').querySelector('.main-book-select');
         const selectedSubject = subjectSelect.value;
@@ -240,7 +240,7 @@
         } else { bookSelect.disabled = true; }
     }
 
-    // [핵심 기능 3] 단어 테스트 항목 추가 (데이터 복구 기능 포함)
+    // 4. 단어 테스트 항목 추가
     window.addVocabEntry = function(data = null) {
         const container = document.getElementById('vocab-container');
         if (!container) return; 
@@ -259,24 +259,23 @@
             </div>`;
         container.appendChild(newEntry);
 
-        // ★ 저장된 데이터가 있으면 칸에 채워넣기
         if (data) {
             const pubSelect = newEntry.querySelector('select[onchange^="filterVocabBooks"]');
-            pubSelect.value = data.publisher; // 1. 출판사 선택
-            filterVocabBooks(pubSelect);      // 2. 단어장 목록 로드
+            pubSelect.value = data.publisher;
+            filterVocabBooks(pubSelect);
             
             const bookSelect = newEntry.querySelector('.vocab-book-select');
-            bookSelect.value = data.book_id;  // 3. 단어장 선택
+            bookSelect.value = data.book_id;
 
             const inputs = newEntry.querySelectorAll('input');
-            if(inputs[0]) inputs[0].value = data.range; // 4. 범위
-            if(inputs[1]) inputs[1].value = data.score; // 5. 점수
+            if(inputs[0]) inputs[0].value = data.range;
+            if(inputs[1]) inputs[1].value = data.score;
         }
 
         if(isReadonly) disableEntry(newEntry);
     }
 
-    // [핵심 기능 4] 교재 진도 항목 추가 (데이터 복구 기능 포함)
+    // 5. 교재 진도 항목 추가
     window.addMainEntry = function(data = null) {
         const container = document.getElementById('main-container');
         if (!container) return; 
@@ -294,7 +293,7 @@
                         <option value="GRAMMAR">어법</option>
                         <option value="SCHOOL_EXAM">내신</option> </select>
                 </div>
-                <div class="col-8"><select class="form-select form-select-sm main-book-select" name="main_book_ids[]" disabled><option value="">과목 선택</option></select></div>
+                <div class="col-8"><select class="form-select form-select-sm main-book-select" name="main_book_ids[]" disabled><option value="">교재 선택</option></select></div>
             </div>
             <div class="row g-2 pe-3">
                 <div class="col-8"><label class="form-label small text-muted">진도</label><input type="text" class="form-control form-control-sm" name="main_ranges[]"></div>
@@ -302,25 +301,25 @@
             </div>`;
         container.appendChild(newEntry);
 
-        // ★ 저장된 데이터 채워넣기
         if (data) {
             const subjectSelect = newEntry.querySelector('select[onchange^="filterBooks"]');
-            subjectSelect.value = data.category; // 1. 과목 분류 선택
-            filterBooks(subjectSelect);          // 2. 교재 목록 로드
+            subjectSelect.value = data.category;
+            filterBooks(subjectSelect);
             
             const bookSelect = newEntry.querySelector('.main-book-select');
-            bookSelect.value = data.book_id;     // 3. 교재 선택
+            bookSelect.value = data.book_id;
             
             const rangeInput = newEntry.querySelector('input[name="main_ranges[]"]');
-            if(rangeInput) rangeInput.value = data.range; // 4. 진도
+            if(rangeInput) rangeInput.value = data.range;
 
             const scoreSelect = newEntry.querySelector('select[name="main_scores[]"]');
-            if(scoreSelect) scoreSelect.value = data.score; // 5. 수행도
+            if(scoreSelect) scoreSelect.value = data.score;
         }
 
         if(isReadonly) disableEntry(newEntry);
     }
 
+    // 6. 과제 항목 추가 (단어)
     window.addHwVocabRow = function() {
         const container = document.getElementById('hw-vocab-container');
         if (!container) return; 
@@ -339,6 +338,7 @@
         if(isReadonly) disableEntry(newEntry);
     }
 
+    // 7. 과제 항목 추가 (교재)
     window.addHwMainRow = function() {
         const container = document.getElementById('hw-main-container');
         if (!container) return; 
@@ -371,13 +371,13 @@
         removeBtns.forEach(btn => btn.style.display = 'none');
     }
 
-    // [초기 실행] 저장된 데이터가 있으면 불러오고, 없으면 빈 칸 생성
+    // [초기 실행] 데이터 복구
     document.addEventListener('DOMContentLoaded', function() {
         let hasVocab = false;
         let hasMain = false;
 
+        // 1. 단어 테스트 복구
         {% if class_log %}
-            // 1. 저장된 단어 테스트 복구
             {% for entry in class_log.entries.all %}
                 {% if entry.wordbook %}
                     addVocabEntry({
@@ -390,7 +390,7 @@
                 {% endif %}
             {% endfor %}
 
-            // 2. 저장된 진도 복구
+            // 2. 수업 진도 복구
             {% for entry in class_log.entries.all %}
                 {% if entry.textbook %}
                     addMainEntry({
@@ -404,13 +404,38 @@
             {% endfor %}
         {% endif %}
 
-        // 데이터가 하나도 없으면 기본 빈 칸 추가
         if (!hasVocab) addVocabEntry();
         if (!hasMain) addMainEntry();
         
-        // 과제란은 기본적으로 빈 칸 추가 (과제는 텍스트로 저장되어 완벽한 복구가 어렵습니다)
-        addHwVocabRow();
-        addHwMainRow();
+        // 3. 과제 데이터 복구 (단어)
+        const savedHwVocab = "{{ class_log.hw_vocab_range|escapejs }}";
+        if (savedHwVocab) {
+            const entries = savedHwVocab.split(" / ");
+            entries.forEach(txt => {
+                addHwVocabRow(); 
+                const container = document.getElementById('hw-vocab-container');
+                const lastRow = container.lastElementChild;
+                const input = lastRow.querySelector('input[name="hw_vocab_range"]');
+                if(input) input.value = txt;
+            });
+        } else {
+            addHwVocabRow();
+        }
+
+        // 4. 과제 데이터 복구 (교재)
+        const savedHwMain = "{{ class_log.hw_main_range|escapejs }}";
+        if (savedHwMain) {
+            const entries = savedHwMain.split(" / ");
+            entries.forEach(txt => {
+                addHwMainRow();
+                const container = document.getElementById('hw-main-container');
+                const lastRow = container.lastElementChild;
+                const input = lastRow.querySelector('input[name="hw_main_range"]');
+                if(input) input.value = txt;
+            });
+        } else {
+            addHwMainRow(); 
+        } // <--- 여기가 빠져 있었습니다!
 
         // 읽기 전용 처리
         if (isReadonly) {

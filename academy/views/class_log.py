@@ -314,27 +314,38 @@ def create_class_log(request, schedule_id):
                     score=m_scores[i] if i < len(m_scores) else ''
                 )
 
-        # 과제 저장
+        # 과제 저장 (개선된 로직)
         hw_v_ids = request.POST.getlist('hw_vocab_book')
         hw_v_rngs = request.POST.getlist('hw_vocab_range')
         v_hw_list = []
-        for i in range(len(hw_v_ids)):
-            if i < len(hw_v_rngs) and hw_v_ids[i] and hw_v_rngs[i]:
-                try:
-                    bk = WordBook.objects.get(id=hw_v_ids[i])
-                    v_hw_list.append(f"[{bk.title}] {hw_v_rngs[i]}")
-                except: pass
+        
+        # 갯수가 안 맞을 수 있으므로 range 기준으로 반복
+        for i in range(len(hw_v_rngs)):
+            if hw_v_rngs[i].strip(): # 내용이 있을 때만 저장
+                text = hw_v_rngs[i].strip()
+                # 교재를 선택했다면 제목을 앞에 붙여줌
+                if i < len(hw_v_ids) and hw_v_ids[i]:
+                    try:
+                        bk = WordBook.objects.get(id=hw_v_ids[i])
+                        text = f"[{bk.title}] {text}"
+                    except: pass
+                v_hw_list.append(text)
         class_log.hw_vocab_range = " / ".join(v_hw_list)
 
         hw_m_ids = request.POST.getlist('hw_main_book_id')
         hw_m_rngs = request.POST.getlist('hw_main_range')
         m_hw_list = []
-        for i in range(len(hw_m_ids)):
-            if i < len(hw_m_rngs) and hw_m_ids[i] and hw_m_rngs[i]:
-                try:
-                    bk = Textbook.objects.get(id=hw_m_ids[i])
-                    m_hw_list.append(f"[{bk.title}] {hw_m_rngs[i]}")
-                except: pass
+        
+        for i in range(len(hw_m_rngs)):
+            if hw_m_rngs[i].strip(): # 내용이 있을 때만 저장
+                text = hw_m_rngs[i].strip()
+                # 교재를 선택했다면 제목을 앞에 붙여줌
+                if i < len(hw_m_ids) and hw_m_ids[i]:
+                    try:
+                        bk = Textbook.objects.get(id=hw_m_ids[i])
+                        text = f"[{bk.title}] {text}"
+                    except: pass
+                m_hw_list.append(text)
         class_log.hw_main_range = " / ".join(m_hw_list)
         
         class_log.teacher_comment = request.POST.get('teacher_comment', '')
