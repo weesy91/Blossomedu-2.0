@@ -291,12 +291,16 @@ def create_class_log(request, schedule_id):
                 if i < len(v_ranges) and v_ids[i] and v_ranges[i]:
                     rng = v_ranges[i].strip()
                     # 검사 없이 바로 저장
-                    ClassLogEntry.objects.create(
-                        class_log=class_log,
-                        wordbook_id=v_ids[i],
-                        progress_range=rng,
-                        score=v_scores[i].strip() if i < len(v_scores) else None
-                    )
+                    try:
+                        ClassLogEntry.objects.create(
+                            class_log=class_log,
+                            wordbook_id=v_ids[i],
+                            progress_range=rng,
+                            score=v_scores[i].strip() if i < len(v_scores) else ''
+                        )
+                    except Exception as e:
+                        print(f"저장 오류 (단어): {e}") # 디버깅용 로그
+                        pass # 오류 나도 무시하고 다음 거 저장
 
         # 진도 저장
         m_ids = request.POST.getlist('main_book_ids[]')
@@ -308,12 +312,16 @@ def create_class_log(request, schedule_id):
             if i < len(m_ranges) and m_ids[i] and m_ranges[i]:
                 rng = m_ranges[i].strip()
                 # 묻지도 따지지도 않고 바로 저장
-                ClassLogEntry.objects.create(
-                    class_log=class_log,
-                    textbook_id=m_ids[i],
-                    progress_range=rng,
-                    score=m_scores[i] if i < len(m_scores) else ''
-                )
+                try:
+                    ClassLogEntry.objects.create(
+                        class_log=class_log,
+                        textbook_id=m_ids[i],
+                        progress_range=rng,
+                        score=m_scores[i] if i < len(m_scores) else ''
+                    )
+                except Exception as e:
+                    print(f"저장 오류 (진도): {e}")
+                    pass
 
         # 과제 저장 (개선된 로직)
         hw_v_ids = request.POST.getlist('hw_vocab_book')
