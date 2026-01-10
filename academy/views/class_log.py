@@ -18,21 +18,18 @@ from django.contrib.auth.decorators import login_required
 def class_management(request):
     """
     [수업 일지 목록]
-    - 원장/부원장/슈퍼유저 여부와 관계없이
-    - 오직 '로그인한 선생님의 지점'에 속하고
-    - '로그인한 선생님이 담당하는 과목'인 학생만 표시
+    - 지점(Branch) 및 담당 과목(Teacher) 필터링 적용
+    - status 필드 제거 (모델 미존재) -> user__is_active로 대체
     """
     user = request.user
     
     # 1. 로그인 유저의 지점(Branch) 확인
-    # 슈퍼유저라도 StaffProfile이 없거나 지점이 없으면 빈 목록이 뜨도록 하여 '타 분원 노출' 원천 차단
     try:
         staff_profile = getattr(user, 'staff_profile', None)
         staff_branch = staff_profile.branch if staff_profile else None
     except Exception:
         staff_branch = None
 
-    # 지점 정보가 없으면 아무 학생도 보여주지 않음 (안전 장치)
     if not staff_branch:
         return render(request, 'academy/class_management.html', {
             'class_list': [], 
@@ -42,7 +39,7 @@ def class_management(request):
     date_str = request.GET.get('date')
     search_query = request.GET.get('q', '').strip()
 
-    # 2. 날짜 및 요일 설정
+    # 2. 날짜 설정
     if date_str:
         try:
             target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -51,15 +48,14 @@ def class_management(request):
     else:
         target_date = timezone.now().date()
 
-    # 요일 코드 (StudentProfile의 day 필드 매핑용)
     target_day_code = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}[target_date.weekday()]
 
     class_list = []
 
-    # 3. 보강 스케줄 조회 (내 지점 학생만 1차 필터링)
+    # 3. 보강 스케줄 조회
     temp_qs = TemporarySchedule.objects.filter(
         new_date=target_date,
-        student__branch=staff_branch  # [핵심] 타 분원 학생 원천 배제
+        student__branch=staff_branch
     ).select_related('student')
 
     if search_query:
@@ -68,8 +64,7 @@ def class_management(request):
     for schedule in temp_qs:
         student = schedule.student
         
-        # [핵심] 보강 과목의 담당자가 '나'인지 2차 확인
-        # 원장이라도 내가 담당하지 않은 과목(다른 선생님 수업)은 안 보이게 처리
+        # 담당 과목 확인
         is_my_class = False
         if schedule.subject == 'SYNTAX' and student.syntax_teacher == user:
             is_my_class = True
@@ -95,11 +90,11 @@ def class_management(request):
                 'attendance_status': attendance.status if attendance else 'NONE',
             })
     
-    # 4. 정규 수업 조회 (내 지점 + 내 담당 학생만)
-    # branch=staff_branch 조건을 명시하여 다른 분원 학생이 섞일 가능성 제거
+    # 4. 정규 수업 조회 (수정됨)
+    # [수정] status='ACTIVE' 삭제 -> user__is_active=True로 대체 (퇴원생 제외 목적)
     student_qs = StudentProfile.objects.filter(
-        branch=staff_branch,  # [핵심] 지점 필터
-        status='ACTIVE'
+        branch=staff_branch,
+        user__is_active=True 
     ).filter(
         Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
     ).select_related('syntax_class', 'reading_class', 'extra_class')
@@ -119,7 +114,7 @@ def class_management(request):
             'attendance_status': attendance.status if attendance else 'NONE',
         }
 
-        # [구문] 내가 담당 쌤이고, 오늘이 수업 요일일 때
+        # [구문]
         if student.syntax_teacher == user and student.syntax_class and student.syntax_class.day == target_day_code:
             if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='SYNTAX').exists():
                 log = ClassLog.objects.filter(student=student, date=target_date, subject='SYNTAX').first()
@@ -132,7 +127,7 @@ def class_management(request):
                 })
                 class_list.append(item)
         
-        # [독해] 내가 담당 쌤이고, 오늘이 수업 요일일 때
+        # [독해]
         if student.reading_teacher == user and student.reading_class and student.reading_class.day == target_day_code:
             if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='READING').exists():
                 log = ClassLog.objects.filter(student=student, date=target_date, subject='READING').first()
@@ -145,7 +140,7 @@ def class_management(request):
                 })
                 class_list.append(item)
 
-    # 시작 시간 순 정렬
+    # 정렬
     class_list.sort(key=lambda x: x['start_time'] if x['start_time'] else time(23, 59))
 
     return render(request, 'academy/class_management.html', {
