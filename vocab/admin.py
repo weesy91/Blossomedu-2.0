@@ -9,31 +9,50 @@ User = get_user_model()
 # ==========================================
 # 1. 단어장 (WordBook) 관리
 # ==========================================
-class WordInline(admin.TabularInline):
-    model = Word
-    extra = 3
+#class WordInline(admin.TabularInline):
+#    model = Word
+#    extra = 3
 
 @admin.register(WordBook)
 class WordBookAdmin(admin.ModelAdmin):
-    list_display = ('title', 'publisher', 'uploaded_by', 'created_at')
+    # list_display에 'word_list_link'를 추가하여 목록에서도 바로 갈 수 있게 합니다.
+    list_display = ('title', 'publisher', 'uploaded_by', 'created_at', 'word_list_link')
     search_fields = ('title',)
-    inlines = [WordInline]
-
+    
+    # [수정] inlines를 제거하여 상세 페이지 로딩 속도 해결
+    # inlines = [WordInline] 
+    
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related('publisher', 'uploaded_by')
 
-    # [수정 1] 등록자를 선택하지 않았을 때 현재 로그인한 관리자로 자동 저장
     def save_model(self, request, obj, form, change):
         if not obj.uploaded_by:
             obj.uploaded_by = request.user
         super().save_model(request, obj, form, change)
     
-    # [수정 2] 등록자 선택 목록에서 슈퍼유저만 보이게 필터링 (return 추가)
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "uploaded_by":
             kwargs["queryset"] = User.objects.filter(is_superuser=True)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    # [추가] "해당 단어장의 단어 목록 보기" 링크 생성 버튼
+    def word_list_link(self, obj):
+        # 1. 단어 목록(Word change list) 페이지의 URL을 가져옴
+        url = reverse("admin:vocab_word_changelist")
+        # 2. 쿼리 스트링으로 'book__id'를 현재 단어장 ID로 필터링
+        query = urlencode({"book__id": str(obj.id)})
+        # 3. 링크 생성
+        return format_html('<a href="{}?{}" class="button" style="background:#79aec8; color:white; padding:5px 10px; border-radius:5px;">📖 단어 {}개 관리하기</a>', url, query, obj.word_set.count())
+    
+    word_list_link.short_description = "단어 관리"
+
+@admin.register(Word)
+class WordAdmin(admin.ModelAdmin):
+    list_display = ('english', 'korean', 'book', 'number')
+    list_filter = ('book',) # 단어장별로 필터링 가능
+    search_fields = ('english', 'korean')
+    list_per_page = 50 # 한 페이지에 50개씩 보여줌 (페이징 해결!)
 
 # ==========================================
 # 2. 출판사 (Publisher) 관리
