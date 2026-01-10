@@ -2,11 +2,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q
-from datetime import datetime
+from datetime import datetime, time
 import json
 import re
 from utils.aligo import send_alimtalk
-from academy.models import TemporarySchedule, Textbook, ClassLog, ClassLogEntry
+from academy.models import TemporarySchedule, Textbook, ClassLog, ClassLogEntry, Attendance
 from vocab.models import WordBook
 from core.models import StudentProfile
 from django.contrib.auth.decorators import login_required
@@ -16,19 +16,110 @@ from django.contrib.auth.decorators import login_required
 # ==========================================
 @login_required
 def class_management(request):
+    """선생님용 수업 관리 - 담당 학생만 보이도록 로직 통합"""
     user = request.user
-    today_week_day = timezone.now().weekday()
-    
-    # [수정 1] 직책(원장/부원장) 여부와 상관없이 무조건 '내 담당 학생'만 조회
-    my_student_filter = Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
-    my_students = StudentProfile.objects.filter(my_student_filter, status='ACTIVE').distinct()
+    date_str = request.GET.get('date')
+    search_query = request.GET.get('q', '').strip()
 
-    # (이하 기존 스케줄 조회 로직은 그대로 유지 - StudentProfile을 my_students로 필터링한 상태이므로 안전함)
-    # ... (기존 class_management 함수의 나머지 로직들) ...
+    # 1. 날짜 설정 (기본값 오늘)
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            target_date = timezone.now().date()
+    else:
+        target_date = timezone.now().date()
+
+    target_weekday = target_date.weekday()
+    weekday_map = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
+    target_day_code = weekday_map[target_weekday]
+
+    # [핵심] 내 담당 학생 필터 조건 (구문, 독해, 특강 중 하나라도 담당이면 통과)
+    my_student_filter = Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
     
-    # 만약 기존 파일에 이 함수가 없다면, 기존 views/schedule.py 등에 있는 로직을 참고해야 합니다.
-    # 일단 보내주신 파일에는 없으므로 create_class_log 위주로 작성하겠습니다.
-    return render(request, 'academy/class_management.html', {'students': my_students})
+    class_list = []
+
+    # 2. 보강 스케줄 조회 (내 담당 학생만 필터링)
+    temp_qs = TemporarySchedule.objects.filter(
+        new_date=target_date
+    ).filter(my_student_filter).select_related('student') # 내 담당 학생만 추가 필터링
+
+    if search_query:
+        temp_qs = temp_qs.filter(student__name__icontains=search_query)
+
+    for schedule in temp_qs:
+        attendance = Attendance.objects.filter(student=schedule.student, date=target_date).first()
+        class_log = ClassLog.objects.filter(student=schedule.student, date=target_date).first()
+        
+        class_list.append({
+            'student': schedule.student,
+            'subject': schedule.subject,
+            'class_time': schedule.target_class,
+            'start_time': schedule.new_start_time,
+            'status': '작성완료' if class_log else '미작성',
+            'is_extra': schedule.is_extra_class,
+            'note': schedule.note,
+            'schedule_id': schedule.id,
+            'has_attended': attendance is not None,
+            'attendance_status': attendance.status if attendance else 'NONE',
+        })
+    
+    # 3. 정규 수업 조회 (전체 학생이 아닌 '내 담당 학생' 중에서 오늘 수업 있는 학생만 조회)
+    student_qs = StudentProfile.objects.filter(my_student_filter, status='ACTIVE').select_related(
+        'syntax_class', 'reading_class', 'extra_class'
+    )
+    
+    if search_query:
+        student_qs = student_qs.filter(name__icontains=search_query)
+
+    for student in student_qs:
+        attendance = Attendance.objects.filter(student=student, date=target_date).first()
+        class_log = ClassLog.objects.filter(student=student, date=target_date).first()
+        
+        item_base = {
+            'student': student, 
+            'status': '작성완료' if class_log else '미작성', 
+            'is_extra': False, 
+            'note': '',
+            'schedule_id': 0, 
+            'has_attended': attendance is not None, 
+            'attendance_status': attendance.status if attendance else 'NONE',
+        }
+
+        # 오늘 구문 수업이 있는 경우
+        if student.syntax_class and student.syntax_class.day == target_day_code:
+            # 보강으로 빠진 수업인지 체크
+            if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='SYNTAX').exists():
+                item = item_base.copy()
+                item.update({'subject': 'SYNTAX', 'class_time': student.syntax_class, 'start_time': student.syntax_class.start_time})
+                class_list.append(item)
+        
+        # 오늘 독해 수업이 있는 경우
+        if student.reading_class and student.reading_class.day == target_day_code:
+            if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='READING').exists():
+                item = item_base.copy()
+                item.update({'subject': 'READING', 'class_time': student.reading_class, 'start_time': student.reading_class.start_time})
+                class_list.append(item)
+        
+        # 추가 특강 수업이 있는 경우
+        if student.extra_class and student.extra_class.day == target_day_code:
+            item = item_base.copy()
+            item.update({
+                'subject': f"{student.get_extra_class_type_display()} (추가)",
+                'class_time': student.extra_class,
+                'start_time': student.extra_class.start_time,
+                'is_extra': True,
+            })
+            class_list.append(item)
+
+    # 시작 시간 순으로 정렬
+    class_list.sort(key=lambda x: x['start_time'] if x['start_time'] else time(23, 59))
+
+    return render(request, 'academy/class_management.html', {
+        'target_date': target_date, 
+        'class_list': class_list,
+        'search_query': search_query
+    })
 
 @login_required
 def create_class_log(request, schedule_id):
