@@ -43,6 +43,22 @@
             <button type="submit" class="btn btn-primary w-100 py-3 fs-5 fw-bold" style="background-color: #d63384; border: none; border-radius: 10px;">로그인</button>
         </form>
     </div>
-
+<script>
+    // 페이지가 로드되자마자 즉시 실행
+    (function() {
+        // 카카오톡 인앱 브라우저인지 감지
+        if (navigator.userAgent.match(/KAKAOTALK/i)) {
+            
+            // 현재 접속한 URL (로그인 페이지 주소)
+            var currentUrl = location.href;
+            
+            // 외부 브라우저 호출 (강제 전환)
+            location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(currentUrl);
+            
+            // 전환되는 동안 빈 화면만 보여주거나 '이동 중...' 문구를 띄우기 위해 body 내용을 비워버림 (선택사항)
+            document.body.style.display = 'none'; 
+        }
+    })();
+</script>
 </body>
 </html>
