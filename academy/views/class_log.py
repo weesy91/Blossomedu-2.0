@@ -289,13 +289,13 @@ def create_class_log(request, schedule_id):
             for i in range(len(v_ids)):
                 if i < len(v_ranges) and v_ids[i] and v_ranges[i]:
                     rng = v_ranges[i].strip()
-                    if range_pattern.match(rng):
-                        ClassLogEntry.objects.create(
-                            class_log=class_log,
-                            wordbook_id=v_ids[i],
-                            progress_range=rng,
-                            score=v_scores[i].strip() if i < len(v_scores) else None
-                        )
+                    # 검사 없이 바로 저장
+                    ClassLogEntry.objects.create(
+                        class_log=class_log,
+                        wordbook_id=v_ids[i],
+                        progress_range=rng,
+                        score=v_scores[i].strip() if i < len(v_scores) else None
+                    )
 
         # 진도 저장
         m_ids = request.POST.getlist('main_book_ids[]')
@@ -306,13 +306,13 @@ def create_class_log(request, schedule_id):
         for i in range(len(m_ids)):
             if i < len(m_ranges) and m_ids[i] and m_ranges[i]:
                 rng = m_ranges[i].strip()
-                if range_pattern.match(rng):
-                    ClassLogEntry.objects.create(
-                        class_log=class_log,
-                        textbook_id=m_ids[i],
-                        progress_range=rng,
-                        score=m_scores[i] if i < len(m_scores) else ''
-                    )
+                # 묻지도 따지지도 않고 바로 저장
+                ClassLogEntry.objects.create(
+                    class_log=class_log,
+                    textbook_id=m_ids[i],
+                    progress_range=rng,
+                    score=m_scores[i] if i < len(m_scores) else ''
+                )
 
         # 과제 저장
         hw_v_ids = request.POST.getlist('hw_vocab_book')
