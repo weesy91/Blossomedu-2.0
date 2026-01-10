@@ -172,6 +172,7 @@
     </style>
 </head>
 <body>
+<div id="debug-console" style="position:fixed; bottom:0; left:0; width:100%; background:rgba(0,0,0,0.8); color:yellow; font-size:12px; padding:10px; z-index:99999; display:none; max-height: 150px; overflow-y:scroll;"></div>
 <div id="toast-container"></div>
 <div class="exam-card">
     <input type="hidden" id="csrfTokenVal" value="{{ csrf_token }}">
@@ -532,7 +533,7 @@
         if (!item.is_correct && detailIds && detailIds.length > index) {
             const detailId = detailIds[index];
             // [수정] onclick 유지, type 명시
-            status += `<br><button type="button" class="btn btn-outline-secondary btn-sm mt-1 shadow-sm" onclick="requestCorrection(${detailId}, this)">정답요청</button>`;
+            status += `<br><button type="button" class="btn btn-outline-secondary btn-sm mt-1 shadow-sm" onclick="requestCorrection(${detailId}, this)">정답요청 v2</button>`;
         }
 
         tr.innerHTML = `
@@ -546,69 +547,83 @@
 }
 
     // [새로운 기능] 화면 하단에 알림 메시지 띄우기 (Alert 대체)
-function showToast(message) {
-    const x = document.getElementById("toast-container");
-    x.innerText = message;
-    x.className = "show";
-    setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+function logToScreen(msg) {
+    const consoleDiv = document.getElementById('debug-console');
+    if (consoleDiv) {
+        consoleDiv.style.display = 'block';
+        consoleDiv.innerHTML += `<div>[Log] ${msg}</div>`;
+        consoleDiv.scrollTop = consoleDiv.scrollHeight; // 자동 스크롤
+    }
+    console.log(msg);
 }
 
-// [최종 해결책] 카카오 인앱 브라우저 호환 로직
 window.requestCorrection = function(detailId, btn) {
-    // 1. UI 즉시 변경 (사용자 피드백)
-    btn.disabled = true;
-    const originalText = btn.innerText;
-    btn.innerText = "..."; // 텍스트 간소화
+    // 1. 시작 로그 출력
+    logToScreen("버튼 클릭됨: ID " + detailId);
 
-    // 2. CSRF 토큰을 HTML에서 안전하게 가져옴
-    const csrfToken = document.getElementById('csrfTokenVal').value;
+    try {
+        btn.disabled = true;
+        const originalText = btn.innerText;
+        btn.innerText = "...";
 
-    fetch("{% url 'vocab:request_correction' %}", {
-        method: "POST",
-        headers: { 
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken // 쿠키 대신 input 값 사용
-        },
-        body: JSON.stringify({ detail_id: detailId, is_monthly: isMonthly })
-    })
-    .then(async response => {
-        // 응답 텍스트 확인 (디버깅용)
-        const text = await response.text();
-        
-        // HTML(로그인 페이지 등)이 반환되었는지 체크
-        if (text.trim().startsWith("<")) {
-            throw new Error("로그인이 만료되었습니다.");
-        }
+        // CSRF 토큰 가져오기
+        const csrfEl = document.getElementById('csrfTokenVal');
+        const csrfToken = csrfEl ? csrfEl.value : '';
+        logToScreen("토큰 확인: " + (csrfToken ? "있음" : "없음"));
 
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            throw new Error("서버 응답 오류");
-        }
-    })
-    .then(data => {
-        if (data.status === 'success') {
-            // 성공 처리
-            btn.innerText = "완료";
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-secondary');
-            showToast("✅ 정답 요청이 접수되었습니다.");
-        } else {
-            // 로직상 실패
-            showToast("⚠️ " + data.message);
+        fetch("{% url 'vocab:request_correction' %}", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({ detail_id: detailId, is_monthly: isMonthly })
+        })
+        .then(response => {
+            logToScreen("서버 응답 받음: " + response.status);
+            return response.text();
+        })
+        .then(text => {
+            // HTML(로그인 페이지) 반환 체크
+            if (text.trim().startsWith("<")) {
+                logToScreen("에러: HTML 응답(로그인 만료 의심)");
+                throw new Error("로그인 세션 만료");
+            }
+            
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                logToScreen("JSON 파싱 에러: " + text.substring(0, 50));
+                throw new Error("데이터 형식 오류");
+            }
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                logToScreen("처리 성공");
+                btn.innerText = "완료";
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-secondary');
+                if(typeof showToast === 'function') showToast("✅ 접수 완료");
+            } else {
+                logToScreen("로직 실패: " + data.message);
+                alert("알림: " + data.message);
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        })
+        .catch(err => {
+            // [핵심] 여기서 에러 내용을 화면에 보여줌
+            logToScreen("최종 에러: " + err.message);
+            alert("오류: " + err.message); // 최후의 수단
+            
             btn.disabled = false;
-            btn.innerText = "정답요청";
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        // 에러 발생 시 토스트 메시지로 표시
-        showToast("❌ " + err.message);
-        
-        // 버튼 복구
+            btn.innerText = originalText;
+        });
+
+    } catch (e) {
+        logToScreen("동기 에러: " + e.message);
         btn.disabled = false;
-        btn.innerText = "정답요청";
-    });
+    }
 };
 </script>
 
