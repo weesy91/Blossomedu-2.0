@@ -16,15 +16,21 @@ from django.contrib.auth.decorators import login_required
 # ==========================================
 @login_required
 def class_management(request):
-    """선생님용 수업 관리 - 분원별 원장 및 담당 강사 필터링"""
+    """선생님용 수업 관리 - 분원 및 실제 담당 과목 기반 엄격 필터링"""
     user = request.user
-    # 선생님의 프로필에서 소속 지점을 가져옵니다.
-    staff_branch = getattr(user, 'staff_profile').branch if hasattr(user, 'staff_profile') else None
+    
+    # 1. 선생님의 프로필에서 소속 지점 확보
+    try:
+        staff_profile = user.staff_profile
+        staff_branch = staff_profile.branch
+    except AttributeError:
+        # 선생님 프로필이 없는 경우 빈 목록 반환
+        return render(request, 'academy/class_management.html', {'class_list': []})
     
     date_str = request.GET.get('date')
     search_query = request.GET.get('q', '').strip()
 
-    # 1. 날짜 설정
+    # 2. 날짜 및 요일 설정
     if date_str:
         try:
             target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -35,29 +41,36 @@ def class_management(request):
 
     target_day_code = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}[target_date.weekday()]
 
-    # [핵심] 내 담당 학생 필터 (내 지점 학생이면서 + 내가 담당 강사인 경우)
-    # 최고 관리자(Superuser)가 아니라면 무조건 본인 지점 학생들만 필터링합니다.
-    my_student_filter = Q(branch=staff_branch) & (Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user))
+    # [핵심] 필터링 전략: 
+    # (A) 학생이 선생님과 같은 지점 소속이어야 함
+    # (B) 선생님이 해당 학생의 구문 OR 독해 OR 특강 담당자여야 함
+    my_student_base_filter = Q(branch=staff_branch) & (
+        Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
+    )
     
     class_list = []
 
-    # 2. 보강 스케줄 조회 (내 지점 & 내 담당 학생만)
+    # 3. 보강 스케줄 조회 (내 지점 + 내 담당 학생만)
     temp_qs = TemporarySchedule.objects.filter(
         new_date=target_date,
-        student__branch=staff_branch  # 학생의 지점 확인
-    ).filter(Q(student__syntax_teacher=user) | Q(student__reading_teacher=user) | Q(student__extra_class_teacher=user)).select_related('student')
+        student__branch=staff_branch
+    ).filter(
+        Q(student__syntax_teacher=user) | 
+        Q(student__reading_teacher=user) | 
+        Q(student__extra_class_teacher=user)
+    ).select_related('student')
 
     if search_query:
         temp_qs = temp_qs.filter(student__name__icontains=search_query)
 
     for schedule in temp_qs:
-        # 내가 담당한 과목의 보강인지 2차 검증
-        is_my_subject = (
+        # 내가 실제로 담당하는 과목의 보강인지 한 번 더 검증
+        is_actually_mine = (
             (schedule.subject == 'SYNTAX' and schedule.student.syntax_teacher == user) or
             (schedule.subject == 'READING' and schedule.student.reading_teacher == user) or
             (schedule.subject == 'EXTRA' and schedule.student.extra_class_teacher == user)
         )
-        if not is_my_subject:
+        if not is_actually_mine:
             continue
 
         attendance = Attendance.objects.filter(student=schedule.student, date=target_date).first()
@@ -76,8 +89,8 @@ def class_management(request):
             'attendance_status': attendance.status if attendance else 'NONE',
         })
     
-    # 3. 정규 수업 조회 (내 지점 학생들 중 내가 담당하는 학생만)
-    student_qs = StudentProfile.objects.filter(my_student_filter, status='ACTIVE').select_related(
+    # 4. 정규 수업 조회 (내 지점 학생들 중 내가 담당하는 학생만 원천 필터링)
+    student_qs = StudentProfile.objects.filter(my_student_base_filter, status='ACTIVE').select_related(
         'syntax_class', 'reading_class', 'extra_class'
     )
     
@@ -96,22 +109,33 @@ def class_management(request):
             'attendance_status': attendance.status if attendance else 'NONE',
         }
 
-        # [구문] 내가 이 학생의 구문 쌤이고 오늘 수업 요일이 맞을 때
+        # [구문] 내가 이 학생의 구문 쌤이고, 오늘 수업이 있는 경우만 추가
         if student.syntax_teacher == user and student.syntax_class and student.syntax_class.day == target_day_code:
             if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='SYNTAX').exists():
                 log = ClassLog.objects.filter(student=student, date=target_date, subject='SYNTAX').first()
                 item = item_base.copy()
-                item.update({'subject': 'SYNTAX', 'class_time': student.syntax_class, 'start_time': student.syntax_class.start_time, 'status': '작성완료' if log else '미작성'})
+                item.update({
+                    'subject': 'SYNTAX', 
+                    'class_time': student.syntax_class, 
+                    'start_time': student.syntax_class.start_time,
+                    'status': '작성완료' if log else '미작성'
+                })
                 class_list.append(item)
         
-        # [독해] 내가 이 학생의 독해 쌤이고 오늘 수업 요일이 맞을 때
+        # [독해] 내가 이 학생의 독해 쌤이고, 오늘 수업이 있는 경우만 추가
         if student.reading_teacher == user and student.reading_class and student.reading_class.day == target_day_code:
             if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='READING').exists():
                 log = ClassLog.objects.filter(student=student, date=target_date, subject='READING').first()
                 item = item_base.copy()
-                item.update({'subject': 'READING', 'class_time': student.reading_class, 'start_time': student.reading_class.start_time, 'status': '작성완료' if log else '미작성'})
+                item.update({
+                    'subject': 'READING', 
+                    'class_time': student.reading_class, 
+                    'start_time': student.reading_class.start_time,
+                    'status': '작성완료' if log else '미작성'
+                })
                 class_list.append(item)
 
+    # 시간순 정렬
     class_list.sort(key=lambda x: x['start_time'] if x['start_time'] else time(23, 59))
 
     return render(request, 'academy/class_management.html', {
