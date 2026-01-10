@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Max
 from core.models import StudentProfile
 from django.utils import timezone
+from vocab.models import TestResult
 
 @login_required
 def log_search(request):

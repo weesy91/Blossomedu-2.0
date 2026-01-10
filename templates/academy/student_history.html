@@ -132,6 +132,74 @@
                 {% endfor %}
             </tbody>
         </table>
+        <h5 class="fw-bold mb-3 ms-1 mt-5">📖 단어 시험 기록 <span class="small text-muted fw-normal">(최근 20개)</span></h5>
+    
+    {% if vocab_results %}
+        <div class="accordion mb-5" id="historyVocabAccordion">
+            {% for result in vocab_results %}
+            <div class="accordion-item border-0 shadow-sm mb-2 rounded overflow-hidden">
+                <h2 class="accordion-header" id="histHeading{{ result.id }}">
+                    <button class="accordion-button collapsed p-3 bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#histCollapse{{ result.id }}" aria-expanded="false">
+                        <div class="d-flex flex-column w-100">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark">{{ result.book.title }}</span>
+                                <span class="badge {% if result.score >= 27 %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                                    {{ result.score }} / {{ result.total_count }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>{{ result.created_at|date:"Y.m.d H:i" }}</span>
+                                <span>{% if result.score >= 27 %}🎉 통과{% else %}⚠️ 재시험{% endif %}</span>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="histCollapse{{ result.id }}" class="accordion-collapse collapse" data-bs-parent="#historyVocabAccordion">
+                    <div class="accordion-body p-0">
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-striped mb-0 small text-center align-middle">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th width="35%">문제</th>
+                                        <th width="30%">정답</th>
+                                        <th width="25%">제출</th>
+                                        <th width="10%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detail in result.details.all %}
+                                    <tr>
+                                        <td class="fw-bold">{{ detail.word_question }}</td>
+                                        <td class="text-start text-truncate" style="max-width: 100px;">
+                                            {{ detail.correct_answer }}
+                                        </td>
+                                        <td class="{% if detail.is_correct %}text-success{% else %}text-danger fw-bold{% endif %}">
+                                            {{ detail.student_answer }}
+                                        </td>
+                                        <td>
+                                            {% if detail.is_correct %}
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            {% else %}
+                                                <i class="bi bi-x-circle-fill text-danger"></i>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5 text-muted bg-light rounded mb-5">
+            <i class="bi bi-journal-x fs-1"></i>
+            <p class="mt-2">단어 시험 기록이 없습니다.</p>
+        </div>
+    {% endif %}
+
     {% else %}
         <div class="text-center py-5 text-muted">
             기록이 없습니다.
