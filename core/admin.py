@@ -202,6 +202,13 @@ class StaffUserAdmin(BaseUserAdmin):
     list_display = ('username', 'get_name', 'get_position', 'is_staff')
     list_filter = ('staff_profile__position', 'staff_profile__branch')
 
+    def save_related(self, request, form, formsets, change):
+        """
+        부모 객체(User)가 먼저 저장되어 ID를 확보한 후, 
+        Inline 관계(StaffProfile의 M2M 필드)를 저장하도록 순서를 제어합니다.
+        """
+        super().save_related(request, form, formsets, change)
+        
     def save_model(self, request, obj, form, change):
         if not change:  # 새로 만들 때만
             obj.is_staff = True  # <--- "너는 이제부터 선생님(스태프)이야!" 라고 강제 설정
