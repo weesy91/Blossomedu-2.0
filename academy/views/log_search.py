@@ -1,9 +1,10 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Max
 from core.models import StudentProfile
 from django.utils import timezone
 from vocab.models import TestResult
+from academy.models import ClassLog, Attendance
 
 @login_required
 def log_search(request):
@@ -64,4 +65,64 @@ def log_search(request):
     return render(request, 'academy/log_search.html', {
         'students': student_list, # 수정됨
         'query': query
+    })
+
+@login_required
+def student_history(request, student_id):
+    student = get_object_or_404(StudentProfile, id=student_id)
+    
+    # 1. 수업 일지 조회
+    logs = ClassLog.objects.filter(student=student).order_by('-date')
+    
+    # 2. 출석 기록 조회
+    attendances = Attendance.objects.filter(student=student).order_by('-date')
+
+    # 3. [추가] 단어 시험 기록 조회 (최신순 20개)
+    vocab_results = TestResult.objects.filter(
+        student=student
+    ).select_related('book').prefetch_related('details').order_by('-created_at')[:20]
+
+    # 4. 단어 며칠째 안 봤는지 계산 (헤더 표시용)
+    vocab_days = None
+    if vocab_results:
+        last_date = vocab_results[0].created_at
+        diff = timezone.now() - last_date
+        vocab_days = diff.days
+
+    return render(request, 'academy/student_history.html', {
+        'student': student,
+        'logs': logs,
+        'attendances': attendances,
+        'vocab_results': vocab_results,  # ★ 템플릿으로 전달
+        'vocab_days': vocab_days,
+    })
+
+@login_required
+def student_history(request, student_id):
+    student = get_object_or_404(StudentProfile, id=student_id)
+    
+    # 1. 수업 일지 조회
+    logs = ClassLog.objects.filter(student=student).order_by('-date')
+    
+    # 2. 출석 기록 조회
+    attendances = Attendance.objects.filter(student=student).order_by('-date')
+
+    # 3. [추가] 단어 시험 기록 조회 (최신순 20개)
+    vocab_results = TestResult.objects.filter(
+        student=student
+    ).select_related('book').prefetch_related('details').order_by('-created_at')[:20]
+
+    # 4. 단어 며칠째 안 봤는지 계산 (헤더 표시용)
+    vocab_days = None
+    if vocab_results:
+        last_date = vocab_results[0].created_at
+        diff = timezone.now() - last_date
+        vocab_days = diff.days
+
+    return render(request, 'academy/student_history.html', {
+        'student': student,
+        'logs': logs,
+        'attendances': attendances,
+        'vocab_results': vocab_results,  # ★ 템플릿으로 전달
+        'vocab_days': vocab_days,
     })
