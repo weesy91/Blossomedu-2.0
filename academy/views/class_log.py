@@ -351,7 +351,7 @@ def create_class_log(request, schedule_id):
         return redirect('academy:class_management')
     
     # --- GET 요청 처리 ---
-    existing_log = ClassLog.objects.filter(student=student, date=target_date).first()
+    existing_log = ClassLog.objects.filter(student=student, date=target_date, subject=subject).first()
     is_reading_mode = (subject == 'READING')
 
     context = {
