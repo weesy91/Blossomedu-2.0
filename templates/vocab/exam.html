@@ -127,12 +127,54 @@
             font-weight: 800;
             border-radius: 16px;
         }
+
+        /* 토스트 메시지 (alert 대체) */
+        #toast-container {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 50px;
+            padding: 16px;
+            position: fixed;
+            z-index: 9999;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        #toast-container.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;}
+            to {bottom: 30px; opacity: 1;}
+        }
+
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;}
+            to {bottom: 0; opacity: 0;}
+        }
+
+        /* 정답요청 버튼 텍스트 깨짐 방지 */
+        .result-table button {
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+            padding: 6px 12px !important;
+            min-width: 70px;
+        }
     </style>
 </head>
 <body>
-
+<div id="toast-container"></div>
 <div class="exam-card">
-    
+    <input type="hidden" id="csrfTokenVal" value="{{ csrf_token }}">
     <div id="headerInfo">
         <div class="d-flex justify-content-between text-muted mb-3 small align-items-center">
             <span class="fw-bold text-truncate" style="max-width: 60%;">{{ book_title }}</span>
@@ -489,8 +531,8 @@
         
         if (!item.is_correct && detailIds && detailIds.length > index) {
             const detailId = detailIds[index];
-            // [핵심] onclick 이벤트 복구 및 this 전달
-            status += `<br><button type="button" class="btn btn-outline-secondary btn-sm mt-1 shadow-sm" style="font-size: 0.7rem; padding: 4px 8px;" onclick="requestCorrection(${detailId}, this)">정답요청</button>`;
+            // [수정] onclick 유지, type 명시
+            status += `<br><button type="button" class="btn btn-outline-secondary btn-sm mt-1 shadow-sm" onclick="requestCorrection(${detailId}, this)">정답요청</button>`;
         }
 
         tr.innerHTML = `
@@ -503,34 +545,45 @@
     });
 }
 
-    window.requestCorrection = function(detailId, btn) {
-    // 1. 버튼 UI 즉시 변경 (사용자 피드백)
+    // [새로운 기능] 화면 하단에 알림 메시지 띄우기 (Alert 대체)
+function showToast(message) {
+    const x = document.getElementById("toast-container");
+    x.innerText = message;
+    x.className = "show";
+    setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+}
+
+// [최종 해결책] 카카오 인앱 브라우저 호환 로직
+window.requestCorrection = function(detailId, btn) {
+    // 1. UI 즉시 변경 (사용자 피드백)
     btn.disabled = true;
     const originalText = btn.innerText;
-    btn.innerText = "전송중.."; // 글자를 짧게 해서 줄바꿈 방지
+    btn.innerText = "..."; // 텍스트 간소화
 
-    // 2. 서버 요청
+    // 2. CSRF 토큰을 HTML에서 안전하게 가져옴
+    const csrfToken = document.getElementById('csrfTokenVal').value;
+
     fetch("{% url 'vocab:request_correction' %}", {
         method: "POST",
         headers: { 
             "Content-Type": "application/json",
-            // CSRF 토큰이 있다면 보내고, 없으면 빈 문자열 (views.py가 csrf_exempt라 괜찮음)
-            "X-CSRFToken": getCookie('csrftoken') 
+            "X-CSRFToken": csrfToken // 쿠키 대신 input 값 사용
         },
         body: JSON.stringify({ detail_id: detailId, is_monthly: isMonthly })
     })
     .then(async response => {
-        // [중요] 응답을 바로 JSON으로 바꾸지 않고 텍스트로 먼저 받음
+        // 응답 텍스트 확인 (디버깅용)
         const text = await response.text();
         
+        // HTML(로그인 페이지 등)이 반환되었는지 체크
+        if (text.trim().startsWith("<")) {
+            throw new Error("로그인이 만료되었습니다.");
+        }
+
         try {
-            // JSON 변환 시도
-            const data = JSON.parse(text);
-            return data;
+            return JSON.parse(text);
         } catch (e) {
-            // [에러 발생 지점] JSON이 아님 (즉, HTML 로그인 페이지가 돌아왔을 확률 99%)
-            console.error("Non-JSON response:", text);
-            throw new Error("서버 응답이 올바르지 않습니다. (로그인 만료 가능성)");
+            throw new Error("서버 응답 오류");
         }
     })
     .then(data => {
@@ -539,40 +592,24 @@
             btn.innerText = "완료";
             btn.classList.remove('btn-outline-secondary');
             btn.classList.add('btn-secondary');
+            showToast("✅ 정답 요청이 접수되었습니다.");
         } else {
-            // 로직상 실패 (이미 처리됨 등)
-            alert("알림: " + data.message);
-            // 버튼 원복
+            // 로직상 실패
+            showToast("⚠️ " + data.message);
             btn.disabled = false;
             btn.innerText = "정답요청";
         }
     })
     .catch(err => {
-        // [여기가 실행될 것입니다]
-        // 에러 내용을 화면에 띄워서 확인
-        alert("오류 발생: " + err.message);
+        console.error(err);
+        // 에러 발생 시 토스트 메시지로 표시
+        showToast("❌ " + err.message);
         
-        // 버튼 상태 복구
+        // 버튼 복구
         btn.disabled = false;
         btn.innerText = "정답요청";
     });
 };
-
-        // 쿠키에서 CSRF 토큰 가져오는 헬퍼 함수
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
 </script>
 
 </body>
