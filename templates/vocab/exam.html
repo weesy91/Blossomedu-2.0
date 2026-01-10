@@ -24,6 +24,13 @@
             position: relative;
         }
 
+        /* 버튼 텍스트 줄바꿈 방지 및 최소 너비 확보 */
+        .result-table .btn {
+            white-space: nowrap; /* 글자 줄바꿈 금지 */
+            min-width: 60px;     /* 최소 너비 지정 */
+            padding: 4px 10px !important;
+        }
+
         /* 단어 텍스트 */
         .word-display {
             font-size: 2.5rem;
@@ -497,39 +504,75 @@
 }
 
     window.requestCorrection = function(detailId, btn) {
-    // 1. [중요] 묻지도 따지지도 않고 UI부터 즉시 변경 (사용자 피드백)
-    btn.disabled = true;           // 버튼 비활성화 (중복 클릭 방지)
-    const originalText = btn.innerText; 
-    btn.innerText = "처리 중...";  // 텍스트 변경
-    
-    // 2. 서버 요청 전송 (팝업 없이 진행)
+    // 1. 버튼 UI 즉시 변경 (사용자 피드백)
+    btn.disabled = true;
+    const originalText = btn.innerText;
+    btn.innerText = "전송중.."; // 글자를 짧게 해서 줄바꿈 방지
+
+    // 2. 서버 요청
     fetch("{% url 'vocab:request_correction' %}", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            // CSRF 토큰이 있다면 보내고, 없으면 빈 문자열 (views.py가 csrf_exempt라 괜찮음)
+            "X-CSRFToken": getCookie('csrftoken') 
+        },
         body: JSON.stringify({ detail_id: detailId, is_monthly: isMonthly })
     })
-    .then(res => res.json())
+    .then(async response => {
+        // [중요] 응답을 바로 JSON으로 바꾸지 않고 텍스트로 먼저 받음
+        const text = await response.text();
+        
+        try {
+            // JSON 변환 시도
+            const data = JSON.parse(text);
+            return data;
+        } catch (e) {
+            // [에러 발생 지점] JSON이 아님 (즉, HTML 로그인 페이지가 돌아왔을 확률 99%)
+            console.error("Non-JSON response:", text);
+            throw new Error("서버 응답이 올바르지 않습니다. (로그인 만료 가능성)");
+        }
+    })
     .then(data => {
         if (data.status === 'success') {
-            // 3. 성공 시 완료 상태로 변경
-            btn.innerText = "요청됨";
+            // 성공 처리
+            btn.innerText = "완료";
             btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-secondary'); // 회색 버튼으로 스타일 변경
+            btn.classList.add('btn-secondary');
         } else {
-            // 실패 시에만 알림 띄우고 복구
-            alert("오류: " + (data.message || "알 수 없는 오류"));
+            // 로직상 실패 (이미 처리됨 등)
+            alert("알림: " + data.message);
+            // 버튼 원복
             btn.disabled = false;
-            btn.innerText = originalText;
+            btn.innerText = "정답요청";
         }
     })
     .catch(err => {
-        console.error("통신 오류:", err);
-        // 통신 실패 시 조용히 복구 (혹은 alert 사용)
+        // [여기가 실행될 것입니다]
+        // 에러 내용을 화면에 띄워서 확인
+        alert("오류 발생: " + err.message);
+        
+        // 버튼 상태 복구
         btn.disabled = false;
-        btn.innerText = originalText;
-        alert("서버와 통신할 수 없습니다.");
+        btn.innerText = "정답요청";
     });
 };
+
+        // 쿠키에서 CSRF 토큰 가져오는 헬퍼 함수
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
 </script>
 
 </body>
