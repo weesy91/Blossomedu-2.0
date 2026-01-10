@@ -496,24 +496,43 @@
         });
     }
 
-    document.addEventListener('click', function(e) {
-    // 클릭된 요소가 '정답요청' 버튼인지 확인 (클래스나 텍스트로 판별)
-    if (e.target && e.target.innerText === '정답요청' && e.target.tagName === 'BUTTON') {
-        e.preventDefault(); // 기본 터치 동작 방지
-        e.stopPropagation(); // 이벤트 전파 중단
+    window.requestCorrection = function(detailId, btn) {
+        // [수정 1] 팝업(confirm) 제거 -> 클릭 즉시 로직 실행
+        // if(!confirm("선생님께 정답 처리를 요청하시겠습니까?")) return;
+        
+        // [수정 2] 중복 클릭 방지 및 피드백을 위해 버튼 즉시 비활성화
+        btn.disabled = true;
+        btn.innerText = "처리 중...";
 
-        // onclick 속성에서 ID 추출 (onclick="requestCorrection(123, this)" 형태라고 가정)
-        const onclickAttr = e.target.getAttribute('onclick');
-        if (onclickAttr) {
-            const match = onclickAttr.match(/requestCorrection\((\d+)/);
-            if (match && match[1]) {
-                const detailId = match[1];
-                // 기존 requestCorrection 함수 직접 호출
-                window.requestCorrection(detailId, e.target);
+        fetch("{% url 'vocab:request_correction' %}", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ detail_id: detailId, is_monthly: isMonthly })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // [수정 3] 성공 알림 팝업(alert)도 제거하고 버튼 상태로만 표시
+                // alert("요청되었습니다."); 
+                
+                btn.innerText = "요청됨";
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-secondary');
+            } else {
+                // 실패 시에는 사용자에게 알려주고 버튼 복구
+                // (만약 alert도 안 뜬다면 이 부분은 어쩔 수 없지만, 실패는 드무니까요)
+                alert("오류: " + data.message); 
+                btn.disabled = false;
+                btn.innerText = "정답요청";
             }
-        }
-    }
-});
+        })
+        .catch(err => {
+            console.error(err);
+            // 통신 에러 시 버튼 복구
+            btn.disabled = false;
+            btn.innerText = "정답요청";
+        });
+    };
 </script>
 
 </body>
