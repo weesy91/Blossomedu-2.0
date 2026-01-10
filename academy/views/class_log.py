@@ -15,14 +15,34 @@ from django.contrib.auth.decorators import login_required
 # 1. 수업 목록 조회 (요구사항 1번 충족)
 # ==========================================
 @login_required
-@login_required
 def class_management(request):
-    """선생님용 수업 관리 - 지점 및 직책과 무관하게 '실제 담당 수업'만 노출"""
+    """
+    [수업 일지 목록]
+    - 원장/부원장/슈퍼유저 여부와 관계없이
+    - 오직 '로그인한 선생님의 지점'에 속하고
+    - '로그인한 선생님이 담당하는 과목'인 학생만 표시
+    """
     user = request.user
+    
+    # 1. 로그인 유저의 지점(Branch) 확인
+    # 슈퍼유저라도 StaffProfile이 없거나 지점이 없으면 빈 목록이 뜨도록 하여 '타 분원 노출' 원천 차단
+    try:
+        staff_profile = getattr(user, 'staff_profile', None)
+        staff_branch = staff_profile.branch if staff_profile else None
+    except Exception:
+        staff_branch = None
+
+    # 지점 정보가 없으면 아무 학생도 보여주지 않음 (안전 장치)
+    if not staff_branch:
+        return render(request, 'academy/class_management.html', {
+            'class_list': [], 
+            'error': '지점 정보가 없는 계정입니다.'
+        })
+
     date_str = request.GET.get('date')
     search_query = request.GET.get('q', '').strip()
 
-    # 1. 날짜 및 요일 코드 설정
+    # 2. 날짜 및 요일 설정
     if date_str:
         try:
             target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -31,15 +51,15 @@ def class_management(request):
     else:
         target_date = timezone.now().date()
 
-    # 요일 매핑 (StudentProfile의 day 필드와 비교용)
+    # 요일 코드 (StudentProfile의 day 필드 매핑용)
     target_day_code = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}[target_date.weekday()]
 
     class_list = []
 
-    # 2. 보강 스케줄 필터링 (내 담당 학생의 보강만)
-    # StudentProfile의 담당 선생님 필드들과 로그인 유저 대조
+    # 3. 보강 스케줄 조회 (내 지점 학생만 1차 필터링)
     temp_qs = TemporarySchedule.objects.filter(
-        new_date=target_date
+        new_date=target_date,
+        student__branch=staff_branch  # [핵심] 타 분원 학생 원천 배제
     ).select_related('student')
 
     if search_query:
@@ -47,7 +67,9 @@ def class_management(request):
 
     for schedule in temp_qs:
         student = schedule.student
-        # 보강 과목에 맞춰 실제 담당자가 나인지 확인
+        
+        # [핵심] 보강 과목의 담당자가 '나'인지 2차 확인
+        # 원장이라도 내가 담당하지 않은 과목(다른 선생님 수업)은 안 보이게 처리
         is_my_class = False
         if schedule.subject == 'SYNTAX' and student.syntax_teacher == user:
             is_my_class = True
@@ -59,6 +81,7 @@ def class_management(request):
         if is_my_class:
             attendance = Attendance.objects.filter(student=student, date=target_date).first()
             log = ClassLog.objects.filter(student=student, date=target_date, subject=schedule.subject).first()
+            
             class_list.append({
                 'student': student,
                 'subject': schedule.subject,
@@ -72,11 +95,13 @@ def class_management(request):
                 'attendance_status': attendance.status if attendance else 'NONE',
             })
     
-    # 3. 정규 수업 필터링 (내가 담당 강사인 학생들만 조회)
-    # core/models/users.py의 StudentProfile 관계 필드 활용
+    # 4. 정규 수업 조회 (내 지점 + 내 담당 학생만)
+    # branch=staff_branch 조건을 명시하여 다른 분원 학생이 섞일 가능성 제거
     student_qs = StudentProfile.objects.filter(
-        Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user),
+        branch=staff_branch,  # [핵심] 지점 필터
         status='ACTIVE'
+    ).filter(
+        Q(syntax_teacher=user) | Q(reading_teacher=user) | Q(extra_class_teacher=user)
     ).select_related('syntax_class', 'reading_class', 'extra_class')
     
     if search_query:
@@ -94,9 +119,8 @@ def class_management(request):
             'attendance_status': attendance.status if attendance else 'NONE',
         }
 
-        # [구문] 내가 이 학생의 구문 쌤이고 오늘 수업 요일이 맞을 때
+        # [구문] 내가 담당 쌤이고, 오늘이 수업 요일일 때
         if student.syntax_teacher == user and student.syntax_class and student.syntax_class.day == target_day_code:
-            # 보강으로 빠진 수업인지 체크
             if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='SYNTAX').exists():
                 log = ClassLog.objects.filter(student=student, date=target_date, subject='SYNTAX').first()
                 item = item_base.copy()
@@ -108,7 +132,7 @@ def class_management(request):
                 })
                 class_list.append(item)
         
-        # [독해] 내가 이 학생의 독해 쌤이고 오늘 수업 요일이 맞을 때
+        # [독해] 내가 담당 쌤이고, 오늘이 수업 요일일 때
         if student.reading_teacher == user and student.reading_class and student.reading_class.day == target_day_code:
             if not TemporarySchedule.objects.filter(student=student, original_date=target_date, subject='READING').exists():
                 log = ClassLog.objects.filter(student=student, date=target_date, subject='READING').first()
@@ -121,7 +145,7 @@ def class_management(request):
                 })
                 class_list.append(item)
 
-    # 4. 정렬 (시작 시간 순)
+    # 시작 시간 순 정렬
     class_list.sort(key=lambda x: x['start_time'] if x['start_time'] else time(23, 59))
 
     return render(request, 'academy/class_management.html', {
