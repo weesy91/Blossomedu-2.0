@@ -94,45 +94,18 @@
     <h5 class="fw-bold mb-3 ms-1">📝 수업 일지</h5>
     {% if logs %}
         <table class="table table-custom">
-            <thead>
-                <tr>
-                    <th>날짜</th>
-                    <th>과목</th>
-                    <th>내용</th>
-                    <th>선생님</th>
-                </tr>
-            </thead>
+            <thead>...</thead>
             <tbody>
                 {% for log in logs %}
-                <tr onclick="location.href='{% url 'academy:create_class_log' 0 %}?student_id={{ student.id }}&date={{ log.date|date:'Y-m-d' }}&subject={{ log.subject }}'" style="cursor: pointer;">
-                    <td class="text-secondary">
-                        {{ log.date|date:"n/j (D)" }}
-                        {% if log.subject == 'SYNTAX' %}
-                            <span class="badge bg-success ms-1" style="font-size:0.7em">구문</span>
-                        {% elif log.subject == 'READING' %}
-                            <span class="badge bg-warning text-dark ms-1" style="font-size:0.7em">독해</span>
-                        {% endif %}
-                    </td>
-                    <td></td>
-                    <td>
-                        {% if log.topic %}
-                            <div class="mb-1"><span class="text-primary fw-bold">진도:</span> {{ log.topic }}</div>
-                        {% endif %}
-                        {% if log.hw_range %}
-                            <div class="small text-muted"><span class="fw-bold">숙제:</span> {{ log.hw_range }}</div>
-                        {% endif %}
-                        {% if log.memo %}
-                            <div class="small text-danger mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ log.memo }}</div>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <small>{{ log.teacher.staff_profile.name|default:log.teacher.username }} T</small>
-                    </td>
-                </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <h5 class="fw-bold mb-3 ms-1 mt-5">📖 단어 시험 기록 <span class="small text-muted fw-normal">(최근 20개)</span></h5>
+    {% else %}
+        <div class="text-center py-5 text-muted border rounded bg-light mb-5">
+            <i class="bi bi-journal-x fs-1"></i>
+            <p class="mt-2">작성된 수업 일지가 없습니다.</p>
+        </div>
+    {% endif %} <h5 class="fw-bold mb-3 ms-1 mt-5">📖 단어 시험 기록 <span class="small text-muted fw-normal">(최근 20개)</span></h5>
     
     {% if vocab_results %}
         <div class="accordion mb-5" id="historyVocabAccordion">
@@ -170,12 +143,8 @@
                                     {% for detail in result.details.all %}
                                     <tr>
                                         <td class="fw-bold">{{ detail.word_question }}</td>
-                                        <td class="text-start text-truncate" style="max-width: 100px;">
-                                            {{ detail.correct_answer }}
-                                        </td>
-                                        <td class="{% if detail.is_correct %}text-success{% else %}text-danger fw-bold{% endif %}">
-                                            {{ detail.student_answer }}
-                                        </td>
+                                        <td class="text-start text-truncate" style="max-width: 100px;">{{ detail.correct_answer }}</td>
+                                        <td class="{% if detail.is_correct %}text-success{% else %}text-danger fw-bold{% endif %}">{{ detail.student_answer }}</td>
                                         <td>
                                             {% if detail.is_correct %}
                                                 <i class="bi bi-check-circle-fill text-success"></i>
@@ -200,12 +169,5 @@
         </div>
     {% endif %}
 
-    {% else %}
-        <div class="text-center py-5 text-muted">
-            기록이 없습니다.
-        </div>
-    {% endif %}
-</div>
-
-</body>
+</div> </body>
 </html>
