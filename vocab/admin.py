@@ -87,6 +87,14 @@ class PublisherAdmin(admin.ModelAdmin):
             ''')
         return super().response_add(request, obj, post_url_continue)
 
+
+class TestResultDetailInline(admin.TabularInline):
+    model = TestResultDetail
+    extra = 0
+    # 관리자 페이지에서 수정 가능하도록 설정
+    fields = ('word_question', 'correct_answer', 'student_answer', 'is_correct')
+    readonly_fields = ('word_question', 'correct_answer', 'student_answer') # 답안은 수정 불가, 결과만 수정 가능
+    
 # ==========================================
 # 4. 도전 모드 결과 (TestResult) 관리
 # ==========================================
@@ -95,6 +103,7 @@ class TestResultAdmin(admin.ModelAdmin):
     list_display = ('get_student_name', 'get_book_title', 'score_display', 'created_at')
     list_filter = ('created_at', 'book')
     search_fields = ('student__name', 'book__title') 
+    actions = ['recalculate_scores']
 
     def get_student_name(self, obj): return obj.student.name  
     get_student_name.short_description = "학생 이름"
@@ -116,6 +125,40 @@ class TestResultAdmin(admin.ModelAdmin):
             return render(request, 'vocab/admin_result_detail.html', context)
         except: return super().change_view(request, object_id, form_url, extra_context)
 
+    @admin.action(description='선택한 시험 결과 재채점 하기 (수정된 로직 적용)')
+    def recalculate_scores(self, request, queryset):
+        success_count = 0
+        for result in queryset:
+            # 1. 해당 시험의 상세 답안들 가져오기
+            details = result.details.all()
+            
+            # 2. 서비스 로직에 넣을 형태로 데이터 변환
+            details_data = []
+            for d in details:
+                details_data.append({
+                    'english': d.word_question,
+                    'korean': d.correct_answer,
+                    'user_input': d.student_answer
+                })
+            
+            # 3. 수정된 로직으로 재채점 실행
+            new_score, wrong_count, processed_details = calculate_score(details_data)
+            
+            # 4. 결과 업데이트 (총점)
+            result.score = new_score
+            result.save()
+            
+            # 5. 상세 결과(O/X) 업데이트
+            # processed_details 순서와 details 순서가 같다고 가정 (보통 같음)
+            for db_detail, new_result in zip(details, processed_details):
+                if db_detail.is_correct != new_result['c']:
+                    db_detail.is_correct = new_result['c']
+                    db_detail.save()
+            
+            success_count += 1
+            
+        self.message_user(request, f"{success_count}건의 시험 결과를 재채점했습니다.")
+        
 # ==========================================
 # 5. 월말 평가 결과 (MonthlyTestResult) 관리
 # ==========================================

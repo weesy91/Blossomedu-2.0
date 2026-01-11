@@ -1,5 +1,6 @@
 # vocab/services.py
 from django.utils import timezone
+import unicodedata
 # [수정] StudentProfile import 불필요 (인자로 받을 것이므로)
 
 def calculate_score(details_data):
