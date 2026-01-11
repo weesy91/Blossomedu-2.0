@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 # [필수] 링크 생성 및 유틸 함수 import
 from django.urls import reverse
 from django.utils.http import urlencode
+from .services import calculate_score
 
 from .models import WordBook, Word, TestResult, TestResultDetail, MonthlyTestResult, MonthlyTestResultDetail, Publisher, RankingEvent
 
@@ -158,7 +159,7 @@ class TestResultAdmin(admin.ModelAdmin):
             success_count += 1
             
         self.message_user(request, f"{success_count}건의 시험 결과를 재채점했습니다.")
-        
+
 # ==========================================
 # 5. 월말 평가 결과 (MonthlyTestResult) 관리
 # ==========================================
