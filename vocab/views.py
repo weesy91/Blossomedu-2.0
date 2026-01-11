@@ -36,7 +36,7 @@ def index(request):
     
     profile = request.user.profile
     
-    publishers = Publisher.objects.all().order_by('name')
+    publishers = Publisher.objects.exclude(name='시스템').order_by('name')
     etc_books = WordBook.objects.filter(publisher__isnull=True).order_by('-created_at')
     
     # [수정] user 대신 profile 전달
@@ -266,7 +266,22 @@ def exam(request):
             )
         else:
             current_book = WordBook.objects.first() if not book_id else WordBook.objects.get(id=book_id)
-            if is_wrong_mode: current_book = WordBook.objects.first()
+            
+            # [수정] 오답모드일 경우 '오답 집중 공략' 전용 단어장 연결
+            if is_wrong_mode: 
+                # 1. 시스템 관리자 계정 찾기 (단어장 소유자용)
+                system_user = User.objects.filter(is_superuser=True).first()
+                if not system_user: system_user = request.user
+
+                # 2. '시스템' 출판사 생성 혹은 가져오기
+                sys_pub, _ = Publisher.objects.get_or_create(name="시스템")
+                
+                # 3. '오답 집중 공략' 단어장 생성 혹은 가져오기 (전체 공용)
+                current_book, _ = WordBook.objects.get_or_create(
+                    title="🚨 오답 집중 공략",
+                    publisher=sys_pub,
+                    defaults={'uploaded_by': system_user}
+                )
 
             # [수정] student=profile
             result = TestResult.objects.create(
@@ -303,11 +318,9 @@ def save_result(request):
         try:
             data = json.loads(request.body)
             mode = data.get('mode')
-            # 연습 모드는 저장 안 함
             if mode in ['practice', 'learning']: 
                 return JsonResponse({'status': 'success'})
             
-            # 프로필 체크
             if not hasattr(request.user, 'profile'):
                 return JsonResponse({'status': 'error', 'message': '프로필 없음'})
             profile = request.user.profile
@@ -315,57 +328,80 @@ def save_result(request):
             test_id = data.get('test_id')
             is_monthly = (mode == 'monthly')
             
-            # 채점 로직
-            score, wrong_count, processed_details = services.calculate_score(data.get('details', []))
+            # [핵심 수정 1] 프론트엔드가 보낸 정답을 믿지 않고, DB에서 진짜 정답을 조회하여 덮어씌웁니다.
+            # 이를 통해 "(시간초과)" 버그를 완벽하게 방지합니다.
+            raw_details = data.get('details', [])
+            
+            # 해당 시험지(Result) 객체 가져오기
+            if is_monthly:
+                result_obj = get_object_or_404(MonthlyTestResult, id=test_id, student=profile)
+            else:
+                result_obj = get_object_or_404(TestResult, id=test_id, student=profile)
+            
+            # 책에 있는 단어들의 정답(뜻)을 미리 가져옴 (최적화)
+            # { 'apple': '사과', 'run': '달리다', ... }
+            real_answers = {
+                w.english: w.korean 
+                for w in Word.objects.filter(book=result_obj.book)
+            }
+            
+            # 프론트 데이터에 진짜 정답 주입
+            for item in raw_details:
+                question = item.get('english') # 또는 'q'
+                if not question: question = item.get('q') # 키 이름 방어코드
 
-            detail_ids = [] # 프론트로 돌려줄 ID 리스트
+                if question in real_answers:
+                    # DB에 있는 진짜 뜻으로 강제 교체
+                    item['korean'] = real_answers[question]
+                    # item['a']도 혹시 모르니 교체
+                    item['a'] = real_answers[question]
+
+            # [핵심 수정 2] 교체된 데이터로 채점 실행
+            score, wrong_count, processed_details = services.calculate_score(raw_details)
+
+            detail_ids = []
 
             with transaction.atomic():
                 if is_monthly:
-                    result = get_object_or_404(MonthlyTestResult, id=test_id, student=profile)
-                    # 중복 저장 방지
-                    if MonthlyTestResultDetail.objects.filter(result=result).exists():
-                         saved_objs = MonthlyTestResultDetail.objects.filter(result=result).order_by('id')
+                    # (기존 코드와 동일)
+                    if MonthlyTestResultDetail.objects.filter(result=result_obj).exists():
+                         saved_objs = MonthlyTestResultDetail.objects.filter(result=result_obj).order_by('id')
                          detail_ids = [d.id for d in saved_objs]
                          return JsonResponse({'status': 'success', 'message': 'Duplicate skipped', 'detail_ids': detail_ids})
                     
-                    result.score = score
-                    result.save()
+                    result_obj.score = score
+                    result_obj.save()
                     ModelDetail = MonthlyTestResultDetail
                 else:
-                    result = get_object_or_404(TestResult, id=test_id, student=profile)
-                    if TestResultDetail.objects.filter(result=result).exists():
-                        saved_objs = TestResultDetail.objects.filter(result=result).order_by('id')
+                    # (기존 코드와 동일)
+                    if TestResultDetail.objects.filter(result=result_obj).exists():
+                        saved_objs = TestResultDetail.objects.filter(result=result_obj).order_by('id')
                         detail_ids = [d.id for d in saved_objs]
                         return JsonResponse({'status': 'success', 'message': 'Duplicate skipped', 'detail_ids': detail_ids})
 
-                    result.score = score
-                    result.wrong_count = wrong_count
-                    result.save()
+                    result_obj.score = score
+                    result_obj.wrong_count = wrong_count
+                    result_obj.save()
                     ModelDetail = TestResultDetail
                     
-                    # 쿨타임 업데이트
                     services.update_cooldown(profile, mode, score)
 
-                # 상세 답안 저장 (Bulk Create)
+                # 상세 답안 저장
                 details = [
                     ModelDetail(
-                        result=result, 
+                        result=result_obj, 
                         word_question=item['q'], 
                         student_answer=item['u'], 
-                        correct_answer=item['a'], 
+                        correct_answer=item['a'], # 이제 여기에는 진짜 정답이 들어갑니다.
                         is_correct=item['c']
                     ) 
                     for item in processed_details
                 ]
                 ModelDetail.objects.bulk_create(details)
 
-                # [핵심 수정] 저장된 ID들을 다시 조회해서 리스트로 만듦
-                # (bulk_create는 id를 반환하지 않으므로 다시 조회해야 함)
-                saved_objs = ModelDetail.objects.filter(result=result).order_by('id')
+                saved_objs = ModelDetail.objects.filter(result=result_obj).order_by('id')
                 detail_ids = [d.id for d in saved_objs]
             
-            # detail_ids를 포함해서 응답
             return JsonResponse({'status': 'success', 'detail_ids': detail_ids})
 
         except Exception as e:

@@ -250,7 +250,7 @@ def create_class_log(request, schedule_id):
         wb_condition |= Q(uploaded_by=student.user)
 
     # 필터링 적용
-    vocab_books = WordBook.objects.select_related('publisher').filter(wb_condition)
+    vocab_books = WordBook.objects.select_related('publisher').filter(wb_condition).exclude(publisher__name='시스템')
     # [수정 끝]
 
     vocab_publishers = sorted(set(b.publisher.name for b in vocab_books if b.publisher))
