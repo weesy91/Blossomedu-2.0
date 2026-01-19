@@ -9,7 +9,7 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        print(f"DEBUG: CustomAuthToken Login user={user.username} id={user.id}")
+        print(f"DEBUG: CustomAuthToken Login user={user.username} id={user.id}", flush=True)
 
         # Determine User Type & Profile Info
         user_type = 'STUDENT'
@@ -20,18 +20,18 @@ class CustomAuthToken(ObtainAuthToken):
             user_type = 'TEACHER'
             try:
                 profile = getattr(user, 'staff_profile', None)
-                print(f"DEBUG: Login Staff Profile: {profile}")
+                print(f"DEBUG: Login Staff Profile: {profile}", flush=True)
                 if profile:
                     position = profile.position
-                    print(f"DEBUG: Login Position: {position}")
+                    print(f"DEBUG: Login Position: {position}", flush=True)
                     if profile.branch:
                         branch_id = profile.branch.id
             except Exception as e:
-                print(f"DEBUG: Login Profile Error: {e}")
+                print(f"DEBUG: Login Profile Error: {e}", flush=True)
             
             # [NEW] Default position for Superuser if no profile
             if not position and user.is_superuser:
-               print(f"DEBUG: Login Defaulting Superuser to PRINCIPAL")
+               print(f"DEBUG: Login Defaulting Superuser to PRINCIPAL", flush=True)
                position = 'PRINCIPAL'
         else:
             # Student Profile Name Fetch
@@ -67,7 +67,7 @@ class CheckAuthView(APIView):
 
     def get(self, request):
         user = request.user
-        print(f"DEBUG: CheckAuthView user={user.username}, id={user.id}")
+        print(f"DEBUG: CheckAuthView user={user.username}, id={user.id}", flush=True)
         
         # Determine User Type & Profile Info (Same logic as CustomAuthToken)
         user_type = 'STUDENT'
@@ -76,23 +76,23 @@ class CheckAuthView(APIView):
         
         if user.is_staff or user.is_superuser:
             user_type = 'TEACHER'
-            print(f"DEBUG: User is STAFF/SUPERUSER")
+            print(f"DEBUG: User is STAFF/SUPERUSER", flush=True)
             try:
                 profile = getattr(user, 'staff_profile', None)
-                print(f"DEBUG: Staff Profile found: {profile}")
+                print(f"DEBUG: Staff Profile found: {profile}", flush=True)
                 if profile:
                     position = profile.position
-                    print(f"DEBUG: Position: {position}")
+                    print(f"DEBUG: Position: {position}", flush=True)
                     if profile.branch:
                         branch_id = profile.branch.id
-                        print(f"DEBUG: Branch: {branch_id}")
+                        print(f"DEBUG: Branch: {branch_id}", flush=True)
             except Exception as e:
-                print(f"DEBUG: Profile Fetch Error: {e}")
+                print(f"DEBUG: Profile Fetch Error: {e}", flush=True)
                 pass
             
             # [NEW] Default position for Superuser if no profile
             if not position and user.is_superuser:
-               print(f"DEBUG: Defaulting Superuser to PRINCIPAL")
+               print(f"DEBUG: Defaulting Superuser to PRINCIPAL", flush=True)
                position = 'PRINCIPAL'
         else:
             try:
@@ -111,6 +111,6 @@ class CheckAuthView(APIView):
             'position': position,
             'branch_id': branch_id,
         }
-        print(f"DEBUG: Final User Data: {user_data}")
+        print(f"DEBUG: Final User Data: {user_data}", flush=True)
 
         return Response(user_data)
