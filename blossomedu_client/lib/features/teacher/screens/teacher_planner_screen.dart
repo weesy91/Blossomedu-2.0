@@ -187,7 +187,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           if (ts['new_date'] == dateStr) {
             final startTime = ts['new_start_time']?.toString() ?? '';
             final isExtraClass = ts['is_extra_class'] == true;
-                        final label = isExtraClass ? '보강' : '이동';
+            final label = isExtraClass ? '보강' : '이동';
             items.add({
               'type': 'class',
               'student': student,
@@ -211,11 +211,36 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     if (_filter == 'all' || _filter == 'assignment') {
       for (final assignment in _getAssignmentsForDate(date)) {
         items.add({
-          'type': 'assignment',
           'assignment': assignment,
         });
       }
     }
+
+    // [FIX] Sort by Time
+    items.sort((a, b) {
+      // Helper to get comparable minutes from midnight
+      int getMinutes(Map<String, dynamic> item) {
+        if (item['type'] == 'class') {
+          final timeStr = item['classTime']['start_time'] as String? ?? '00:00';
+          final parts = timeStr.split(':');
+          if (parts.length == 2) {
+            return (int.tryParse(parts[0]) ?? 0) * 60 +
+                (int.tryParse(parts[1]) ?? 0);
+          }
+        } else if (item['type'] == 'assignment') {
+          final dueStr = item['assignment']['due_date']?.toString();
+          if (dueStr != null) {
+            final dt = DateTime.tryParse(dueStr);
+            if (dt != null) {
+              return dt.hour * 60 + dt.minute;
+            }
+          }
+        }
+        return 24 * 60; // Put at end if unknown
+      }
+
+      return getMinutes(a).compareTo(getMinutes(b));
+    });
 
     return items;
   }
@@ -581,10 +606,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 }),
                 const SizedBox(width: 8),
                 // [NEW] Make-up Class Button
-                _buildActionButton(
-                    Icons.access_time_filled,
-                    canEditSchedule ? '이동' : '보강',
-                    Colors.orange, () {
+                _buildActionButton(Icons.access_time_filled,
+                    canEditSchedule ? '이동' : '보강', Colors.orange, () {
                   if (canEditSchedule) {
                     _showMakeUpEditDialog(student, tempSchedule!);
                   } else {
@@ -811,7 +834,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
 
                   ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('날짜: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                      title: Text(
+                          '날짜: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final d = await showDatePicker(
@@ -902,8 +926,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       Map<String, dynamic> student, Map<String, dynamic> schedule) {
     final scheduleId = int.tryParse(schedule['id']?.toString() ?? '');
     if (scheduleId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('수정할 보강 일정이 없습니다.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('수정할 보강 일정이 없습니다.')));
       return;
     }
 
@@ -1030,8 +1054,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('보강 시간이 수정되었습니다.')));
+                            const SnackBar(content: Text('보강 시간이 수정되었습니다.')));
                         _fetchData(); // Refresh UI
                       }
                     } catch (e) {
@@ -1118,10 +1141,3 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     );
   }
 }
-
-
-
-
-
-
-
