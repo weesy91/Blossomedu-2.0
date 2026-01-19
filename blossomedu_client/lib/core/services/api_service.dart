@@ -10,7 +10,7 @@ class ApiService {
   // final FlutterSecureStorage _storage = const FlutterSecureStorage(); // Removed
 
   // Production Server IP
-  static const String baseUrl = 'http://3.38.153.166';
+  static const String baseUrl = 'https://b-edu.site';
 
   ApiService._internal() {
     _dio = Dio(

@@ -13,6 +13,6 @@ class AppConfig {
   // 개발용 로컬 주소 (Web에서는 localhost가 브라우저 자신을 가리키므로 주의 필요하지만,
   // Flutter Web debug에서는 localhost:8000 접근 가능. 단 CORS 설정 필수)
   // 실제 배포 시에는 blossomedu.com 등으로 변경
-  static const String baseUrl = 'http://3.38.153.166';
+  static const String baseUrl = 'https://b-edu.site';
   static const String apiVersion = '/api/v1';
 }
