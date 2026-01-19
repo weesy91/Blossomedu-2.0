@@ -59062,8 +59062,7 @@ case 7:k=b1
 a8.b=0
 for(a0=J.at(k),a1=t.f;a0.u();){j=a0.gM(a0)
 i=J.m(j,"submission")
-if(a1.b(i)&&J.c(J.m(i,"status"),"PENDING")){++a8.b
-continue}if(i==null&&J.c(J.m(j,"is_completed"),!1))++a8.b}h=new A.bc(Date.now(),0,!1)
+if(a1.b(i)&&J.c(J.m(i,"status"),"PENDING"))++a8.b}h=new A.bc(Date.now(),0,!1)
 g=A.cP("E",null).cG(h)
 s=8
 return A.k(a.qJ(g,"my"),$async$nU)

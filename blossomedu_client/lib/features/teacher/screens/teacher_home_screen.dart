@@ -51,12 +51,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       // Based on typical Serializer, let's look for 'submission' object.
       int assignmentCount = 0;
       for (var task in assignments) {
+        // [FIX] Only count submitted but pending review
         final submission = task['submission'];
         if (submission is Map && submission['status'] == 'PENDING') {
-          assignmentCount++;
-          continue;
-        }
-        if (submission == null && task['is_completed'] == false) {
           assignmentCount++;
         }
       }
