@@ -19,7 +19,13 @@ class AuthService {
         print('DEBUG: Token: $token'); // [DEBUG]
 
         if (token != null) {
-          await _api.setToken(token);
+          try {
+            await _api.setToken(token);
+            print('DEBUG: Token saved successfully');
+          } catch (e) {
+            print('ERROR: Failed to save token: $e');
+            // Continue login even if token save fails
+          }
         }
 
         final userMap = data['user'];
