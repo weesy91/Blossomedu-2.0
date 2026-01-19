@@ -8,9 +8,8 @@ class ApiService {
   late Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  // Django Localhost (10.0.2.2 for Android Emulator, 127.0.0.1 for Web/iOS)
-  // For Web, localhost is localhost.
-  static const String baseUrl = 'http://127.0.0.1:8000'; 
+  // Production Server IP
+  static const String baseUrl = 'http://3.38.153.166';
 
   ApiService._internal() {
     _dio = Dio(
@@ -45,7 +44,7 @@ class ApiService {
   }
 
   Dio get client => _dio;
-  
+
   Future<void> setToken(String token) async {
     await _storage.write(key: 'auth_token', value: token);
   }
