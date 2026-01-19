@@ -9,7 +9,8 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        
+        print(f"DEBUG: CustomAuthToken Login user={user.username} id={user.id}")
+
         # Determine User Type & Profile Info
         user_type = 'STUDENT'
         position = None
@@ -17,16 +18,21 @@ class CustomAuthToken(ObtainAuthToken):
         
         if user.is_staff or user.is_superuser:
             user_type = 'TEACHER'
-            # Fetch Staff Profile
             try:
-                # Assuming related_name='staff_profile' from OneToOneField
                 profile = getattr(user, 'staff_profile', None)
+                print(f"DEBUG: Login Staff Profile: {profile}")
                 if profile:
                     position = profile.position
+                    print(f"DEBUG: Login Position: {position}")
                     if profile.branch:
                         branch_id = profile.branch.id
             except Exception as e:
-                print(f"Profile Fetch Error: {e}")
+                print(f"DEBUG: Login Profile Error: {e}")
+            
+            # [NEW] Default position for Superuser if no profile
+            if not position and user.is_superuser:
+               print(f"DEBUG: Login Defaulting Superuser to PRINCIPAL")
+               position = 'PRINCIPAL'
         else:
             # Student Profile Name Fetch
             try:
@@ -83,6 +89,11 @@ class CheckAuthView(APIView):
             except Exception as e:
                 print(f"DEBUG: Profile Fetch Error: {e}")
                 pass
+            
+            # [NEW] Default position for Superuser if no profile
+            if not position and user.is_superuser:
+               print(f"DEBUG: Defaulting Superuser to PRINCIPAL")
+               position = 'PRINCIPAL'
         else:
             try:
                 profile = getattr(user, 'profile', None)
