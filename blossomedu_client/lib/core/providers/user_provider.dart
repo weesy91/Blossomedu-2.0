@@ -11,8 +11,26 @@ class UserProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
   bool get isLoading => _isLoading;
 
-  // 생성자에서 자동 로그인을 하지 않도록 주의
-  // UserProvider() { ... } code removed if existed
+  // 생성자에서 로그인 상태 확인
+  UserProvider() {
+    checkLoginStatus();
+  }
+
+  Future<void> checkLoginStatus() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final user = await _authService.checkAuth();
+      if (user != null) {
+        _user = user;
+      }
+    } catch (e) {
+      print("Auto-login failed: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<bool> login(String username, String password) async {
     _isLoading = true;

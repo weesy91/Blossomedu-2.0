@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings  
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views 
-from core.api_auth_views import CustomAuthToken # [NEW]
+from core.api_auth_views import CustomAuthToken, CheckAuthView # [Changed]
 
 # ... existing code ...
 
@@ -15,6 +15,7 @@ urlpatterns = [
 
     # [NEW] API Login Endpoint (matches AuthService)
     path('auth/login/', CustomAuthToken.as_view(), name='api_login'),
+    path('auth/me/', CheckAuthView.as_view(), name='api_me'), # [NEW]
 
     # 2. 나머지 앱들 연결
     path('core/', include(('core.urls', 'core'), namespace='core')),

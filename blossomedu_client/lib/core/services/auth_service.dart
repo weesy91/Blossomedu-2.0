@@ -1,5 +1,6 @@
 import '../models/user_model.dart';
 import 'api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   final ApiService _api = ApiService();
@@ -40,6 +41,25 @@ class AuthService {
       }
     } catch (e) {
       print('Login Failed: $e');
+    }
+    return null;
+  }
+
+  Future<User?> checkAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
+    if (token == null) return null;
+
+    try {
+      final response = await _api.client.get('/auth/me/');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        print('DEBUG: CheckAuth Response: $data');
+        return User.fromJson(data);
+      }
+    } catch (e) {
+      print('Check Auth Failed: $e');
     }
     return null;
   }

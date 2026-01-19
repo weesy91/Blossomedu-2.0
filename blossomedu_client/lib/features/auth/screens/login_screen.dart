@@ -49,7 +49,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<UserProvider>().isLoading;
+    final userProvider = context.watch<UserProvider>();
+    final isLoading = userProvider.isLoading;
+    final user = userProvider.user;
+
+    // Auto-redirect if user is already logged in (session restored)
+    if (user != null && !isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (user.userType == 'T' ||
+            user.userType == 'AM' ||
+            user.userType == 'TEACHER') {
+          context.go('/teacher/home');
+        } else {
+          context.go('/home');
+        }
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -82,49 +97,47 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 48),
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: '아이디',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                enabled: !isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: '비밀번호',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                enabled: !isLoading,
-                onSubmitted: (_) => _handleLogin(),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+              if (isLoading) // Show only loader if initializing
+                const CircularProgressIndicator()
+              else ...[
+                TextField(
+                  controller: _usernameController,
+                  decoration: const InputDecoration(
+                    labelText: '아이디',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
                   ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Text('로그인', style: TextStyle(fontSize: 16)),
+                  enabled: !isLoading,
                 ),
-              ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: '비밀번호',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  enabled: !isLoading,
+                  onSubmitted: (_) => _handleLogin(),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('로그인', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
