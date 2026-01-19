@@ -35,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final assignData = await _academyService.getAssignments();
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
+      final todayStr =
+          '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
       final todayTasks = assignData.where((a) {
         final dueStr = a['due_date']?.toString();
@@ -43,18 +45,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(dueStr);
         if (match == null) return false;
         final datePart = match.group(0)!;
-        final dueDay = DateTime.tryParse(datePart);
-        if (dueDay == null) return false;
-
         // 1. Due Today
-        if (dueDay.isAtSameMomentAs(today)) return true;
+        if (datePart == todayStr) return true;
 
         // 2. Overdue AND Incomplete
         // (If submitted, it's not "To-Do" anymore usually, unless rejected?
         // User asked for "Past submission deadline assignments" to be shown in 'Today's Task' section.
         // Assuming incomplete ones.)
         final isCompleted = a['is_completed'] == true;
-        if (dueDay.isBefore(today) && !isCompleted) return true;
+        if (datePart.compareTo(todayStr) < 0 && !isCompleted) return true;
 
         return false;
       }).toList();
