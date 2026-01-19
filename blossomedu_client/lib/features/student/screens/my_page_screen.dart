@@ -10,6 +10,10 @@ class MyPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>().user;
+    final rawName = user?.name ?? '';
+    final displayName =
+        rawName.trim().isNotEmpty ? rawName : (user?.username ?? '학생');
+    final displayInitial = displayName.isNotEmpty ? displayName[0] : 'S';
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -38,7 +42,7 @@ class MyPageScreen extends StatelessWidget {
                       radius: 30,
                       backgroundColor: AppColors.primary.withOpacity(0.1),
                       child: Text(
-                        user?.name[0] ?? 'S',
+                        displayInitial,
                         style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -50,7 +54,7 @@ class MyPageScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.name ?? '학생',
+                          displayName,
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.bold),
                         ),

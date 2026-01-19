@@ -103,6 +103,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>().user;
+    final rawName = user?.name ?? '';
+    final displayName =
+        rawName.trim().isNotEmpty ? rawName : (user?.username ?? '선생님');
 
     return Scaffold(
       appBar: AppBar(
@@ -132,7 +135,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           children: [
             // Teacher Welcome
             Text(
-              '${user?.name ?? '선생님'}님, 안녕하세요! 👨‍🏫',
+              '$displayName님, 안녕하세요! 👨‍🏫',
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),

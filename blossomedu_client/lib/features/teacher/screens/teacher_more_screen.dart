@@ -137,6 +137,10 @@ class TeacherMoreScreen extends StatelessWidget {
   }
 
   Widget _buildProfileHeader(dynamic user, String? pos, bool isSuper) {
+    final rawName = user?.name ?? '';
+    final displayName =
+        rawName.trim().isNotEmpty ? rawName : (user?.username ?? '선생님');
+    final displayInitial = displayName.isNotEmpty ? displayName[0] : 'T';
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
@@ -156,7 +160,7 @@ class TeacherMoreScreen extends StatelessWidget {
             radius: 30,
             backgroundColor: Colors.indigo.withOpacity(0.1),
             child: Text(
-              (user?.name ?? 'T').length > 0 ? (user?.name ?? 'T')[0] : 'T',
+              displayInitial,
               style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -170,7 +174,7 @@ class TeacherMoreScreen extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    user?.name ?? '선생님',
+                    displayName,
                     style: const TextStyle(
                         fontSize: 20, fontWeight: FontWeight.bold),
                   ),

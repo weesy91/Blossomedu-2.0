@@ -10,7 +10,14 @@ def _build_user_data(user):
     user_type = 'STUDENT'
     position = None
     branch_id = None
-    name = user.first_name if user.first_name else user.username
+    name = user.username
+
+    try:
+        staff_profile = getattr(user, 'staff_profile', None)
+        if staff_profile and staff_profile.name:
+            name = staff_profile.name
+    except Exception:
+        pass
 
     if user.is_staff or user.is_superuser:
         user_type = 'TEACHER'
@@ -29,6 +36,9 @@ def _build_user_data(user):
                 name = profile.name
         except Exception:
             pass
+
+    if name == user.username and user.first_name:
+        name = user.first_name
 
     return {
         'id': user.id,
