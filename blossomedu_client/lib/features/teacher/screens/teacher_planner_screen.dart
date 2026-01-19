@@ -986,8 +986,6 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           value: 'SYNTAX', child: Text('구문 (SYNTAX)')),
                       DropdownMenuItem(
                           value: 'READING', child: Text('독해 (READING)')),
-                      DropdownMenuItem(
-                          value: 'GRAMMAR', child: Text('문법 (GRAMMAR)')),
                     ],
                     onChanged: (v) => setState(() {
                       selectedSubject = v!;
@@ -1157,8 +1155,6 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           value: 'SYNTAX', child: Text('구문 (SYNTAX)')),
                       DropdownMenuItem(
                           value: 'READING', child: Text('독해 (READING)')),
-                      DropdownMenuItem(
-                          value: 'GRAMMAR', child: Text('문법 (GRAMMAR)')),
                     ],
                     onChanged: (v) => setState(() {
                       selectedSubject = v ?? selectedSubject;
