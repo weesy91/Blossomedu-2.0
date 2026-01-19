@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import WordBook, Word, TestResult, TestResultDetail, PersonalWrongWord, WordMeaning, Publisher, RankingEvent
+from core.models import Branch, School
 from . import services
 
 from django.db.models import Max
@@ -10,6 +11,20 @@ class WordBookSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    
+    # [NEW] Explicitly allow null for target fields
+    target_branch = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    target_school = serializers.PrimaryKeyRelatedField(
+        queryset=School.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    target_grade = serializers.IntegerField(required=False, allow_null=True)
+
     publisher_name = serializers.CharField(source='publisher.name', read_only=True, default=None)
     total_words = serializers.IntegerField(source='words.count', read_only=True)
     total_days = serializers.SerializerMethodField()

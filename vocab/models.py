@@ -92,7 +92,7 @@ class WordBook(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         # [NEW] Auto-set Branch
-        if not self.target_branch and hasattr(self, 'uploaded_by'):
+        if not self.pk and not self.target_branch and hasattr(self, 'uploaded_by'):
              try:
                  # Check if uploader is staff and has branch
                  if hasattr(self.uploaded_by, 'staff_profile') and self.uploaded_by.staff_profile.branch:

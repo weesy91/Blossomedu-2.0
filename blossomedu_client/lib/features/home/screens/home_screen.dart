@@ -78,11 +78,23 @@ class _HomeScreenState extends State<HomeScreen> {
       // So we want: (is_completed == true) OR (status == 'SUBMITTED' || status == 'REJECTED')
 
       // [NEW] Filter Recent History (Assignments)
+      // [NEW] Filter Recent History (Assignments)
+      // We want to show:
+      // 1. Completed (Approved)
+      // 2. Rejected (Has submission, status=REJECTED)
+      // 3. Pending (Has submission, status=PENDING)
       final recentAssignments = assignData.where((a) {
         final isCompleted = a['is_completed'] == true;
-        final status = a['status'] ?? 'PENDING';
-        if (status == 'PENDING' && !isCompleted) return false;
-        return true;
+        final submission = a['submission'];
+
+        // If completed, definitely show
+        if (isCompleted) return true;
+
+        // If not completed, show ONLY if submitted (Pending or Rejected)
+        if (submission != null) return true;
+
+        // Otherwise (No submission, not completed) -> To-Do, not history
+        return false;
       }).map((a) {
         final submission = a['submission'];
         String sortDate = a['due_date'] ?? '';
@@ -93,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ...a,
           'sort_date': sortDate,
           'is_self_study': false,
+          'submission_status': submission != null ? submission['status'] : null,
         };
       }).toList();
 
@@ -109,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'score': r['score'],
           'is_self_study': true,
           'sort_date': r['created_at'] ?? '',
+          'submission_status': 'ACCEPTED', // Self-study is always done
         };
       }).toList();
 
@@ -340,23 +354,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final title = item['title'] ?? '과제';
     final type = item['assignment_type'] ?? 'MANUAL';
     final isCompleted = item['is_completed'] == true;
-    final status = item['status'] ?? 'PENDING';
+    final submissionStatus = item['submission_status'];
 
     Color cardColor = Colors.white;
     Color iconColor = Colors.grey;
     String statusText = '';
 
-    if (isCompleted) {
-      statusText = '완료됨';
+    if (isCompleted || submissionStatus == 'ACCEPTED') {
+      statusText = '인증 완료';
       iconColor = Colors.green;
-    } else {
-      if (status == 'REJECTED') {
-        statusText = '반려됨';
-        iconColor = Colors.red;
-      } else if (status == 'SUBMITTED') {
-        statusText = '검사 대기';
-        iconColor = Colors.blue;
-      }
+    } else if (submissionStatus == 'REJECTED') {
+      statusText = '반려';
+      iconColor = Colors.red;
+    } else if (submissionStatus == 'PENDING') {
+      statusText = '검사 대기';
+      iconColor = Colors.blue;
+    } else if (item['status'] == 'SELF_STUDY') {
+      statusText = '자율 학습';
+      iconColor = Colors.orange;
     }
 
     return Container(
