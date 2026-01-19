@@ -724,6 +724,9 @@ class _TeacherClassLogCreateScreenState
 
                   TextField(
                     controller: _commentController,
+                    maxLines: null, // [FIX] Allow multiline
+                    keyboardType:
+                        TextInputType.multiline, // [FIX] Show Enter key
                     decoration: const InputDecoration(
                         labelText: '선생님 코멘트',
                         hintText: '수업 태도 및 특이사항',
@@ -1569,10 +1572,23 @@ class _TeacherClassLogCreateScreenState
                                 DateTime.now().add(const Duration(days: 60)),
                           );
                           if (date != null) {
-                            setState(() {
-                              item['dueDate'] = DateTime(
-                                  date.year, date.month, date.day, 22, 0);
-                            });
+                            if (context.mounted) {
+                              // [FIX] Add Time Picker for Word Assignments too
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(dueDate),
+                              );
+                              if (time != null) {
+                                setState(() {
+                                  item['dueDate'] = DateTime(
+                                      date.year,
+                                      date.month,
+                                      date.day,
+                                      time.hour,
+                                      time.minute);
+                                });
+                              }
+                            }
                           }
                         },
                         child: Container(
@@ -1589,7 +1605,9 @@ class _TeacherClassLogCreateScreenState
                                   size: 12, color: Colors.blue),
                               const SizedBox(width: 4),
                               Text(
-                                DateFormat('M/d(E)', 'ko_KR').format(dueDate),
+                                // [FIX] Show Time in format
+                                DateFormat('M/d(E) HH:mm', 'ko_KR')
+                                    .format(dueDate),
                                 style: const TextStyle(
                                     fontSize: 12, color: Colors.blue),
                               ),

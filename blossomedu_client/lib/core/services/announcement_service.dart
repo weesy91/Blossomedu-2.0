@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
 import '../models/announcement.dart';
 
 class AnnouncementService {
-  final _storage = const FlutterSecureStorage();
-
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storage.read(key: 'auth_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
     return {
       'Authorization': 'Token $token',
     };
@@ -38,7 +37,8 @@ class AnnouncementService {
     String? imageName,
   }) async {
     final url = Uri.parse('${AppConfig.baseUrl}/core/api/v1/announcements/');
-    final token = await _storage.read(key: 'auth_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
 
     final request = http.MultipartRequest('POST', url);
     request.headers['Authorization'] = 'Token $token';
