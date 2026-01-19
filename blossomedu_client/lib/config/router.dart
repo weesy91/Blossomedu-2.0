@@ -24,6 +24,7 @@ import '../features/teacher/screens/system_management_screen.dart';
 import '../features/teacher/screens/teacher_main_scaffold.dart'; // [NEW] Teacher Shell
 import '../features/teacher/screens/teacher_planner_screen.dart'; // [NEW] Teacher Planner
 import '../features/teacher/screens/announcement_manage_screen.dart'; // [NEW]
+import '../features/teacher/screens/teacher_pending_assignments_screen.dart'; // [NEW]
 import '../features/student/screens/word_test_screen.dart';
 import '../features/student/screens/word_test_result_screen.dart';
 import '../features/student/screens/study_screen.dart';
@@ -234,6 +235,10 @@ final router = GoRouter(
     GoRoute(
       path: '/teacher/announcements',
       builder: (context, state) => const AnnouncementManageScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/assignments/pending',
+      builder: (context, state) => const TeacherPendingAssignmentsScreen(),
     ),
     GoRoute(
       path: '/teacher/word/review/:resultId',

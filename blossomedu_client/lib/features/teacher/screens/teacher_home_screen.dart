@@ -147,11 +147,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   child: _buildStatCard(
                     context,
                     title: '미승인 과제',
-                    count: '$_pendingAssignmentCount', // Real Data
+                    count: '$_pendingAssignmentCount',
                     color: Colors.redAccent,
                     icon: Icons.assignment_late_outlined,
                     onTap: () {
-                      context.go('/teacher/planner');
+                      context.push('/teacher/assignments/pending').then((_) {
+                        _fetchStats();
+                      });
                     },
                   ),
                 ),
