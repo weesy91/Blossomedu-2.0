@@ -724,9 +724,11 @@ class _TeacherClassLogCreateScreenState
 
                   TextField(
                     controller: _commentController,
-                    maxLines: null, // [FIX] Allow multiline
-                    keyboardType:
-                        TextInputType.multiline, // [FIX] Show Enter key
+                    maxLines: null,
+                    minLines: 3, // [FIX] Start with 3 lines
+                    textInputAction: TextInputAction
+                        .newline, // [FIX] Force Enter key behavior
+                    keyboardType: TextInputType.multiline,
                     decoration: const InputDecoration(
                         labelText: '선생님 코멘트',
                         hintText: '수업 태도 및 특이사항',
@@ -1145,6 +1147,56 @@ class _TeacherClassLogCreateScreenState
                 ),
               ),
             const Spacer(),
+            // [MOVED] Date Picker in Header Row
+            if (allowedTypes != null) ...[
+              InkWell(
+                onTap: () async {
+                  final current = row['dueDate'] as DateTime? ?? DateTime.now();
+                  final date = await showDatePicker(
+                      context: context,
+                      initialDate: current,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 60)));
+                  if (date != null) {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(current),
+                    );
+                    if (time != null) {
+                      setState(() {
+                        row['dueDate'] = DateTime(date.year, date.month,
+                            date.day, time.hour, time.minute);
+                      });
+                    }
+                  }
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.access_time,
+                          size: 12, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('MM/dd(E) HH:mm', 'ko_KR')
+                            .format(row['dueDate'] ?? _defaultDueDate),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             IconButton(
                 icon: const Icon(Icons.remove_circle_outline,
                     color: Colors.grey, size: 20),
@@ -1322,78 +1374,6 @@ class _TeacherClassLogCreateScreenState
           ],
         ),
         const SizedBox(height: 6),
-        // [NEW] Due Date Picker Row
-        if (allowedTypes != null) // Only for Homework sections
-          Row(
-            children: [
-              const Icon(Icons.access_time, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              InkWell(
-                onTap: () async {
-                  final current = row['dueDate'] as DateTime? ?? DateTime.now();
-                  final date = await showDatePicker(
-                      context: context,
-                      initialDate: current,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 60)));
-                  if (date != null) {
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.fromDateTime(current),
-                    );
-                    if (time != null) {
-                      setState(() {
-                        row['dueDate'] = DateTime(date.year, date.month,
-                            date.day, time.hour, time.minute);
-                      });
-                    }
-                  }
-                },
-                child: Text(
-                  DateFormat('MM/dd(E) HH:mm', 'ko_KR')
-                      .format(row['dueDate'] ?? _defaultDueDate),
-                  style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-              // [NEW] 누적 학습 체크박스 (VOCAB 과제에만)
-              if (row['type'] == 'VOCAB') ...[
-                const SizedBox(width: 16),
-                InkWell(
-                  onTap: () => setState(() {
-                    row['isCumulative'] = !(row['isCumulative'] ?? true);
-                  }),
-                  child: Row(
-                    children: [
-                      Icon(
-                        row['isCumulative'] == true
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        size: 18,
-                        color: row['isCumulative'] == true
-                            ? Colors.green
-                            : Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '누적',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: row['isCumulative'] == true
-                              ? Colors.green
-                              : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        // [NEW] Description (Instructions) Field for Homework
         if (allowedTypes != null) ...[
           const SizedBox(height: 8),
           TextField(
