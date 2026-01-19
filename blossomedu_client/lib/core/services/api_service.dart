@@ -32,8 +32,14 @@ class ApiService {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('auth_token');
 
+        print('DEBUG Interceptor: Token from prefs = $token');
+        print('DEBUG Interceptor: Request URL = ${options.uri}');
+
         if (token != null) {
           options.headers['Authorization'] = 'Token $token';
+          print('DEBUG Interceptor: Authorization header added');
+        } else {
+          print('DEBUG Interceptor: No token found!');
         }
         return handler.next(options);
       },
