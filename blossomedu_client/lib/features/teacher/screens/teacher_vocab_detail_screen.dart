@@ -116,30 +116,26 @@ class _TeacherVocabDetailScreenState extends State<TeacherVocabDetailScreen> {
                                         ],
                                       ),
                                     ))
-                                .toList()
                           else
                             // Fallback Legacy Display
                             Row(
                               children: [
                                 if (word['pos'] is List)
-                                  ...(word['pos'] as List)
-                                      .map<Widget>((p) => Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            margin:
-                                                const EdgeInsets.only(right: 4),
-                                            decoration: BoxDecoration(
-                                                color: Colors.grey[200],
-                                                borderRadius:
-                                                    BorderRadius.circular(4)),
-                                            child: Text(p.toString(),
-                                                style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Colors.grey,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                          ))
-                                      .toList(),
+                                  ...(word['pos'] as List).map<Widget>((p) =>
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        margin: const EdgeInsets.only(right: 4),
+                                        decoration: BoxDecoration(
+                                            color: Colors.grey[200],
+                                            borderRadius:
+                                                BorderRadius.circular(4)),
+                                        child: Text(p.toString(),
+                                            style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.bold)),
+                                      )),
                                 Expanded(
                                     child: Text(word['korean'] ?? '',
                                         style: const TextStyle(fontSize: 14))),

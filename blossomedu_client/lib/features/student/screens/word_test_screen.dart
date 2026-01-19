@@ -36,7 +36,7 @@ class _WordTestScreenState extends State<WordTestScreen>
   List<Map<String, dynamic>> _words = [];
   String? _errorMessage;
   final TtsService _ttsService = TtsService();
-  bool _autoPlay = true; // [TTS] Auto Play Default
+  final bool _autoPlay = true; // [TTS] Auto Play Default
   bool _hasFinishedTest = false;
   bool _canPop = false;
 
@@ -628,10 +628,14 @@ class _WordTestScreenState extends State<WordTestScreen>
         meaning.endsWith('는') ||
         meaning.endsWith('한') ||
         meaning.endsWith('적인') ||
-        meaning.endsWith('의')) return 'adj';
+        meaning.endsWith('의')) {
+      return 'adj';
+    }
     if (meaning.endsWith('게') ||
         meaning.endsWith('히') ||
-        meaning.endsWith('으로')) return 'adv';
+        meaning.endsWith('으로')) {
+      return 'adv';
+    }
     return 'n';
   }
 

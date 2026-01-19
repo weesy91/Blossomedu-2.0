@@ -234,7 +234,7 @@ class _TeacherStudentPlannerScreenState
 
     return InkWell(
       onTap: () => setState(() => _selectedDate = date),
-      child: Container(
+      child: SizedBox(
         height: 100, // Fixed height for timeline spacing
         child: Stack(
           alignment: Alignment.center,
@@ -764,7 +764,7 @@ class _TeacherStudentPlannerScreenState
 
                       if (isWrongAnswers) {
                         final count = wrongCountController.text;
-                        title = '🔥 오답 단어 복습 (${count}개)';
+                        title = '🔥 오답 단어 복습 ($count개)';
                         start = 0;
                         end = int.tryParse(count) ?? 30; // Store count in end
                       } else {

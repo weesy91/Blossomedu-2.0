@@ -68,11 +68,12 @@ class _BranchListState extends State<_BranchList> {
   Future<void> _fetch() async {
     try {
       final data = await widget.service.getBranches();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _branches = data;
           _isLoading = false;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -133,9 +134,10 @@ class _BranchListState extends State<_BranchList> {
         await widget.service.deleteBranch(id);
         _fetch();
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
       }
     }
   }
@@ -209,12 +211,13 @@ class _SchoolListState extends State<_SchoolList> {
     try {
       final schoolsData = await widget.service.getSchools();
       final branchesData = await widget.service.getBranches();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _schools = schoolsData;
           _branches = branchesData;
           _isLoading = false;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -284,9 +287,10 @@ class _SchoolListState extends State<_SchoolList> {
         await widget.service.deleteSchool(id);
         _fetch();
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
       }
     }
   }
@@ -502,8 +506,7 @@ class _PublisherListState extends State<_PublisherList> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소')),
+              onPressed: () => Navigator.pop(context), child: const Text('취소')),
           TextButton(
             onPressed: () async {
               if (name.isEmpty) return;

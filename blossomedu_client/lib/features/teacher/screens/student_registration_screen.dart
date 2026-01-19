@@ -569,22 +569,30 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
                     if (sectionType == 'EXTRA') {
                       if (syntaxTime.isNotEmpty &&
                           myTime == syntaxTime &&
-                          myDay == syntaxDay) isBooked = true;
+                          myDay == syntaxDay) {
+                        isBooked = true;
+                      }
                       if (readingTime.isNotEmpty &&
                           myTime == readingTime &&
-                          myDay == readingDay) isBooked = true;
+                          myDay == readingDay) {
+                        isBooked = true;
+                      }
                     }
                     // If I am Syntax (sectionType == SYNTAX), I must not clash with Extra
                     else if (sectionType == 'SYNTAX') {
                       if (extraTime.isNotEmpty &&
                           myTime == extraTime &&
-                          myDay == extraDay) isBooked = true;
+                          myDay == extraDay) {
+                        isBooked = true;
+                      }
                     }
                     // If I am Reading (sectionType == READING), I must not clash with Extra
                     else if (sectionType == 'READING') {
                       if (extraTime.isNotEmpty &&
                           myTime == extraTime &&
-                          myDay == extraDay) isBooked = true;
+                          myDay == extraDay) {
+                        isBooked = true;
+                      }
                     }
                   }
 

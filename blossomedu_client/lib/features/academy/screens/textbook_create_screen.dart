@@ -98,27 +98,31 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
         // Update
         await _academyService.updateTextbook(
             widget.initialData!['id'], payload);
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(const SnackBar(content: Text('수정되었습니다.')));
+        }
       } else {
         // Create
         await _academyService.createTextbook(payload);
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(const SnackBar(content: Text('등록되었습니다.')));
+        }
       }
 
       if (mounted) context.pop();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -152,9 +156,10 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
         context.pop();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Delete Error: $e')));
+      }
       setState(() {
         _isLoading = false;
       });

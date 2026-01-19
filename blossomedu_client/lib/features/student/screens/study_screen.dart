@@ -640,11 +640,11 @@ class _StudyScreenState extends State<StudyScreen>
                 }
 
                 if (snapshot.hasError) {
-                  return SizedBox(
+                  return const SizedBox(
                     height: 300,
                     child: Center(
                       child: Text('데이터를 불러오지 못했습니다.',
-                          style: const TextStyle(color: Colors.grey)),
+                          style: TextStyle(color: Colors.grey)),
                     ),
                   );
                 }

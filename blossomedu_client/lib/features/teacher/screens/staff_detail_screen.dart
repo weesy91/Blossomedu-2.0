@@ -210,7 +210,7 @@ class _StaffDetailScreenState extends State<StaffDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_name} 정보 수정'),
+        title: Text('$_name 정보 수정'),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red), // [NEW]

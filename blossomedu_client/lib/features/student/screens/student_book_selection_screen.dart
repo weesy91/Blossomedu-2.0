@@ -86,17 +86,16 @@ class _StudentBookSelectionScreenState
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.library_books_outlined,
-              size: 60, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text('추가할 수 있는 교재가 없습니다.',
+          Icon(Icons.library_books_outlined, size: 60, color: Colors.grey),
+          SizedBox(height: 16),
+          Text('추가할 수 있는 교재가 없습니다.',
               style: TextStyle(fontSize: 16, color: Colors.grey)),
-          const SizedBox(height: 8),
-          const Text('모든 교재를 이미 추가했거나 등록된 교재가 없습니다.',
+          SizedBox(height: 8),
+          Text('모든 교재를 이미 추가했거나 등록된 교재가 없습니다.',
               style: TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),

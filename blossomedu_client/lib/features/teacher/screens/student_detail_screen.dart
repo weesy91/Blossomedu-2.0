@@ -113,12 +113,15 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
           _extraClassCategory = studentData['extra_class_category'];
 
           // Init Days from Classes
-          if (_syntaxClassId != null)
+          if (_syntaxClassId != null) {
             _selectedSyntaxDay = _findDayForClass(_syntaxClassId!);
-          if (_readingClassId != null)
+          }
+          if (_readingClassId != null) {
             _selectedReadingDay = _findDayForClass(_readingClassId!);
-          if (_extraClassId != null)
+          }
+          if (_extraClassId != null) {
             _selectedExtraDay = _findDayForClass(_extraClassId!);
+          }
 
           _isLoading = false;
         });
@@ -331,8 +334,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               items: _schools.where((s) {
                 if (_selectedBranchId == null) return true;
                 final branches = s['branches'];
-                if (branches is List)
+                if (branches is List) {
                   return branches.contains(_selectedBranchId);
+                }
                 return true;
               }).map<DropdownMenuItem<int>>((s) {
                 return DropdownMenuItem(value: s['id'], child: Text(s['name']));
@@ -497,13 +501,13 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('수업 내용',
+                    const Text('수업 내용',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text(note.isEmpty ? '내용 없음' : note),
                     const SizedBox(height: 12),
                     if (log['assignment_title'] != null) ...[
-                      Text('배정된 과제',
+                      const Text('배정된 과제',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       Text(
                           '${log['assignment_title']} (~${log['hw_due_date'] ?? ''})'),
@@ -547,7 +551,8 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     decoration:
                         isCompleted ? TextDecoration.lineThrough : null)),
             subtitle: Text('마감일: $dueDate'),
-            trailing: Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+            trailing:
+                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
           ),
         );
       },
@@ -795,18 +800,26 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     if (sectionType == 'EXTRA') {
                       if (syntaxTime.isNotEmpty &&
                           myTime == syntaxTime &&
-                          myDay == syntaxDay) isBooked = true;
+                          myDay == syntaxDay) {
+                        isBooked = true;
+                      }
                       if (readingTime.isNotEmpty &&
                           myTime == readingTime &&
-                          myDay == readingDay) isBooked = true;
+                          myDay == readingDay) {
+                        isBooked = true;
+                      }
                     } else if (sectionType == 'SYNTAX') {
                       if (extraTime.isNotEmpty &&
                           myTime == extraTime &&
-                          myDay == extraDay) isBooked = true;
+                          myDay == extraDay) {
+                        isBooked = true;
+                      }
                     } else if (sectionType == 'READING') {
                       if (extraTime.isNotEmpty &&
                           myTime == extraTime &&
-                          myDay == extraDay) isBooked = true;
+                          myDay == extraDay) {
+                        isBooked = true;
+                      }
                     }
                   }
 
