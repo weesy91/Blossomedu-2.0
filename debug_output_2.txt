@@ -1,0 +1,53 @@
+=== 1. Checking Test Student Profile ===
+User: test_student
+Branch: 서울본점
+School: None
+Grade: 7 (Base: 7, Year: 2026)
+
+=== 2. Checking All WordBooks ===
+Book [1] '고등Basic'
+  - Target Branch: None
+  - Target School: None
+  - Target Grade: None
+  - Uploader: admin
+Book [2] '능률 보카'
+  - Target Branch: None
+  - Target School: None
+  - Target Grade: None
+  - Uploader: teacher1
+Book [3] 'Test CSV Book'
+  - Target Branch: None
+  - Target School: None
+  - Target Grade: None
+  - Uploader: admin
+Book [4] '예비고1_단어TEST_2400 (짝수년)_app'
+  - Target Branch: 서울본점
+  - Target School: None
+  - Target Grade: None
+  - Uploader: test_teacher
+Book [5] '예비고2_단어TEST_2400 (짝수년)_app'
+  - Target Branch: 서울본점
+  - Target School: None
+  - Target Grade: None
+  - Uploader: test_teacher
+Book [6] '예비고3_단어TEST_2400 (짝수년)_app'
+  - Target Branch: 서울본점
+  - Target School: None
+  - Target Grade: None
+  - Uploader: test_teacher
+Book [7] '예비중1,2_단어TEST_1600 (짝수년)_app'
+  - Target Branch: 서울본점
+  - Target School: None
+  - Target Grade: None
+  - Uploader: test_teacher
+Book [8] '예비중3_단어TEST_1600 (짝수년)_app'
+  - Target Branch: 서울본점
+  - Target School: None
+  - Target Grade: None
+  - Uploader: test_teacher
+
+=== 3. Simulating Filter Logic (Updated) ===
+Final Visible Books for 'available': ['고등Basic', '능률 보카', 'Test CSV Book', '예비고1_단어TEST_2400 (짝수년)_app', '예비고2_단어TEST_2400 (짝수년)_app', '예비고3_단어TEST_2400 (짝수년)_app', '예비중1,2_단어TEST_1600 (짝수년)_app', '예비중3_단어TEST_1600 (짝수년)_app']
+
+=== 4. Simulating 'My Books' Logic ===
+Visible Books for 'my_books': []

@@ -1,0 +1,10 @@
+=== Inspecting All WordBooks ===
+[Book ID: 1] '고등Basic': 2144 words. Days: 1~30 (Distinct Days: 30)
+[Book ID: 2] '능률 보카': 50 words. Days: 1~5 (Distinct Days: 5)
+[Book ID: 3] 'Test CSV Book': 6 words. Days: 1~2 (Distinct Days: 2)
+    -> Sample Days: [1, 1, 1, 1, 2, 2]
+[Book ID: 4] '예비고1_단어TEST_2400 (짝수년)_app': 2399 words. Days: 2~2400 (Distinct Days: 2399)
+[Book ID: 5] '예비고2_단어TEST_2400 (짝수년)_app': 2399 words. Days: 2~2400 (Distinct Days: 2399)
+[Book ID: 6] '예비고3_단어TEST_2400 (짝수년)_app': 2399 words. Days: 2~2400 (Distinct Days: 2399)
+[Book ID: 7] '예비중1,2_단어TEST_1600 (짝수년)_app': 1599 words. Days: 2~1600 (Distinct Days: 1599)
+[Book ID: 8] '예비중3_단어TEST_1600 (짝수년)_app': 1599 words. Days: 2~1600 (Distinct Days: 1599)

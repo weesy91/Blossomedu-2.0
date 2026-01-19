@@ -70,3 +70,23 @@ class MonthlyReport(models.Model):
         verbose_name_plural = "월간 성적표"
         # 한 학생은 한 달에 하나의 성적표만 가짐
         unique_together = ('student', 'year', 'month')
+
+class ReportShare(models.Model):
+    """
+    [NEW] 학부모 공유용 보안 링크 관리
+    """
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, verbose_name="공유 링크 키")
+    student = models.ForeignKey('core.StudentProfile', on_delete=models.CASCADE, verbose_name="학생")
+    
+    # 접근 유효 기간 (예: 7일간 유효)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
+    expires_at = models.DateTimeField(verbose_name="만료일") 
+    
+    access_count = models.IntegerField(default=0, verbose_name="조회수")
+
+    class Meta:
+        verbose_name = "성적표 공유 링크"
+        verbose_name_plural = "성적표 공유 링크 관리"
+
+    def __str__(self):
+        return f"Share Link ({self.student.name}) - {self.uuid}"

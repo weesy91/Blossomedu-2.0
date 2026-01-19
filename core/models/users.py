@@ -16,6 +16,10 @@ class StaffProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='staff_profile')
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="소속 지점")
     name = models.CharField(max_length=20, null=True, blank=True, verbose_name="선생님 성함")
+    join_date = models.DateField(default=datetime.date.today, verbose_name="입사일")
+    resignation_date = models.DateField(null=True, blank=True, verbose_name="퇴사일")
+    phone_number = models.CharField(max_length=20, blank=True, verbose_name="전화번호") # [NEW]
+    memo = models.TextField(blank=True, verbose_name="메모") # [NEW]
 
     POSITION_CHOICES = [
         ('TEACHER', '일반 강사'),
@@ -74,6 +78,8 @@ class StudentProfile(models.Model):
         M1=7,'중1'; M2=8,'중2'; M3=9,'중3'; H1=10,'고1'; H2=11,'고2'; H3=12,'고3'; GRAD=13,'졸업/성인'
     base_year = models.IntegerField(verbose_name="기준 연도", default=datetime.date.today().year)
     base_grade = models.IntegerField(choices=GradeChoices.choices, verbose_name="기준 학년", default=7)
+    start_date = models.DateField(default=datetime.date.today, verbose_name="수업 시작일") # [NEW]
+
 
     address = models.CharField(max_length=200, verbose_name="주소", blank=True, null=True)
     attendance_code = models.CharField(max_length=8, null=True, blank=True, verbose_name="출석 코드")
@@ -120,15 +126,21 @@ class StudentProfile(models.Model):
         limit_choices_to={'staff_profile__is_reading_teacher': True}
     )
 
-    # 추가 수업
+    # Extra Class (특강) - now needs a category
     extra_class = models.ForeignKey(
         ClassTime, on_delete=models.SET_NULL, null=True, blank=True,
-        verbose_name="추가 수업 시간", related_name="students_extra"
+        verbose_name="특강 시간표", related_name="students_extra"
     )
     extra_class_teacher = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-        verbose_name="추가 수업 담당 선생님", related_name='extra_students'
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name="특강 담당 선생님", related_name="students_extra_teacher"
     )
+    extra_class_category = models.CharField(
+        max_length=10, 
+        choices=ClassTime.ClassTypeChoices.choices, 
+        default=ClassTime.ClassTypeChoices.EXTRA,
+        verbose_name="특강 종류 (구문/독해/모의고사)"
+    ) # [NEW]
     extra_class_type = models.CharField(
         max_length=10,
         choices=[('SYNTAX', '구문'), ('READING', '독해')],
@@ -154,13 +166,22 @@ class StudentProfile(models.Model):
         return self.GradeChoices(self.current_grade).label
 
     def save(self, *args, **kwargs):
-        # [수정 2] 휴대폰 번호 뒷 8자리를 가져오도록 로직 변경
-        if not self.attendance_code and self.phone_number:
+        # [수정 2] 휴대폰 번호 변경 시 출석 코드 갱신
+        previous_phone = None
+        if self.pk:
+            previous_phone = (
+                StudentProfile.objects.filter(pk=self.pk)
+                .values_list('phone_number', flat=True)
+                .first()
+            )
+        if self.phone_number:
             clean_number = self.phone_number.replace('-', '').strip()
-            if len(clean_number) >= 8: 
-                self.attendance_code = clean_number[-8:] # 뒤에서 8자리
-            else:
-                self.attendance_code = clean_number # 번호가 짧으면 그대로 저장
+            phone_changed = previous_phone is not None and previous_phone != self.phone_number
+            if not self.attendance_code or phone_changed:
+                if len(clean_number) >= 8:
+                    self.attendance_code = clean_number[-8:]
+                else:
+                    self.attendance_code = clean_number
         super().save(*args, **kwargs)
     
     def __str__(self):

@@ -1,5 +1,6 @@
 import requests
 from django.utils import timezone
+from django.db.models.functions import Lower
 from .models import TestResultDetail, MonthlyTestResultDetail, Word, TestResult, PersonalWrongWord
 
 # ==============================================================================
@@ -28,15 +29,23 @@ def get_vulnerable_words(profile):
     vulnerable_keys = {text for text, data in stats.items() if data['total'] > 0 and (data['wrong'] / data['total'] >= 0.25)}
 
     # 2. 학생이 직접 추가한 오답 단어 수집
-    personal_wrongs = PersonalWrongWord.objects.filter(student=profile).select_related('word')
+    personal_wrongs = PersonalWrongWord.objects.filter(
+        student=profile,
+        success_count__lt=3
+    ).select_related('word', 'master_word')
     for pw in personal_wrongs:
-        vulnerable_keys.add(pw.word.english.strip().lower())
+        if pw.master_word:
+            vulnerable_keys.add(pw.master_word.text.strip().lower())
+        elif pw.word:
+            vulnerable_keys.add(pw.word.english.strip().lower())
     
     if not vulnerable_keys:
         return []
 
     # 3. 실제 Word 객체 조회
-    candidates = Word.objects.filter(english__in=vulnerable_keys).select_related('book')
+    candidates = Word.objects.annotate(
+        english_l=Lower('english')
+    ).filter(english_l__in=vulnerable_keys).select_related('book')
 
     # 4. 정렬 (최근 본 단어장 우선)
     recent_tests = TestResult.objects.filter(student=profile).order_by('-created_at').values_list('book_id', flat=True)[:20]

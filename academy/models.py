@@ -129,6 +129,9 @@ class Textbook(models.Model):
     # [NEW] 그래프 그릴 때 '분모'가 됩니다.
     total_units = models.IntegerField(default=0, verbose_name="총 챕터/강 수 (그래프용)")
 
+    # [NEW] OT 강의 포함 여부
+    has_ot = models.BooleanField(default=False, verbose_name="OT 강의 여부")
+
     class Meta:
         verbose_name = "교재"
         verbose_name_plural = "교재"
@@ -193,6 +196,9 @@ class ClassLog(models.Model):
     hw_main_book = models.ForeignKey(Textbook, on_delete=models.SET_NULL, null=True, blank=True, related_name='hw_logs', verbose_name="과제 주교재")
     hw_main_range = models.CharField(max_length=50, blank=True, verbose_name="과제 진도 범위")
 
+    # [NEW] 과제 마감일 (N-Split 계산 및 일반 과제 마감용)
+    hw_due_date = models.DateTimeField(null=True, blank=True, verbose_name="과제 마감일")
+
     notification_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="알림 발송 시간")
     
     class Meta:
@@ -235,3 +241,123 @@ class ClassLogEntry(models.Model):
     def __str__(self):
         book_name = self.textbook if self.textbook else (self.wordbook if self.wordbook else "미지정")
         return f"{book_name} - {self.progress_range}"
+
+# ==========================================
+# [3] 주간 과제 및 인증 관리 (Weekly Assignment)
+# ==========================================
+
+class AssignmentTask(models.Model):
+    class AssignmentType(models.TextChoices):
+        MANUAL = 'MANUAL', '일반 (사진 인증)'
+        VOCAB_TEST = 'VOCAB_TEST', '단어 시험 (앱 연동)'
+
+    # 1. 기본 정보
+    student = models.ForeignKey(
+        'core.StudentProfile', 
+        on_delete=models.CASCADE, 
+        related_name='assignments',
+        verbose_name="학생"
+    )
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='assigned_tasks',
+        verbose_name="생성자"
+    )
+    
+    # [NEW] 수업 일지와의 연결 (어느 수업에서 파생된 숙제인지)
+    origin_log = models.ForeignKey(
+        'ClassLog', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='generated_assignments',
+        verbose_name="출처 수업일지"
+    )
+
+    assignment_type = models.CharField(
+        max_length=20, 
+        choices=AssignmentType.choices, 
+        default=AssignmentType.MANUAL, 
+        verbose_name="과제 유형"
+    )
+
+    title = models.CharField(max_length=100, verbose_name="과제명")
+    description = models.TextField(blank=True, verbose_name="상세 내용")
+    due_date = models.DateTimeField(verbose_name="마감일")
+    
+    # [NEW] 수행 가능 시작일 (자동 계산: due_date - 1일)
+    start_date = models.DateTimeField(
+        null=True, 
+        blank=True, 
+        verbose_name="수행 가능 시작일",
+        help_text="자동 계산됨. 이 날짜 이전에는 학생이 과제 수행 불가"
+    )
+    
+    # 2. 유형 B (앱 연동) 전용 필드
+    related_vocab_book = models.ForeignKey(
+        'vocab.WordBook', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        verbose_name="대상 단어장 (Type B)"
+    )
+    vocab_range_start = models.IntegerField(default=0, verbose_name="시작 Day")
+    vocab_range_end = models.IntegerField(default=0, verbose_name="종료 Day")
+
+    # 3. 상태 관리
+    is_completed = models.BooleanField(default=False, verbose_name="완료 여부")
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name="완료 일시")
+    
+    # [NEW] 누적 범위 여부 (N-Split 리뉴얼)
+    is_cumulative = models.BooleanField(default=False, verbose_name="누적 범위 여부", help_text="체크 시 이전 범위도 함께 포함")
+
+    # [NEW] 반려 관련 상태
+    is_rejected = models.BooleanField(default=False, verbose_name="반려됨")
+    resubmission_deadline = models.DateField(null=True, blank=True, verbose_name="재제출 마감일")
+    is_replaced = models.BooleanField(default=False, verbose_name="대체됨")
+
+    class Meta:
+        ordering = ['due_date']
+        verbose_name = "주간 과제"
+        verbose_name_plural = "주간 과제"
+
+    def __str__(self):
+        return f"[{self.assignment_type}] {self.student.name}: {self.title}"
+
+class AssignmentSubmission(models.Model):
+    task = models.OneToOneField(AssignmentTask, on_delete=models.CASCADE, related_name='submission', verbose_name="관련 과제")
+    student = models.ForeignKey('core.StudentProfile', on_delete=models.CASCADE, verbose_name="제출 학생")
+    
+    image = models.ImageField(upload_to='assignments/%Y/%m/%d/', verbose_name="인증샷")
+    submitted_at = models.DateTimeField(auto_now_add=True, verbose_name="제출 시간")
+    
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', '검사 대기'
+        APPROVED = 'APPROVED', '승인(완료)'
+        REJECTED = 'REJECTED', '반려(재제출)'
+        
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, verbose_name="상태")
+    teacher_comment = models.TextField(blank=True, verbose_name="선생님 피드백")
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name="검사 시간")
+
+    class Meta:
+        ordering = ['-submitted_at']
+        verbose_name = "과제 인증"
+        verbose_name_plural = "과제 인증"
+
+class AssignmentSubmissionImage(models.Model):
+    submission = models.ForeignKey(
+        AssignmentSubmission,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name="과제 인증",
+    )
+    image = models.ImageField(upload_to='assignments/%Y/%m/%d/', verbose_name="인증샷")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = "과제 인증 이미지"
+        verbose_name_plural = "과제 인증 이미지"

@@ -35,9 +35,14 @@ INSTALLED_APPS = [
     'reports',
     'exam',
     'mock',
+    # [NEW] API & Util Apps
+    'rest_framework',
+    'rest_framework.authtoken', # [NEW] Token Auth App
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # [NEW] CORS Middleware (최상단 권장)
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -48,6 +53,15 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
+
+# [REST Framework]
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+}
 
 TEMPLATES = [
     {
@@ -126,4 +140,9 @@ CSRF_TRUSTED_ORIGINS = [
     # 만약 도메인을 연결했다면 아래처럼 도메인도 추가해야 합니다.
     # 'https://blossomedu.com', 
     # 'https://www.blossomedu.com',
+    # 'https://www.blossomedu.com',
 ]
+
+# [NEW] CORS Settings
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True

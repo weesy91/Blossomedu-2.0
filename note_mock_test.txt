@@ -1,0 +1,5 @@
+
+from core.models import ClassTime
+ClassTime.ClassTypeChoices.MOCK = 'MOCK', '모의고사'
+# Wait, I cannot modify choices dynamically like this if it's an Enum in migration.
+# I need to modify the Model file first.

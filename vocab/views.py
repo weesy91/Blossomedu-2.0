@@ -250,7 +250,7 @@ def exam(request):
                 wrong_count=len(words),
                 test_range="오답집중" if is_wrong_mode else request.GET.get('day_range', '전체')
             )
-            services.update_cooldown(profile, mode, 0) 
+            services.update_cooldown(profile, mode, 0, total_count=len(words))
             
         pre_saved_id = result.id
 
@@ -330,7 +330,7 @@ def save_result(request):
                     result_obj.save()
                     ModelDetail = TestResultDetail
                     
-                    services.update_cooldown(profile, mode, score)
+                    services.update_cooldown(profile, mode, score, total_count=len(processed_details))
 
                 details = [
                     ModelDetail(
@@ -403,7 +403,13 @@ def approve_answer(request):
                     
                     mode = 'wrong' if result.test_range == '오답집중' else 'challenge'
                     try:
-                        services.update_cooldown(result.student, mode, result.score, result.test_range)
+                        services.update_cooldown(
+                            result.student,
+                            mode,
+                            result.score,
+                            result.test_range,
+                            total_count=total_count,
+                        )
                     except:
                         pass 
 

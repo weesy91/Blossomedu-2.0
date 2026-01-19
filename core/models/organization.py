@@ -37,16 +37,26 @@ class ClassTime(models.Model):
         FRI = 'Fri', '금요일'
         SAT = 'Sat', '토요일'
         SUN = 'Sun', '일요일'
+    
+    class ClassTypeChoices(models.TextChoices):
+        SYNTAX = 'SYNTAX', '구문'
+        READING = 'READING', '독해'
+        MOCK = 'MOCK', '모의고사' # [NEW]
+        EXTRA = 'EXTRA', '특강/기타'
+
     day = models.CharField(max_length=3, choices=DayChoices.choices, verbose_name="요일")
     start_time = models.TimeField(verbose_name="시작 시간")
     end_time = models.TimeField(verbose_name="종료 시간")
+    class_type = models.CharField(max_length=10, choices=ClassTypeChoices.choices, default=ClassTypeChoices.EXTRA, verbose_name="수업 유형") # [NEW]
 
     def __str__(self):
         # 날짜 포맷: 시:분 (예: 16:00)
         start_str = self.start_time.strftime('%H:%M')
         # 출력 예시: [월요일] 16:00 (구문)
-        return f"[{self.get_day_display()}] {start_str} ({self.name})"
+        # return f"[{self.get_day_display()}] {start_str} ({self.name})"
+        return f"[{self.get_class_type_display()}/{self.get_day_display()}] {start_str}"
 
     class Meta:
         verbose_name = "수업 시간표"
         verbose_name_plural = "수업 시간표"
+        ordering = ['day', 'start_time']

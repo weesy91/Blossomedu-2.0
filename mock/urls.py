@@ -1,11 +1,10 @@
-# mock/urls.py
-from django.urls import path
-from . import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views_api import MockExamViewSet
 
-app_name = 'mock'
+router = DefaultRouter()
+router.register(r'results', MockExamViewSet, basename='result')
 
 urlpatterns = [
-    path('list/', views.student_list, name='student_list'),
-    path('input/<int:student_id>/', views.input_score, name='input_score'),
-    path('bulk-upload/', views.bulk_omr_upload, name='bulk_upload'),
+    path('api/v1/', include(router.urls)),
 ]

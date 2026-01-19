@@ -1,21 +1,14 @@
-from django.urls import path
-from . import views
-from academy.views import log_search
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views_api import AssignmentViewSet, AttendanceViewSet, ClassLogViewSet, TemporaryScheduleViewSet, TextbookViewSet
 
-app_name = 'academy'
+router = DefaultRouter()
+router.register(r'assignments', AssignmentViewSet, basename='assignment')
+router.register(r'attendances', AttendanceViewSet, basename='attendance')
+router.register(r'class-logs', ClassLogViewSet, basename='classlogs')
+router.register(r'schedules', TemporaryScheduleViewSet, basename='schedules')
+router.register(r'textbooks', TextbookViewSet, basename='textbook')
 
 urlpatterns = [
-    path('management/', views.class_management, name='class_management'),
-    path('kiosk/', views.attendance_kiosk, name='kiosk'),
-    
-    # [NEW] 일지 작성 페이지 (스케줄 ID를 가지고 이동)
-    path('log/create/<int:schedule_id>/', views.create_class_log, name='create_class_log'),
-    path('log/search/', log_search.log_search, name='log_search'),
-    # [원장님용] 일일 총괄 대시보드
-    path('director/dashboard/', views.director_dashboard, name='director_dashboard'),
-    path('vice/dashboard/', views.vice_dashboard, name='vice_dashboard'),
-    path('schedule/change/<int:student_id>/', views.schedule_change, name='schedule_change'),
-    path('api/availability/', views.check_availability, name='check_availability'),
-    path('api/admin/teacher-schedule/', views.get_occupied_times, name='get_occupied_times'),
-    path('student/history/<int:student_id>/', views.student_history, name='student_history'),
+    path('api/v1/', include(router.urls)),
 ]

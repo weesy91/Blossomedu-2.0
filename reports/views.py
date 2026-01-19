@@ -130,6 +130,61 @@ def report_view(request, access_code):
     }
     return render(request, 'reports/report_card.html', context)
 
+def shared_report_view(request, uuid):
+    """
+    [NEW] ReportShare(만료가능 링크)를 통해 성적표 보기
+    """
+    from .models import ReportShare
+    
+    share = get_object_or_404(ReportShare, uuid=uuid)
+    
+    # 1. 만료 체크
+    if timezone.now() > share.expires_at:
+        return render(request, 'reports/expired.html', {'message': '만료된 링크입니다.'})
+        
+    # 2. 조회수 증가
+    share.access_count += 1
+    share.save()
+    
+    # 3. 이번 달 리포트 찾기 (없으면 지난달?)
+    today = timezone.now()
+    report = MonthlyReport.objects.filter(
+        student=share.student, 
+        year=today.year, 
+        month=today.month
+    ).first()
+    
+    # 이번 달 게 없으면 가장 최근 것
+    if not report:
+        report = MonthlyReport.objects.filter(student=share.student).order_by('-created_at').first()
+        
+    if not report:
+        return render(request, 'reports/no_data.html', {'message': '생성된 성적표가 없습니다.'})
+        
+    # 기존 report_view 로직 활용 (함수 호출 대신 로직 위임이 깔끔하지만, 간단히 redirect하거나 로직 복사)
+    # 여기서는 report_view가 사용하는 Context를 그대로 구성합니다.
+    
+    student = share.student
+    logs = ClassLog.objects.filter(student=student, date__year=report.year, date__month=report.month).order_by('-date')
+    mock_exams = MockExam.objects.filter(student=student).order_by('exam_date')
+    
+    dates = [e.exam_date.strftime("%m/%d") for e in mock_exams]
+    scores = [e.score for e in mock_exams]
+    grades = [e.grade for e in mock_exams]
+    titles = [e.title for e in mock_exams]
+
+    context = {
+        'report': report,
+        'student': student,
+        'logs': logs,
+        'mock_exams': mock_exams.reverse(),
+        'graph_dates': json.dumps(dates),
+        'graph_scores': json.dumps(scores),
+        'graph_grades': json.dumps(grades),
+        'graph_titles': json.dumps(titles),
+    }
+    return render(request, 'reports/report_card.html', context)
+
 @login_required
 def report_dashboard(request):
     """
