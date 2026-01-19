@@ -173,6 +173,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         for (final ts in tempSchedules) {
           if (ts['new_date'] == dateStr) {
             final startTime = ts['new_start_time']?.toString() ?? '';
+            final isExtraClass = ts['is_extra_class'] == true;
             items.add({
               'type': 'class',
               'student': student,
@@ -181,8 +182,11 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 'start_time': startTime.length >= 5
                     ? startTime.substring(0, 5)
                     : startTime,
-                'is_makeup': true,
-              }
+                'is_makeup': isExtraClass,
+                'schedule_id': ts['id'],
+                'type': ts['subject'],
+              },
+              'tempSchedule': ts,
             });
           }
         }
@@ -285,7 +289,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   Widget _buildTimelineTile(DateTime date, bool isLast) {
     final isSelected = _isSameDay(date, _selectedDate);
     final isToday = _isSameDay(date, DateTime.now());
-    final hasItems = _getCombinedItemsForDate(date).isNotEmpty;
+    final hasAssignments = _getAssignmentsForDate(date).isNotEmpty;
 
     return InkWell(
       onTap: () => _onDaySelected(date), // [FIX] Call method logic
@@ -349,7 +353,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (hasItems)
+                  if (hasAssignments)
                     Container(
                       width: 6,
                       height: 6,
@@ -436,6 +440,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final subject = classTime['subject'] ?? '';
     final type =
         classTime['type'] ?? ''; // [NEW] Use type for robust navigation
+    final tempSchedule = item['tempSchedule'] as Map<String, dynamic>?;
+    final canEditMakeup =
+        tempSchedule != null && classTime['is_makeup'] == true;
 
     // [NEW] Handle Rescheduled Class style
     final isRescheduled = item['isRescheduled'] ?? false;
@@ -562,9 +569,15 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 const SizedBox(width: 8),
                 // [NEW] Make-up Class Button
                 _buildActionButton(
-                    Icons.access_time_filled, '보강', Colors.orange, () {
-                  // Pass current date as potentially the "Original Date" for rescheduling
-                  _showMakeUpDialog(student, _selectedDate);
+                    Icons.access_time_filled,
+                    canEditMakeup ? '수정' : '보강',
+                    Colors.orange, () {
+                  if (canEditMakeup) {
+                    _showMakeUpEditDialog(student, tempSchedule!);
+                  } else {
+                    // Pass current date as potentially the "Original Date" for rescheduling
+                    _showMakeUpDialog(student, _selectedDate);
+                  }
                 }),
                 const SizedBox(width: 8),
                 // [NEW] Student Planner Button
@@ -871,6 +884,123 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         });
       },
     );
+  }
+
+  void _showMakeUpEditDialog(
+      Map<String, dynamic> student, Map<String, dynamic> schedule) {
+    final scheduleId =
+        int.tryParse(schedule['id']?.toString() ?? '');
+    if (scheduleId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('수정할 보강 일정이 없습니다.')));
+      return;
+    }
+
+    final scheduleDateStr = schedule['new_date']?.toString();
+    DateTime selectedDate =
+        DateTime.tryParse(scheduleDateStr ?? '') ?? _selectedDate;
+    TimeOfDay selectedTime =
+        _parseTimeOfDay(schedule['new_start_time']?.toString());
+    final noteController =
+        TextEditingController(text: schedule['note']?.toString() ?? '');
+    final subjectLabel = schedule['subject']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: Text('${student['name']} 보강 시간 수정'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (subjectLabel.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text('과목: $subjectLabel',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                          '날짜: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final d = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2025),
+                            lastDate: DateTime(2030));
+                        if (d != null) setState(() => selectedDate = d);
+                      }),
+                  ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('시간: ${selectedTime.format(context)}'),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final t = await showTimePicker(
+                            context: context, initialTime: selectedTime);
+                        if (t != null) setState(() => selectedTime = t);
+                      }),
+                  TextField(
+                    controller: noteController,
+                    decoration: const InputDecoration(labelText: '메모 (선택)'),
+                  )
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소')),
+              ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final dateStr =
+                          DateFormat('yyyy-MM-dd').format(selectedDate);
+                      final h = selectedTime.hour.toString().padLeft(2, '0');
+                      final m = selectedTime.minute.toString().padLeft(2, '0');
+
+                      final payload = {
+                        'new_date': dateStr,
+                        'new_start_time': '$h:$m',
+                        'note': noteController.text,
+                      };
+
+                      await _academyService.updateTemporarySchedule(
+                          scheduleId, payload);
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('보강 시간이 수정되었습니다.')));
+                        _fetchData(); // Refresh UI
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  child: const Text('저장')),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  TimeOfDay _parseTimeOfDay(String? value) {
+    if (value == null || value.isEmpty) {
+      return TimeOfDay.now();
+    }
+    final parts = value.split(':');
+    final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 0 : 0;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+    return TimeOfDay(hour: hour, minute: minute);
   }
 
   Future<void> _fetchDailyData(DateTime date) async {

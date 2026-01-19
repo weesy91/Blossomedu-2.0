@@ -629,6 +629,21 @@ class AcademyService {
     }
   }
 
+  Future<void> updateTemporarySchedule(
+      int id, Map<String, dynamic> data) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/academy/api/v1/schedules/$id/');
+    final headers = await _getHeaders();
+    final response = await http.patch(
+      url,
+      headers: headers,
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update schedule: ${response.body}');
+    }
+  }
+
   // 출석 목록 조회 (날짜 필터)
   Future<List<dynamic>> getAttendances({String? date}) async {
     final uri = Uri.parse(
