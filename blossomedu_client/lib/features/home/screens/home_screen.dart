@@ -40,16 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final dueStr = a['due_date']?.toString();
         if (dueStr == null || dueStr.isEmpty) return false;
 
-        DateTime? dueDate = DateTime.tryParse(dueStr);
-        String datePart;
-        if (dueDate == null) {
-          final trimmed = dueStr.split('T').first.split(' ').first;
-          if (trimmed.length < 10) return false;
-          datePart = trimmed.substring(0, 10);
-        } else {
-          final localDue = dueDate.toLocal();
-          datePart = localDue.toIso8601String().substring(0, 10);
-        }
+        final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(dueStr);
+        if (match == null) return false;
+        final datePart = match.group(0)!;
         final dueDay = DateTime.tryParse(datePart);
         if (dueDay == null) return false;
 
