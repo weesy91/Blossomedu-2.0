@@ -61,6 +61,7 @@ class CheckAuthView(APIView):
 
     def get(self, request):
         user = request.user
+        print(f"DEBUG: CheckAuthView user={user.username}, id={user.id}")
         
         # Determine User Type & Profile Info (Same logic as CustomAuthToken)
         user_type = 'STUDENT'
@@ -69,13 +70,18 @@ class CheckAuthView(APIView):
         
         if user.is_staff or user.is_superuser:
             user_type = 'TEACHER'
+            print(f"DEBUG: User is STAFF/SUPERUSER")
             try:
                 profile = getattr(user, 'staff_profile', None)
+                print(f"DEBUG: Staff Profile found: {profile}")
                 if profile:
                     position = profile.position
+                    print(f"DEBUG: Position: {position}")
                     if profile.branch:
                         branch_id = profile.branch.id
-            except Exception:
+                        print(f"DEBUG: Branch: {branch_id}")
+            except Exception as e:
+                print(f"DEBUG: Profile Fetch Error: {e}")
                 pass
         else:
             try:
@@ -94,5 +100,6 @@ class CheckAuthView(APIView):
             'position': position,
             'branch_id': branch_id,
         }
+        print(f"DEBUG: Final User Data: {user_data}")
 
         return Response(user_data)
