@@ -1,14 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
 // import '../models/assignment_model.dart'; // TODO: Create Model
 
 class AcademyService {
-  final _storage = const FlutterSecureStorage();
+  // Use SharedPreferences for token storage
 
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storage.read(key: 'auth_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Token $token', // Django DRF Token Auth
@@ -142,7 +143,8 @@ class AcademyService {
       String? filename}) async {
     final url = Uri.parse(
         '${AppConfig.baseUrl}/academy/api/v1/assignments/$taskId/submit/');
-    final token = await _storage.read(key: 'auth_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
 
     try {
       final request = http.MultipartRequest('POST', url);
