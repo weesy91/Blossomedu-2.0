@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/academy_service.dart';
 
-/// ?�생???�합 ?�래?? ?�업 + 과제�??�짜별로 ?�시
+/// ?좎깮???듯빀 ?뚮옒?? ?섏뾽 + 怨쇱젣瑜??좎쭨蹂꾨줈 ?쒖떆
 class TeacherPlannerScreen extends StatefulWidget {
   const TeacherPlannerScreen({super.key});
 
@@ -38,7 +38,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   void _initializeDates() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    // 2�???~ 2�???(�?29??
+    // 2二???~ 2二???(珥?29??
     _startDate = today.subtract(const Duration(days: 14));
     _allDates = List.generate(29, (i) => _startDate.add(Duration(days: i)));
     _selectedDate = today;
@@ -87,17 +87,17 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   String _subjectLabel(String? code) {
     switch ((code ?? '').toUpperCase()) {
       case 'SYNTAX':
-        return '구문';
+        return '援щЦ';
       case 'READING':
-        return '?�해';
+        return '?낇빐';
       case 'GRAMMAR':
-        return '문법';
+        return '臾몃쾿';
       default:
         return code ?? '';
     }
   }
 
-  /// ?�당 ?�짜???�업???�는 ?�생???�터�?
+  /// ?대떦 ?좎쭨???섏뾽???덈뒗 ?숈깮???꾪꽣留?
   List<dynamic> _getStudentsForDate(DateTime date) {
     final dayCode = _getDayCode(date);
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
@@ -122,7 +122,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     }).toList();
   }
 
-  /// ?�당 ?�짜??마감??과제???�터�?
+  /// ?대떦 ?좎쭨??留덇컧??怨쇱젣???꾪꽣留?
   List<dynamic> _getAssignmentsForDate(DateTime date) {
     return _assignments.where((a) {
       final dueDateStr = a['due_date']?.toString();
@@ -135,11 +135,11 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     }).toList();
   }
 
-  /// ?�합 ?�이??리스???�성
+  /// ?듯빀 ?꾩씠??由ъ뒪???앹꽦
   List<Map<String, dynamic>> _getCombinedItemsForDate(DateTime date) {
     final items = <Map<String, dynamic>>[];
 
-    // ?�업 추�?
+    // ?섏뾽 異붽?
     if (_filter == 'all' || _filter == 'class') {
       final dateStr =
           DateFormat('yyyy-MM-dd').format(date); // [FIX] Add dateStr
@@ -155,7 +155,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           // Check if this regular class date is marked as 'original_date' of a change
           if (ts['original_date'] == dateStr && ts['is_extra_class'] == false) {
             isRescheduled = true;
-            rescheduleNote = '${ts['new_date']}�?변경됨';
+            rescheduleNote = '${ts['new_date']}濡?蹂寃쎈맖';
             break;
           }
         }
@@ -187,7 +187,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           if (ts['new_date'] == dateStr) {
             final startTime = ts['new_start_time']?.toString() ?? '';
             final isExtraClass = ts['is_extra_class'] == true;
-            final label = isExtraClass ? '보강' : '?�동';
+            final label = isExtraClass ? '蹂닿컯' : '?대룞';
             items.add({
               'type': 'class',
               'student': student,
@@ -207,7 +207,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       }
     }
 
-    // 과제 추�?
+    // 怨쇱젣 異붽?
     if (_filter == 'all' || _filter == 'assignment') {
       for (final assignment in _getAssignmentsForDate(date)) {
         items.add({
@@ -224,20 +224,20 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('?�래??),
+        title: const Text('플래너'),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         automaticallyImplyLeading: false,
         actions: [
-          // ?�터 ?�롭?�운
+          // ?꾪꽣 ?쒕∼?ㅼ슫
           PopupMenuButton<String>(
-            tooltip: '?�렬 ?�터',
+            tooltip: '?뺣젹 ?꾪꽣',
             onSelected: (value) => setState(() => _filter = value),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('?�체')),
-              const PopupMenuItem(value: 'class', child: Text('?�업�?)),
-              const PopupMenuItem(value: 'assignment', child: Text('과제�?)),
+              const PopupMenuItem(value: 'all', child: Text('?꾩껜')),
+              const PopupMenuItem(value: 'class', child: Text('수업')),
+              const PopupMenuItem(value: 'assignment', child: Text('과제')),
             ],
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -248,8 +248,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   const SizedBox(width: 4),
                   Text(
                     _filter == 'all'
-                        ? '?�체'
-                        : (_filter == 'class' ? '?�업' : '과제'),
+                        ? '?꾩껜'
+                        : (_filter == 'class' ? '?섏뾽' : '怨쇱젣'),
                     style: const TextStyle(fontSize: 13),
                   ),
                   const Icon(Icons.arrow_drop_down, size: 18),
@@ -265,7 +265,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Left Sidebar - Timeline (?�로 ?�크�?
+                // 1. Left Sidebar - Timeline (?몃줈 ?ㅽ겕濡?
                 SizedBox(
                   width: 80,
                   child: ListView.builder(
@@ -425,7 +425,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           children: [
             Icon(Icons.calendar_today, size: 40, color: Colors.grey.shade300),
             const SizedBox(height: 12),
-            Text('?�정???�습?�다.', style: TextStyle(color: Colors.grey.shade500)),
+            Text('?쇱젙???놁뒿?덈떎.', style: TextStyle(color: Colors.grey.shade500)),
           ],
         ),
       );
@@ -447,7 +447,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   Widget _buildClassCard(Map<String, dynamic> item) {
     final student = item['student'];
     final classTime = item['classTime'];
-    final name = student['name'] ?? '?�생';
+    final name = student['name'] ?? '?숈깮';
     final school = student['school'] ?? '';
     final grade = student['grade'] ?? '';
     final startTime = classTime['start_time'] ?? '';
@@ -464,7 +464,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final isAbsent = attendanceStatus == 'ABSENT';
 
     Color subjectColor = Colors.indigo;
-    if (subject.contains('?�해') || subject.contains('READING')) {
+    if (subject.contains('?낇빐') || subject.contains('READING')) {
       subjectColor = Colors.purple;
     }
 
@@ -483,7 +483,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   fontWeight: FontWeight.bold,
                   color: Colors.grey,
                   decoration: TextDecoration.lineThrough)),
-          subtitle: Text('$subject · $rescheduleNote',
+          subtitle: Text('$subject 쨌 $rescheduleNote',
               style: const TextStyle(
                   color: Colors.redAccent, fontWeight: FontWeight.bold)),
         ),
@@ -521,7 +521,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     children: [
                       Icon(Icons.school, size: 14, color: subjectColor),
                       const SizedBox(width: 4),
-                      Text('?�업',
+                      Text('?섏뾽',
                           style: TextStyle(
                               fontSize: 11,
                               color: subjectColor,
@@ -539,7 +539,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   Text(
-                      '$school · $grade${subject.isNotEmpty ? ' · $subject' : ''}',
+                      '$school 쨌 $grade${subject.isNotEmpty ? ' 쨌 $subject' : ''}',
                       style:
                           TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                 ],
@@ -549,7 +549,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildActionButton(Icons.edit_note, '?��?', Colors.green,
+                _buildActionButton(Icons.edit_note, '?쇱?', Colors.green,
                     () async {
                   final studentId = student['id']?.toString();
                   final dateStr =
@@ -560,7 +560,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   final today = DateTime(now.year, now.month, now.day);
                   if (_selectedDate.isAfter(today)) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('?�직 ?�업?��? ?��? ?�짜???��????�성?????�습?�다.')));
+                        content: Text('?꾩쭅 ?섏뾽?섏? ?딆? ?좎쭨???쇱????묒꽦?????놁뒿?덈떎.')));
                     return;
                   }
 
@@ -583,7 +583,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 // [NEW] Make-up Class Button
                 _buildActionButton(
                     Icons.access_time_filled,
-                    canEditSchedule ? '?�동' : '보강',
+                    canEditSchedule ? '?대룞' : '蹂닿컯',
                     Colors.orange, () {
                   if (canEditSchedule) {
                     _showMakeUpEditDialog(student, tempSchedule!);
@@ -594,7 +594,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 }),
                 const SizedBox(width: 8),
                 // [NEW] Student Planner Button
-                _buildActionButton(Icons.calendar_month, '?�생', Colors.indigo,
+                _buildActionButton(Icons.calendar_month, '?숈깮', Colors.indigo,
                     () async {
                   final studentId = student['id']?.toString();
                   if (studentId != null) {
@@ -612,7 +612,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
 
   Widget _buildAssignmentCard(Map<String, dynamic> item) {
     final assignment = item['assignment'];
-    final title = assignment['title'] ?? '과제';
+    final title = assignment['title'] ?? '怨쇱젣';
     final studentName = assignment['student_name'] ?? '';
     final isCompleted = assignment['is_completed'] ?? false;
     final submission = assignment['submission'];
@@ -622,13 +622,13 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final isRejected = submissionStatus == 'REJECTED';
     final isReplaced = assignment['is_replaced'] == true;
 
-    String statusLabel = isCompleted ? '?�료' : '과제';
+    String statusLabel = isCompleted ? '?꾨즺' : '怨쇱젣';
     Color statusColor = isCompleted ? Colors.green : Colors.orange;
     if (isPending) {
-      statusLabel = '검?�중';
+      statusLabel = '寃?좎쨷';
       statusColor = Colors.orange;
     } else if (isRejected) {
-      statusLabel = '반려';
+      statusLabel = '諛섎젮';
       statusColor = Colors.red;
     }
 
@@ -673,7 +673,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                             border: Border.all(color: Colors.grey.shade400),
                           ),
                           child: const Text(
-                            '?�체됨',
+                            '?泥대맖',
                             style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.black54,
@@ -709,7 +709,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
               const Icon(Icons.check_circle, color: Colors.green)
             else if (isPending)
               TextButton(
-                child: const Text('검??),
+                child: const Text('검토'),
                 onPressed: () {
                   final assignmentId = assignment['id']?.toString();
                   if (assignmentId != null) {
@@ -720,9 +720,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 },
               )
             else if (isRejected)
-              const Text('반려', style: TextStyle(color: Colors.red))
+              const Text('諛섎젮', style: TextStyle(color: Colors.red))
             else
-              const Text('미제�?, style: TextStyle(color: Colors.grey)),
+              const Text('미제출', style: TextStyle(color: Colors.grey))
           ],
         ),
       ),
@@ -770,7 +770,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       builder: (_) {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
-            title: Text('${student['name']} ?�정 관�?),
+            title: Text('${student['name']} 일정 관리'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -781,14 +781,14 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ChoiceChip(
-                        label: const Text('보강 (추�?)'),
+                        label: const Text('蹂닿컯 (異붽?)'),
                         selected: isExtraClass,
                         onSelected: (v) => setState(() => isExtraClass = true),
                         selectedColor: Colors.orange.shade100,
                       ),
                       const SizedBox(width: 12),
                       ChoiceChip(
-                        label: const Text('?�업 변�?),
+                        label: const Text('수업 이동'),
                         selected: !isExtraClass,
                         onSelected: (v) => setState(() => isExtraClass = false),
                         selectedColor: Colors.red.shade100,
@@ -801,7 +801,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: Text(
-                        '기존 ?�업?? ${DateFormat('yyyy-MM-dd').format(currentDate)} (취소??',
+                        '湲곗〈 ?섏뾽?? ${DateFormat('yyyy-MM-dd').format(currentDate)} (痍⑥냼??',
                         style: const TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -812,7 +812,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                          '???�짜: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                          '???좎쭨: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final d = await showDatePicker(
@@ -824,7 +824,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       }),
                   ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('???�간: ${selectedTime.format(context)}'),
+                      title: Text('???쒓컙: ${selectedTime.format(context)}'),
                       trailing: const Icon(Icons.access_time),
                       onTap: () async {
                         final t = await showTimePicker(
@@ -835,18 +835,18 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     value: selectedSubject,
                     items: const [
                       DropdownMenuItem(
-                          value: 'SYNTAX', child: Text('구문 (SYNTAX)')),
+                          value: 'SYNTAX', child: Text('援щЦ (SYNTAX)')),
                       DropdownMenuItem(
-                          value: 'READING', child: Text('?�해 (READING)')),
+                          value: 'READING', child: Text('?낇빐 (READING)')),
                       DropdownMenuItem(
-                          value: 'GRAMMAR', child: Text('?�법 (GRAMMAR)')),
+                          value: 'GRAMMAR', child: Text('?대쾿 (GRAMMAR)')),
                     ],
                     onChanged: (v) => setState(() => selectedSubject = v!),
-                    decoration: const InputDecoration(labelText: '과목'),
+                    decoration: const InputDecoration(labelText: '怨쇰ぉ'),
                   ),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(labelText: '메모 (?�택)'),
+                    decoration: const InputDecoration(labelText: '硫붾え (?좏깮)'),
                   )
                 ],
               ),
@@ -854,7 +854,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('취소')),
+                  child: const Text('痍⑥냼')),
               ElevatedButton(
                   onPressed: () async {
                     try {
@@ -883,7 +883,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('?�정???�?�되?�습?�다.')));
+                            const SnackBar(content: Text('일정이 저장되었습니다.')));
                         _fetchData(); // Refresh UI
                       }
                     } catch (e) {
@@ -891,7 +891,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           .showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
-                  child: const Text('?�??)),
+                  child: const Text('저장')),
             ],
           );
         });
@@ -904,7 +904,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final scheduleId = int.tryParse(schedule['id']?.toString() ?? '');
     if (scheduleId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('������ ���� ������ �����ϴ�.')));
+          const SnackBar(content: Text('수정할 보강 일정이 없습니다.')));
       return;
     }
 
@@ -923,7 +923,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       builder: (_) {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
-            title: Text('${student['name']} ���� �ð� ����'),
+            title: Text('${student['name']} 보강 시간 수정'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -932,7 +932,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                          '��¥: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                          '날짜: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final d = await showDatePicker(
@@ -944,7 +944,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       }),
                   ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('�ð�: ${selectedTime.format(context)}'),
+                      title: Text('시간: ${selectedTime.format(context)}'),
                       trailing: const Icon(Icons.access_time),
                       onTap: () async {
                         final t = await showTimePicker(
@@ -955,19 +955,19 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     value: selectedSubject,
                     items: const [
                       DropdownMenuItem(
-                          value: 'SYNTAX', child: Text('���� (SYNTAX)')),
+                          value: 'SYNTAX', child: Text('구문 (SYNTAX)')),
                       DropdownMenuItem(
-                          value: 'READING', child: Text('���� (READING)')),
+                          value: 'READING', child: Text('독해 (READING)')),
                       DropdownMenuItem(
-                          value: 'GRAMMAR', child: Text('���� (GRAMMAR)')),
+                          value: 'GRAMMAR', child: Text('문법 (GRAMMAR)')),
                     ],
                     onChanged: (v) =>
                         setState(() => selectedSubject = v ?? selectedSubject),
-                    decoration: const InputDecoration(labelText: '����'),
+                    decoration: const InputDecoration(labelText: '과목'),
                   ),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(labelText: '�޸� (����)'),
+                    decoration: const InputDecoration(labelText: '메모 (선택)'),
                   )
                 ],
               ),
@@ -975,23 +975,23 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('���')),
+                  child: const Text('취소')),
               TextButton(
                   onPressed: () async {
                     final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (_) => AlertDialog(
-                              title: const Text('���� ����'),
-                              content: const Text('���� ������ �����ұ��?'),
+                              title: const Text('보강 삭제'),
+                              content: const Text('보강 수업을 삭제할까요?'),
                               actions: [
                                 TextButton(
                                     onPressed: () =>
                                         Navigator.pop(context, false),
-                                    child: const Text('���')),
+                                    child: const Text('취소')),
                                 ElevatedButton(
                                     onPressed: () =>
                                         Navigator.pop(context, true),
-                                    child: const Text('����')),
+                                    child: const Text('삭제')),
                               ],
                             ));
                     if (confirmed != true) return;
@@ -1000,7 +1000,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('������ �����Ǿ����ϴ�.')));
+                            const SnackBar(content: Text('보강이 삭제되었습니다.')));
                         _fetchData();
                       }
                     } catch (e) {
@@ -1009,7 +1009,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     }
                   },
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  child: const Text('����')),
+                  child: const Text('삭제')),
               ElevatedButton(
                   onPressed: () async {
                     try {
@@ -1032,7 +1032,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content: Text('���� �ð��� �����Ǿ����ϴ�.')));
+                                content: Text('보강 시간이 수정되었습니다.')));
                         _fetchData(); // Refresh UI
                       }
                     } catch (e) {
@@ -1040,7 +1040,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           .showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
-                  child: const Text('����')),
+                  child: const Text('저장')),
             ],
           );
         });
@@ -1085,12 +1085,12 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('출결 ?�인'),
-        content: const Text('결석 처리???�생?�니??\n?��?�??�성?�려�?출석 ?�태�?변경해???�니??'),
+        title: const Text('異쒓껐 ?뺤씤'),
+        content: const Text('寃곗꽍 泥섎━???숈깮?낅땲??\n?쇱?瑜??묒꽦?섎젮硫?異쒖꽍 ?곹깭瑜?蹂寃쏀빐???⑸땲??'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            child: const Text('痍⑥냼'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1103,7 +1103,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('출석?�로 변경되?�습?�다.')));
+                        const SnackBar(content: Text('異쒖꽍?쇰줈 蹂寃쎈릺?덉뒿?덈떎.')));
                     _fetchDailyData(_selectedDate); // Refresh status
                   }
                 }
@@ -1112,7 +1112,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     .showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
-            child: const Text('출석?�로 변�?),
+            child: const Text('출석으로 변경'),
           ),
         ],
       ),
