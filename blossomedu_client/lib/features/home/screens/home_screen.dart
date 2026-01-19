@@ -40,8 +40,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final dueStr = a['due_date']?.toString();
         if (dueStr == null) return false;
 
-        final dueDate = DateTime.parse(dueStr);
-        final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        final dueDate = DateTime.tryParse(dueStr);
+        if (dueDate == null) return false;
+        final localDue = dueDate.toLocal();
+        final dueDay = DateTime(localDue.year, localDue.month, localDue.day);
 
         // 1. Due Today
         if (dueDay.isAtSameMomentAs(today)) return true;

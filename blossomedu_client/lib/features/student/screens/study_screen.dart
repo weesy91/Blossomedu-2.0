@@ -794,9 +794,26 @@ class _StudyScreenState extends State<StudyScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('내 단어장 (My Books)',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('내 단어장 (My Books)',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    TextButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final added = await this.context
+                            .push('/student/book/select');
+                        if (added == true) {
+                          _loadData();
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('추가'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 4),
                 const Text('학습할 교재를 선택해 주세요.',
                     style: TextStyle(color: Colors.grey)),

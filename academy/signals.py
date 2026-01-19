@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from .models import AssignmentTask, ClassLog
+from vocab.models import PersonalWordBook
 
 
 def _as_date(value):
@@ -233,3 +234,15 @@ def create_assignment_from_log(sender, instance, created, **kwargs):
                     if task.due_date != due_date:
                         task.due_date = due_date
                         task.save(update_fields=["due_date"])
+
+
+@receiver(post_save, sender=AssignmentTask)
+def ensure_vocab_subscription(sender, instance, **kwargs):
+    if not instance.related_vocab_book_id:
+        return
+    if not instance.student_id:
+        return
+    PersonalWordBook.objects.get_or_create(
+        student_id=instance.student_id,
+        book_id=instance.related_vocab_book_id,
+    )

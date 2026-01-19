@@ -22,20 +22,35 @@ class Command(BaseCommand):
             default="min",
             help="Choose whether to keep the lowest or highest id per group.",
         )
+        parser.add_argument(
+            "--ignore-end-time",
+            action="store_true",
+            help="Group by branch/day/start/class_type only.",
+        )
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         keep_min = options["keep"] == "min"
 
+        ignore_end_time = options["ignore_end_time"]
+
         groups = defaultdict(list)
         for class_time in ClassTime.objects.all():
-            key = (
-                class_time.branch_id,
-                class_time.day,
-                class_time.start_time,
-                class_time.end_time,
-                class_time.class_type,
-            )
+            if ignore_end_time:
+                key = (
+                    class_time.branch_id,
+                    class_time.day,
+                    class_time.start_time,
+                    class_time.class_type,
+                )
+            else:
+                key = (
+                    class_time.branch_id,
+                    class_time.day,
+                    class_time.start_time,
+                    class_time.end_time,
+                    class_time.class_type,
+                )
             groups[key].append(class_time)
 
         duplicate_groups = [group for group in groups.values() if len(group) > 1]
@@ -53,14 +68,26 @@ class Command(BaseCommand):
                 if not dup_ids:
                     continue
 
-                self.stdout.write(
-                    "Keep id={} (branch={}, day={}, {}-{}, {}), merge {}".format(
-                        keeper.id,
+                if ignore_end_time:
+                    summary = "branch={}, day={}, {}, {}".format(
+                        keeper.branch_id,
+                        keeper.day,
+                        keeper.start_time,
+                        keeper.class_type,
+                    )
+                else:
+                    summary = "branch={}, day={}, {}-{}, {}".format(
                         keeper.branch_id,
                         keeper.day,
                         keeper.start_time,
                         keeper.end_time,
                         keeper.class_type,
+                    )
+
+                self.stdout.write(
+                    "Keep id={} ({}), merge {}".format(
+                        keeper.id,
+                        summary,
                         dup_ids,
                     )
                 )
