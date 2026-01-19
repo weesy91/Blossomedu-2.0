@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/academy_service.dart';
 
-/// ì„ ìƒë‹˜ í†µí•© í”Œë˜ë„ˆ: ìˆ˜ì—… + ê³¼ì œë¥¼ ë‚ ì§œë³„ë¡œ í‘œì‹œ
+/// ? ìƒ???µí•© ?Œë˜?? ?˜ì—… + ê³¼ì œë¥?? ì§œë³„ë¡œ ?œì‹œ
 class TeacherPlannerScreen extends StatefulWidget {
   const TeacherPlannerScreen({super.key});
 
@@ -38,7 +38,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   void _initializeDates() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    // 2ì£¼ ì „ ~ 2ì£¼ í›„ (ì´ 29ì¼)
+    // 2ì£???~ 2ì£???(ì´?29??
     _startDate = today.subtract(const Duration(days: 14));
     _allDates = List.generate(29, (i) => _startDate.add(Duration(days: i)));
     _selectedDate = today;
@@ -84,7 +84,20 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     return codes[date.weekday - 1];
   }
 
-  /// í•´ë‹¹ ë‚ ì§œì— ìˆ˜ì—…ì´ ìˆëŠ” í•™ìƒë“¤ í•„í„°ë§
+  String _subjectLabel(String? code) {
+    switch ((code ?? '').toUpperCase()) {
+      case 'SYNTAX':
+        return 'êµ¬ë¬¸';
+      case 'READING':
+        return '?…í•´';
+      case 'GRAMMAR':
+        return 'ë¬¸ë²•';
+      default:
+        return code ?? '';
+    }
+  }
+
+  /// ?´ë‹¹ ? ì§œ???˜ì—…???ˆëŠ” ?™ìƒ???„í„°ë§?
   List<dynamic> _getStudentsForDate(DateTime date) {
     final dayCode = _getDayCode(date);
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
@@ -109,23 +122,24 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     }).toList();
   }
 
-  /// í•´ë‹¹ ë‚ ì§œì— ë§ˆê°ì¸ ê³¼ì œë“¤ í•„í„°ë§
+  /// ?´ë‹¹ ? ì§œ??ë§ˆê°??ê³¼ì œ???„í„°ë§?
   List<dynamic> _getAssignmentsForDate(DateTime date) {
-    final dateStr = DateFormat('yyyy-MM-dd').format(date);
     return _assignments.where((a) {
-      final dueDate = a['due_date']?.toString();
+      final dueDateStr = a['due_date']?.toString();
       // [FIX] Filter out invalid assignments (empty title)
       final title = a['title']?.toString();
-      if (dueDate == null || title == null || title.isEmpty) return false;
-      return dueDate.startsWith(dateStr);
+      if (dueDateStr == null || title == null || title.isEmpty) return false;
+      final parsed = DateTime.tryParse(dueDateStr);
+      if (parsed == null) return false;
+      return _isSameDay(parsed.toLocal(), date);
     }).toList();
   }
 
-  /// í†µí•© ì•„ì´í…œ ë¦¬ìŠ¤íŠ¸ ìƒì„±
+  /// ?µí•© ?„ì´??ë¦¬ìŠ¤???ì„±
   List<Map<String, dynamic>> _getCombinedItemsForDate(DateTime date) {
     final items = <Map<String, dynamic>>[];
 
-    // ìˆ˜ì—… ì¶”ê°€
+    // ?˜ì—… ì¶”ê?
     if (_filter == 'all' || _filter == 'class') {
       final dateStr =
           DateFormat('yyyy-MM-dd').format(date); // [FIX] Add dateStr
@@ -141,7 +155,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           // Check if this regular class date is marked as 'original_date' of a change
           if (ts['original_date'] == dateStr && ts['is_extra_class'] == false) {
             isRescheduled = true;
-            rescheduleNote = '${ts['new_date']}ë¡œ ë³€ê²½ë¨';
+            rescheduleNote = '${ts['new_date']}ë¡?ë³€ê²½ë¨';
             break;
           }
         }
@@ -169,16 +183,16 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         }
 
         // [NEW] Temp Schedules
-        // [NEW] Temp Schedules
         for (final ts in tempSchedules) {
           if (ts['new_date'] == dateStr) {
             final startTime = ts['new_start_time']?.toString() ?? '';
             final isExtraClass = ts['is_extra_class'] == true;
+            final label = isExtraClass ? 'ë³´ê°•' : '?´ë™';
             items.add({
               'type': 'class',
               'student': student,
               'classTime': {
-                'subject': '${ts['subject']} (ë³´ê°•)',
+                'subject': '${_subjectLabel(ts['subject'])} ($label)',
                 'start_time': startTime.length >= 5
                     ? startTime.substring(0, 5)
                     : startTime,
@@ -193,7 +207,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       }
     }
 
-    // ê³¼ì œ ì¶”ê°€
+    // ê³¼ì œ ì¶”ê?
     if (_filter == 'all' || _filter == 'assignment') {
       for (final assignment in _getAssignmentsForDate(date)) {
         items.add({
@@ -210,20 +224,20 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('í”Œë˜ë„ˆ'),
+        title: const Text('?Œë˜??),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         automaticallyImplyLeading: false,
         actions: [
-          // í•„í„° ë“œë¡­ë‹¤ìš´
+          // ?„í„° ?œë¡­?¤ìš´
           PopupMenuButton<String>(
-            tooltip: 'ì •ë ¬ í•„í„°',
+            tooltip: '?•ë ¬ ?„í„°',
             onSelected: (value) => setState(() => _filter = value),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('ì „ì²´')),
-              const PopupMenuItem(value: 'class', child: Text('ìˆ˜ì—…ë§Œ')),
-              const PopupMenuItem(value: 'assignment', child: Text('ê³¼ì œë§Œ')),
+              const PopupMenuItem(value: 'all', child: Text('?„ì²´')),
+              const PopupMenuItem(value: 'class', child: Text('?˜ì—…ë§?)),
+              const PopupMenuItem(value: 'assignment', child: Text('ê³¼ì œë§?)),
             ],
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -234,8 +248,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   const SizedBox(width: 4),
                   Text(
                     _filter == 'all'
-                        ? 'ì „ì²´'
-                        : (_filter == 'class' ? 'ìˆ˜ì—…' : 'ê³¼ì œ'),
+                        ? '?„ì²´'
+                        : (_filter == 'class' ? '?˜ì—…' : 'ê³¼ì œ'),
                     style: const TextStyle(fontSize: 13),
                   ),
                   const Icon(Icons.arrow_drop_down, size: 18),
@@ -251,7 +265,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Left Sidebar - Timeline (ì„¸ë¡œ ìŠ¤í¬ë¡¤)
+                // 1. Left Sidebar - Timeline (?¸ë¡œ ?¤í¬ë¡?
                 SizedBox(
                   width: 80,
                   child: ListView.builder(
@@ -378,7 +392,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       children: [
         Flexible(
           child: Text(
-            DateFormat('Mì›” dì¼ EEEE', 'ko_KR').format(date),
+            DateFormat('M??d??EEEE', 'ko_KR').format(date),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             overflow: TextOverflow.ellipsis,
           ),
@@ -411,7 +425,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           children: [
             Icon(Icons.calendar_today, size: 40, color: Colors.grey.shade300),
             const SizedBox(height: 12),
-            Text('ì¼ì •ì´ ì—†ìŠµë‹ˆë‹¤.', style: TextStyle(color: Colors.grey.shade500)),
+            Text('?¼ì •???†ìŠµ?ˆë‹¤.', style: TextStyle(color: Colors.grey.shade500)),
           ],
         ),
       );
@@ -433,7 +447,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   Widget _buildClassCard(Map<String, dynamic> item) {
     final student = item['student'];
     final classTime = item['classTime'];
-    final name = student['name'] ?? 'í•™ìƒ';
+    final name = student['name'] ?? '?™ìƒ';
     final school = student['school'] ?? '';
     final grade = student['grade'] ?? '';
     final startTime = classTime['start_time'] ?? '';
@@ -441,8 +455,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final type =
         classTime['type'] ?? ''; // [NEW] Use type for robust navigation
     final tempSchedule = item['tempSchedule'] as Map<String, dynamic>?;
-    final canEditMakeup =
-        tempSchedule != null && classTime['is_makeup'] == true;
+    final canEditSchedule = tempSchedule != null;
 
     // [NEW] Handle Rescheduled Class style
     final isRescheduled = item['isRescheduled'] ?? false;
@@ -451,7 +464,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final isAbsent = attendanceStatus == 'ABSENT';
 
     Color subjectColor = Colors.indigo;
-    if (subject.contains('ë…í•´') || subject.contains('READING')) {
+    if (subject.contains('?…í•´') || subject.contains('READING')) {
       subjectColor = Colors.purple;
     }
 
@@ -508,7 +521,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     children: [
                       Icon(Icons.school, size: 14, color: subjectColor),
                       const SizedBox(width: 4),
-                      Text('ìˆ˜ì—…',
+                      Text('?˜ì—…',
                           style: TextStyle(
                               fontSize: 11,
                               color: subjectColor,
@@ -536,7 +549,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildActionButton(Icons.edit_note, 'ì¼ì§€', Colors.green,
+                _buildActionButton(Icons.edit_note, '?¼ì?', Colors.green,
                     () async {
                   final studentId = student['id']?.toString();
                   final dateStr =
@@ -547,7 +560,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   final today = DateTime(now.year, now.month, now.day);
                   if (_selectedDate.isAfter(today)) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('ì•„ì§ ìˆ˜ì—…í•˜ì§€ ì•Šì€ ë‚ ì§œì˜ ì¼ì§€ëŠ” ì‘ì„±í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.')));
+                        content: Text('?„ì§ ?˜ì—…?˜ì? ?Šì? ? ì§œ???¼ì????‘ì„±?????†ìŠµ?ˆë‹¤.')));
                     return;
                   }
 
@@ -570,9 +583,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 // [NEW] Make-up Class Button
                 _buildActionButton(
                     Icons.access_time_filled,
-                    canEditMakeup ? 'ìˆ˜ì •' : 'ë³´ê°•',
+                    canEditSchedule ? '?´ë™' : 'ë³´ê°•',
                     Colors.orange, () {
-                  if (canEditMakeup) {
+                  if (canEditSchedule) {
                     _showMakeUpEditDialog(student, tempSchedule!);
                   } else {
                     // Pass current date as potentially the "Original Date" for rescheduling
@@ -581,7 +594,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 }),
                 const SizedBox(width: 8),
                 // [NEW] Student Planner Button
-                _buildActionButton(Icons.calendar_month, 'í•™ìƒ', Colors.indigo,
+                _buildActionButton(Icons.calendar_month, '?™ìƒ', Colors.indigo,
                     () async {
                   final studentId = student['id']?.toString();
                   if (studentId != null) {
@@ -609,10 +622,10 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final isRejected = submissionStatus == 'REJECTED';
     final isReplaced = assignment['is_replaced'] == true;
 
-    String statusLabel = isCompleted ? 'ì™„ë£Œ' : 'ê³¼ì œ';
+    String statusLabel = isCompleted ? '?„ë£Œ' : 'ê³¼ì œ';
     Color statusColor = isCompleted ? Colors.green : Colors.orange;
     if (isPending) {
-      statusLabel = 'ê²€í† ì¤‘';
+      statusLabel = 'ê²€? ì¤‘';
       statusColor = Colors.orange;
     } else if (isRejected) {
       statusLabel = 'ë°˜ë ¤';
@@ -660,7 +673,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                             border: Border.all(color: Colors.grey.shade400),
                           ),
                           child: const Text(
-                            'ëŒ€ì²´ë¨',
+                            '?€ì²´ë¨',
                             style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.black54,
@@ -696,7 +709,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
               const Icon(Icons.check_circle, color: Colors.green)
             else if (isPending)
               TextButton(
-                child: const Text('ê²€í† '),
+                child: const Text('ê²€??),
                 onPressed: () {
                   final assignmentId = assignment['id']?.toString();
                   if (assignmentId != null) {
@@ -709,7 +722,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
             else if (isRejected)
               const Text('ë°˜ë ¤', style: TextStyle(color: Colors.red))
             else
-              const Text('ë¯¸ì œì¶œ', style: TextStyle(color: Colors.grey)),
+              const Text('ë¯¸ì œì¶?, style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),
@@ -757,7 +770,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       builder: (_) {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
-            title: Text('${student['name']} ì¼ì • ê´€ë¦¬'),
+            title: Text('${student['name']} ?¼ì • ê´€ë¦?),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -768,14 +781,14 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ChoiceChip(
-                        label: const Text('ë³´ê°• (ì¶”ê°€)'),
+                        label: const Text('ë³´ê°• (ì¶”ê?)'),
                         selected: isExtraClass,
                         onSelected: (v) => setState(() => isExtraClass = true),
                         selectedColor: Colors.orange.shade100,
                       ),
                       const SizedBox(width: 12),
                       ChoiceChip(
-                        label: const Text('ìˆ˜ì—… ë³€ê²½'),
+                        label: const Text('?˜ì—… ë³€ê²?),
                         selected: !isExtraClass,
                         onSelected: (v) => setState(() => isExtraClass = false),
                         selectedColor: Colors.red.shade100,
@@ -788,7 +801,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: Text(
-                        'ê¸°ì¡´ ìˆ˜ì—…ì¼: ${DateFormat('yyyy-MM-dd').format(currentDate)} (ì·¨ì†Œë¨)',
+                        'ê¸°ì¡´ ?˜ì—…?? ${DateFormat('yyyy-MM-dd').format(currentDate)} (ì·¨ì†Œ??',
                         style: const TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -799,7 +812,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                          'ìƒˆ ë‚ ì§œ: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                          '??? ì§œ: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final d = await showDatePicker(
@@ -811,7 +824,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       }),
                   ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('ìƒˆ ì‹œê°„: ${selectedTime.format(context)}'),
+                      title: Text('???œê°„: ${selectedTime.format(context)}'),
                       trailing: const Icon(Icons.access_time),
                       onTap: () async {
                         final t = await showTimePicker(
@@ -824,16 +837,16 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       DropdownMenuItem(
                           value: 'SYNTAX', child: Text('êµ¬ë¬¸ (SYNTAX)')),
                       DropdownMenuItem(
-                          value: 'READING', child: Text('ë…í•´ (READING)')),
+                          value: 'READING', child: Text('?…í•´ (READING)')),
                       DropdownMenuItem(
-                          value: 'GRAMMAR', child: Text('ì–´ë²• (GRAMMAR)')),
+                          value: 'GRAMMAR', child: Text('?´ë²• (GRAMMAR)')),
                     ],
                     onChanged: (v) => setState(() => selectedSubject = v!),
                     decoration: const InputDecoration(labelText: 'ê³¼ëª©'),
                   ),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(labelText: 'ë©”ëª¨ (ì„ íƒ)'),
+                    decoration: const InputDecoration(labelText: 'ë©”ëª¨ (? íƒ)'),
                   )
                 ],
               ),
@@ -870,7 +883,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('ì¼ì •ì´ ì €ì¥ë˜ì—ˆìŠµë‹ˆë‹¤.')));
+                            const SnackBar(content: Text('?¼ì •???€?¥ë˜?ˆìŠµ?ˆë‹¤.')));
                         _fetchData(); // Refresh UI
                       }
                     } catch (e) {
@@ -878,7 +891,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           .showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
-                  child: const Text('ì €ì¥')),
+                  child: const Text('?€??)),
             ],
           );
         });
@@ -888,11 +901,10 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
 
   void _showMakeUpEditDialog(
       Map<String, dynamic> student, Map<String, dynamic> schedule) {
-    final scheduleId =
-        int.tryParse(schedule['id']?.toString() ?? '');
+    final scheduleId = int.tryParse(schedule['id']?.toString() ?? '');
     if (scheduleId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ìˆ˜ì •í•  ë³´ê°• ì¼ì •ì´ ì—†ìŠµë‹ˆë‹¤.')));
+          const SnackBar(content: Text('¼öÁ¤ÇÒ º¸°­ ÀÏÁ¤ÀÌ ¾ø½À´Ï´Ù.')));
       return;
     }
 
@@ -901,32 +913,26 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         DateTime.tryParse(scheduleDateStr ?? '') ?? _selectedDate;
     TimeOfDay selectedTime =
         _parseTimeOfDay(schedule['new_start_time']?.toString());
+    String selectedSubject =
+        (schedule['subject']?.toString() ?? 'SYNTAX').toUpperCase();
     final noteController =
         TextEditingController(text: schedule['note']?.toString() ?? '');
-    final subjectLabel = schedule['subject']?.toString() ?? '';
 
     showDialog(
       context: context,
       builder: (_) {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
-            title: Text('${student['name']} ë³´ê°• ì‹œê°„ ìˆ˜ì •'),
+            title: Text('${student['name']} º¸°­ ½Ã°£ ¼öÁ¤'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (subjectLabel.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Text('ê³¼ëª©: $subjectLabel',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13)),
-                    ),
                   ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                          'ë‚ ì§œ: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
+                          '³¯Â¥: ${DateFormat('yyyy-MM-dd').format(selectedDate)}'),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final d = await showDatePicker(
@@ -938,16 +944,30 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       }),
                   ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text('ì‹œê°„: ${selectedTime.format(context)}'),
+                      title: Text('½Ã°£: ${selectedTime.format(context)}'),
                       trailing: const Icon(Icons.access_time),
                       onTap: () async {
                         final t = await showTimePicker(
                             context: context, initialTime: selectedTime);
                         if (t != null) setState(() => selectedTime = t);
                       }),
+                  DropdownButtonFormField<String>(
+                    value: selectedSubject,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'SYNTAX', child: Text('±¸¹® (SYNTAX)')),
+                      DropdownMenuItem(
+                          value: 'READING', child: Text('µ¶ÇØ (READING)')),
+                      DropdownMenuItem(
+                          value: 'GRAMMAR', child: Text('¹®¹ı (GRAMMAR)')),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => selectedSubject = v ?? selectedSubject),
+                    decoration: const InputDecoration(labelText: '°ú¸ñ'),
+                  ),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(labelText: 'ë©”ëª¨ (ì„ íƒ)'),
+                    decoration: const InputDecoration(labelText: '¸Ş¸ğ (¼±ÅÃ)'),
                   )
                 ],
               ),
@@ -955,7 +975,41 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('ì·¨ì†Œ')),
+                  child: const Text('Ãë¼Ò')),
+              TextButton(
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                              title: const Text('º¸°­ »èÁ¦'),
+                              content: const Text('º¸°­ ¼ö¾÷À» »èÁ¦ÇÒ±î¿ä?'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Ãë¼Ò')),
+                                ElevatedButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('»èÁ¦')),
+                              ],
+                            ));
+                    if (confirmed != true) return;
+                    try {
+                      await _academyService.deleteTemporarySchedule(scheduleId);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('º¸°­ÀÌ »èÁ¦µÇ¾ú½À´Ï´Ù.')));
+                        _fetchData();
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('»èÁ¦')),
               ElevatedButton(
                   onPressed: () async {
                     try {
@@ -965,6 +1019,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       final m = selectedTime.minute.toString().padLeft(2, '0');
 
                       final payload = {
+                        'subject': selectedSubject,
                         'new_date': dateStr,
                         'new_start_time': '$h:$m',
                         'note': noteController.text,
@@ -977,7 +1032,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content: Text('ë³´ê°• ì‹œê°„ì´ ìˆ˜ì •ë˜ì—ˆìŠµë‹ˆë‹¤.')));
+                                content: Text('º¸°­ ½Ã°£ÀÌ ¼öÁ¤µÇ¾ú½À´Ï´Ù.')));
                         _fetchData(); // Refresh UI
                       }
                     } catch (e) {
@@ -985,7 +1040,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           .showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
-                  child: const Text('ì €ì¥')),
+                  child: const Text('ÀúÀå')),
             ],
           );
         });
@@ -1030,8 +1085,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('ì¶œê²° í™•ì¸'),
-        content: const Text('ê²°ì„ ì²˜ë¦¬ëœ í•™ìƒì…ë‹ˆë‹¤.\nì¼ì§€ë¥¼ ì‘ì„±í•˜ë ¤ë©´ ì¶œì„ ìƒíƒœë¥¼ ë³€ê²½í•´ì•¼ í•©ë‹ˆë‹¤.'),
+        title: const Text('ì¶œê²° ?•ì¸'),
+        content: const Text('ê²°ì„ ì²˜ë¦¬???™ìƒ?…ë‹ˆ??\n?¼ì?ë¥??‘ì„±?˜ë ¤ë©?ì¶œì„ ?íƒœë¥?ë³€ê²½í•´???©ë‹ˆ??'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1048,7 +1103,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ì¶œì„ìœ¼ë¡œ ë³€ê²½ë˜ì—ˆìŠµë‹ˆë‹¤.')));
+                        const SnackBar(content: Text('ì¶œì„?¼ë¡œ ë³€ê²½ë˜?ˆìŠµ?ˆë‹¤.')));
                     _fetchDailyData(_selectedDate); // Refresh status
                   }
                 }
@@ -1057,10 +1112,11 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     .showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
-            child: const Text('ì¶œì„ìœ¼ë¡œ ë³€ê²½'),
+            child: const Text('ì¶œì„?¼ë¡œ ë³€ê²?),
           ),
         ],
       ),
     );
   }
 }
+

@@ -644,6 +644,15 @@ class AcademyService {
     }
   }
 
+  Future<void> deleteTemporarySchedule(int id) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/academy/api/v1/schedules/$id/');
+    final headers = await _getHeaders();
+    final response = await http.delete(url, headers: headers);
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete schedule: ${response.body}');
+    }
+  }
+
   // 출석 목록 조회 (날짜 필터)
   Future<List<dynamic>> getAttendances({String? date}) async {
     final uri = Uri.parse(
