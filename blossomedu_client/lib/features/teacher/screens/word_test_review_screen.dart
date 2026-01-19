@@ -286,11 +286,17 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
                         style: TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 4),
                     Text(q['studentAnswer'],
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.lineThrough,
-                            decorationColor: Colors.red)),
+                            color: status == 'ACCEPTED'
+                                ? Colors.green
+                                : (status == 'REJECTED'
+                                    ? Colors.red
+                                    : Colors.black87),
+                            decoration: status == 'REJECTED'
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none)),
                   ],
                 ),
               ),
