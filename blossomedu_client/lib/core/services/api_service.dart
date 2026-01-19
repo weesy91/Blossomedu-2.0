@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
 
   late Dio _dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  // final FlutterSecureStorage _storage = const FlutterSecureStorage(); // Removed
 
   // Production Server IP
   static const String baseUrl = 'http://3.38.153.166';
@@ -27,7 +28,10 @@ class ApiService {
     // Interceptor: Inject Token
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'auth_token');
+        // Use SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token');
+
         if (token != null) {
           options.headers['Authorization'] = 'Token $token';
         }
@@ -46,10 +50,12 @@ class ApiService {
   Dio get client => _dio;
 
   Future<void> setToken(String token) async {
-    await _storage.write(key: 'auth_token', value: token);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
   }
 
   Future<void> clearToken() async {
-    await _storage.delete(key: 'auth_token');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
   }
 }
