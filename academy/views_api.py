@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import AssignmentTask, AssignmentSubmission, AssignmentSubmissionImage, Attendance, ClassLog, TemporarySchedule, Textbook
@@ -230,6 +231,24 @@ class ClassLogViewSet(viewsets.ModelViewSet):
     serializer_class = ClassLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def _is_subject_teacher(self, user, student, subject):
+        subject = (subject or '').upper()
+        if subject == 'SYNTAX':
+            return student.syntax_teacher_id == user.id
+        if subject == 'READING':
+            return student.reading_teacher_id == user.id
+        if subject == 'GRAMMAR':
+            return student.extra_class_teacher_id == user.id
+        return False
+
+    def _ensure_write_permission(self, user, student, subject, log=None):
+        if not user.is_staff:
+            raise PermissionDenied('수업일지는 선생님만 작성할 수 있습니다.')
+        if log and log.teacher_id == user.id:
+            return
+        if not self._is_subject_teacher(user, student, subject):
+            raise PermissionDenied('해당 과목 담당 선생님만 일지를 작성할 수 있습니다.')
+
     def get_queryset(self):
         user = self.request.user
         # Student: Own logs
@@ -254,8 +273,34 @@ class ClassLogViewSet(viewsets.ModelViewSet):
              return queryset
         return ClassLog.objects.none()
 
+    def create(self, request, *args, **kwargs):
+        student_id = request.data.get('student')
+        subject = request.data.get('subject')
+        if not student_id or not subject:
+            return Response(
+                {'error': 'student and subject are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            student = StudentProfile.objects.get(id=student_id)
+        except StudentProfile.DoesNotExist:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        self._ensure_write_permission(request.user, student, subject)
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        log = self.get_object()
+        self._ensure_write_permission(request.user, log.student, log.subject, log=log)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        log = self.get_object()
+        self._ensure_write_permission(request.user, log.student, log.subject, log=log)
+        return super().partial_update(request, *args, **kwargs)
 
 class TemporaryScheduleViewSet(viewsets.ModelViewSet):
     """

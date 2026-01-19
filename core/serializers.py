@@ -86,23 +86,43 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             
         return super().update(instance, validated_data)
 
+    def _should_filter_by_teacher(self):
+        request = self.context.get('request')
+        if request is None:
+            return False
+        if not request.user.is_staff:
+            return False
+        return request.query_params.get('scope') == 'my'
+
+    def _allowed_subjects_for_teacher(self, obj, user):
+        allowed = []
+        if obj.syntax_teacher_id == user.id:
+            allowed.append('SYNTAX')
+        if obj.reading_teacher_id == user.id:
+            allowed.append('READING')
+        if obj.extra_class_teacher_id == user.id:
+            allowed.append('GRAMMAR')
+        return allowed
+
     def get_class_times(self, obj):
         times = []
-        if obj.syntax_class:
+        filter_by_teacher = self._should_filter_by_teacher()
+        user = self.context.get('request').user if filter_by_teacher else None
+        if obj.syntax_class and (not filter_by_teacher or obj.syntax_teacher_id == user.id):
             times.append({
                 'day': obj.syntax_class.day,
                 'start_time': obj.syntax_class.start_time.strftime('%H:%M'),
                 'subject': '구문',
                 'type': 'SYNTAX'
             })
-        if obj.reading_class:
+        if obj.reading_class and (not filter_by_teacher or obj.reading_teacher_id == user.id):
             times.append({
                 'day': obj.reading_class.day,
                 'start_time': obj.reading_class.start_time.strftime('%H:%M'),
                 'subject': '독해',
                 'type': 'READING'
             })
-        if obj.extra_class:
+        if obj.extra_class and (not filter_by_teacher or obj.extra_class_teacher_id == user.id):
             times.append({
                 'day': obj.extra_class.day,
                 'start_time': obj.extra_class.start_time.strftime('%H:%M'),
@@ -114,8 +134,15 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     def get_temp_schedules(self, obj):
         if not hasattr(obj, 'temp_schedules'):
             return []
+        qs = obj.temp_schedules.all()
+        if self._should_filter_by_teacher():
+            user = self.context.get('request').user
+            allowed_subjects = self._allowed_subjects_for_teacher(obj, user)
+            if not allowed_subjects:
+                return []
+            qs = qs.filter(subject__in=allowed_subjects)
         # Return specific fields needed for planner
-        return list(obj.temp_schedules.values(
+        return list(qs.values(
             'id', 'subject', 'is_extra_class', 'original_date', 
             'new_date', 'new_start_time', 'note'
         ))
