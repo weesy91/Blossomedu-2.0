@@ -118,14 +118,22 @@ class StudentRegistrationViewSet(viewsets.ViewSet):
                 syntax_class__isnull=False
             ).values('syntax_teacher_id', 'syntax_class_id', 'syntax_class__day') # Added day for easier debugging if needed
 
-            classes_data = [{
-                'id': c.id,
-                'name': str(c),
-                'branch_id': c.branch_id,
-                'day': c.day,
-                'time': c.start_time.strftime('%H:%M') if c.start_time else '',
-                'type': c.class_type # Use actual DB field
-            } for c in classes]
+            classes_data = []
+            seen_keys = set()
+            for c in classes:
+                time_str = c.start_time.strftime('%H:%M') if c.start_time else ''
+                key = (c.branch_id, c.day, time_str, c.class_type)
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                classes_data.append({
+                    'id': c.id,
+                    'name': str(c),
+                    'branch_id': c.branch_id,
+                    'day': c.day,
+                    'time': time_str,
+                    'type': c.class_type # Use actual DB field
+                })
 
             # 5. Branches
             branches = Branch.objects.all()

@@ -38,12 +38,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final todayTasks = assignData.where((a) {
         final dueStr = a['due_date']?.toString();
-        if (dueStr == null) return false;
+        if (dueStr == null || dueStr.isEmpty) return false;
 
-        final dueDate = DateTime.tryParse(dueStr);
-        if (dueDate == null) return false;
-        final localDue = dueDate.toLocal();
-        final dueDay = DateTime(localDue.year, localDue.month, localDue.day);
+        DateTime? dueDate = DateTime.tryParse(dueStr);
+        String datePart;
+        if (dueDate == null) {
+          final trimmed = dueStr.split('T').first.split(' ').first;
+          if (trimmed.length < 10) return false;
+          datePart = trimmed.substring(0, 10);
+        } else {
+          final localDue = dueDate.toLocal();
+          datePart = localDue.toIso8601String().substring(0, 10);
+        }
+        final dueDay = DateTime.tryParse(datePart);
+        if (dueDay == null) return false;
 
         // 1. Due Today
         if (dueDay.isAtSameMomentAs(today)) return true;
