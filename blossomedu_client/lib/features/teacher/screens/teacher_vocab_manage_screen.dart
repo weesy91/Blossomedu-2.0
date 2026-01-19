@@ -16,7 +16,7 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
   final VocabService _vocabService = VocabService();
   final AcademyService _academyService = AcademyService(); // [NEW]
   List<dynamic> _books = [];
-  List<dynamic> _schools = [];
+  List<dynamic> _filteredSchools = []; // [NEW] Schools filtered by branch
   List<dynamic> _branches = []; // [NEW]
   List<dynamic> _publishers = [];
   bool _isLoading = true;
@@ -26,7 +26,6 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
   void initState() {
     super.initState();
     _loadBooks();
-    _loadSchools();
     _loadPublishers();
     _loadBranches(); // [NEW]
   }
@@ -56,17 +55,6 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
     }
   }
 
-  Future<void> _loadSchools() async {
-    try {
-      final schools = await _vocabService.getSchools();
-      if (mounted) {
-        setState(() => _schools = schools);
-      }
-    } catch (e) {
-      print('학교 목록 로딩 실패: $e');
-    }
-  }
-
   Future<void> _loadPublishers() async {
     try {
       final publishers = await _vocabService.getPublishers();
@@ -88,12 +76,6 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
     } catch (e) {
       print('분원 목록 로딩 실패: $e');
     }
-  }
-
-  // [NEW] Filter schools by branch
-  List<dynamic> _getFilteredSchools(int? branchId) {
-    if (branchId == null) return _schools;
-    return _schools.where((s) => s['branch'] == branchId).toList();
   }
 
   Future<void> _pickAndUploadCsv() async {
@@ -140,8 +122,6 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final filteredSchools = _getFilteredSchools(selectedBranchId);
-
             return AlertDialog(
               title: const Text('단어장 업로드'),
               content: SingleChildScrollView(
@@ -201,12 +181,16 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
                       ],
                       onChanged: isUploading
                           ? null
-                          : (val) {
+                          : (val) async {
                               setDialogState(() {
                                 selectedBranchId = val;
-                                // Reset school when branch changes
                                 selectedSchoolId = null;
+                                _filteredSchools = []; // Clear while loading
                               });
+                              // Fetch schools for selected branch
+                              final schools =
+                                  await _vocabService.getSchools(branchId: val);
+                              setDialogState(() => _filteredSchools = schools);
                             },
                     ),
                     const SizedBox(height: 12),
@@ -221,7 +205,7 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
                       items: [
                         const DropdownMenuItem(
                             value: null, child: Text("전체 학교")),
-                        ...filteredSchools.map((s) => DropdownMenuItem<int>(
+                        ..._filteredSchools.map((s) => DropdownMenuItem<int>(
                               value: s['id'],
                               child: Text(s['name']),
                             ))
@@ -363,6 +347,14 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
     int? selectedSchoolId = book['target_school'];
     int? selectedGrade = book['target_grade'];
     bool isSaving = false;
+    List<dynamic> editFilteredSchools = []; // Local state for edit dialog
+
+    // Preload schools if branch is already selected
+    if (selectedBranchId != null) {
+      _vocabService.getSchools(branchId: selectedBranchId).then((schools) {
+        // Will update in dialog
+      });
+    }
 
     showDialog(
       context: context,
@@ -370,12 +362,13 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final filteredSchools = _getFilteredSchools(selectedBranchId);
-
-            // If current school is not in filtered list, reset it
-            if (selectedSchoolId != null &&
-                !filteredSchools.any((s) => s['id'] == selectedSchoolId)) {
-              selectedSchoolId = null;
+            // Load schools when dialog opens if branch is selected
+            if (selectedBranchId != null && editFilteredSchools.isEmpty) {
+              _vocabService
+                  .getSchools(branchId: selectedBranchId)
+                  .then((schools) {
+                setDialogState(() => editFilteredSchools = schools);
+              });
             }
 
             return AlertDialog(
@@ -435,11 +428,18 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
                       ],
                       onChanged: isSaving
                           ? null
-                          : (val) {
+                          : (val) async {
                               setDialogState(() {
                                 selectedBranchId = val;
-                                selectedSchoolId = null; // Reset school
+                                selectedSchoolId = null;
+                                editFilteredSchools = [];
                               });
+                              if (val != null) {
+                                final schools = await _vocabService.getSchools(
+                                    branchId: val);
+                                setDialogState(
+                                    () => editFilteredSchools = schools);
+                              }
                             },
                     ),
                     const SizedBox(height: 12),
@@ -453,7 +453,7 @@ class _TeacherVocabManageScreenState extends State<TeacherVocabManageScreen> {
                       items: [
                         const DropdownMenuItem(
                             value: null, child: Text('전체 학교')),
-                        ...filteredSchools.map((s) => DropdownMenuItem<int>(
+                        ...editFilteredSchools.map((s) => DropdownMenuItem<int>(
                               value: s['id'],
                               child: Text(s['name']),
                             ))
