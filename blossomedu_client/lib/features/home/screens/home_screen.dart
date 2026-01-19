@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/academy_service.dart';
+import '../../../core/services/vocab_service.dart'; // [NEW]
 import '../../../core/services/announcement_service.dart';
 import '../../../core/models/announcement.dart';
 
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AcademyService _academyService = AcademyService();
+  final VocabService _vocabService = VocabService(); // [NEW]
   final AnnouncementService _announcementService = AnnouncementService();
 
   List<dynamic> _assignments = [];
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // 1. Fetch Assignments
       final assignData = await _academyService.getAssignments();
+      final vocabData = await _vocabService.getStudentTestResults(); // [NEW]
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final todayStr =
@@ -74,23 +77,50 @@ class _HomeScreenState extends State<HomeScreen> {
       // The user wants "Exclude Unsubmitted".
       // So we want: (is_completed == true) OR (status == 'SUBMITTED' || status == 'REJECTED')
 
-      final recent = assignData.where((a) {
+      // [NEW] Filter Recent History (Assignments)
+      final recentAssignments = assignData.where((a) {
         final isCompleted = a['is_completed'] == true;
         final status = a['status'] ?? 'PENDING';
-        // Exclude unsubmitted (PENDING) unless it's completed (which shouldn't happen if pending)
         if (status == 'PENDING' && !isCompleted) return false;
         return true;
+      }).map((a) {
+        final submission = a['submission'];
+        String sortDate = a['due_date'] ?? '';
+        if (submission != null && submission['submitted_at'] != null) {
+          sortDate = submission['submitted_at'];
+        }
+        return {
+          ...a,
+          'sort_date': sortDate,
+          'is_self_study': false,
+        };
       }).toList();
 
-      // Sort recent by update time or due date? Let's use Updated/Created desc if available, else Due Date.
-      // Backend doesn't explicitly send updated_at in list usually, let's use due_date for now or ID desc (proxy for creation).
-      // Ideally "Recent Activity" implies recently interaction.
-      // Let's sort by ID desc for now as a proxy for recency of creation, or if we had submission time.
-      // Let's fallback to due_date desc.
-      recent
-          .sort((a, b) => (b['due_date'] ?? '').compareTo(a['due_date'] ?? ''));
+      // [NEW] Filter Self-Study Records
+      final selfStudy = vocabData.where((r) {
+        return r['assignment'] == null; // Only independent tests
+      }).map((r) {
+        return {
+          'id': r['id'],
+          'title': '${r['book_title']} - ${r['test_range']}',
+          'assignment_type': 'VOCAB_TEST',
+          'is_completed': true,
+          'status': 'SELF_STUDY',
+          'score': r['score'],
+          'is_self_study': true,
+          'sort_date': r['created_at'] ?? '',
+        };
+      }).toList();
 
-      final topRecent = recent.take(4).toList();
+      // Merge and Sort
+      final combinedRecent = [...recentAssignments, ...selfStudy];
+      combinedRecent.sort((a, b) {
+        final da = a['sort_date']?.toString() ?? '';
+        final db = b['sort_date']?.toString() ?? '';
+        return db.compareTo(da); // Descending (Newest first)
+      });
+
+      final topRecent = combinedRecent.take(5).toList();
 
       // 2. Fetch Announcements
       final announceData = await _announcementService.getAnnouncements();
