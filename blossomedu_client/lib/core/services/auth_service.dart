@@ -13,15 +13,24 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        // Assume API returns { 'token': '...', 'user': { ... } }
-        final token = data['token'];
+        print('DEBUG: Login Response Data: $data'); // [DEBUG]
+
+        final token = data['token']; // Check if strictly 'token' or 'key'
+        print('DEBUG: Token: $token'); // [DEBUG]
+
         if (token != null) {
           await _api.setToken(token);
         }
 
-        // Fetch full profile if not included in login response
-        // Or assume user data is returned
-        return User.fromJson(data['user']);
+        final userMap = data['user'];
+        print('DEBUG: User Map: $userMap'); // [DEBUG]
+
+        if (userMap == null) {
+          print('DEBUG: User Map is NULL!');
+          throw Exception('User data is missing in response');
+        }
+
+        return User.fromJson(userMap);
       }
     } catch (e) {
       print('Login Failed: $e');
