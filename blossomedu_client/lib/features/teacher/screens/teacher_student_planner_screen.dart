@@ -162,11 +162,20 @@ class _TeacherStudentPlannerScreenState
 
   List<dynamic> _getAssignmentsForDate(DateTime date) {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    return _assignments.where((a) {
+    final filtered = _assignments.where((a) {
       final dueDate = a['due_date']?.toString();
       if (dueDate == null) return false;
       return dueDate.startsWith(dateStr);
     }).toList();
+
+    // [FIX] Sort by time
+    filtered.sort((a, b) {
+      final t1 = DateTime.tryParse(a['due_date'] ?? '') ?? DateTime(2100);
+      final t2 = DateTime.tryParse(b['due_date'] ?? '') ?? DateTime(2100);
+      return t1.compareTo(t2);
+    });
+
+    return filtered;
   }
 
   @override
