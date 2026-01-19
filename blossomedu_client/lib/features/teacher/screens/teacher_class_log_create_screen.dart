@@ -746,10 +746,11 @@ class _TeacherClassLogCreateScreenState
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   const SizedBox(height: 12),
 
-                  _buildDatePicker(
-                      label: '기본 마감일 (새 항목 기본값)',
-                      date: _defaultDueDate,
-                      onChanged: (d) => setState(() => _defaultDueDate = d)),
+                  // [REMOVED] Default Date Picker as per user request
+                  // _buildDatePicker(
+                  //     label: '기본 마감일 (새 항목 기본값)',
+                  //     date: _defaultDueDate,
+                  //     onChanged: (d) => setState(() => _defaultDueDate = d)),
                   const SizedBox(height: 16),
 
                   // [REDESIGNED] 주간 단어 과제 (N-Split 통합)
@@ -1395,51 +1396,6 @@ class _TeacherClassLogCreateScreenState
           ),
         ],
       ],
-    );
-  }
-
-  Widget _buildDatePicker(
-      {required String label,
-      required DateTime date,
-      required ValueChanged<DateTime> onChanged}) {
-    return InkWell(
-      onTap: () async {
-        final d = await showDatePicker(
-          context: context,
-          initialDate: date,
-          firstDate: DateTime.now(),
-          lastDate: DateTime.now().add(const Duration(days: 60)),
-        );
-        if (d != null) {
-          final t = await showTimePicker(
-            context: context,
-            initialTime: TimeOfDay.fromDateTime(date),
-          );
-          if (t != null) {
-            onChanged(DateTime(d.year, d.month, d.day, t.hour, t.minute));
-          }
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8)),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: const TextStyle(fontSize: 13, color: Colors.grey)),
-            Row(children: [
-              Text(DateFormat('MM월 dd일 (E) HH:mm', 'ko_KR').format(date),
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              const Icon(Icons.edit_calendar, size: 18, color: Colors.blue),
-            ]),
-          ],
-        ),
-      ),
     );
   }
 
