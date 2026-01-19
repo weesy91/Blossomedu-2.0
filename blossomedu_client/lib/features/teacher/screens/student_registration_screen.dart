@@ -366,8 +366,18 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
     // MOCK teachers? Assuming Reading teachers handle Mock for now, or all teachers.
     // IF Extra Category is Mock, maybe Filter Reading Teachers? For now, All Teachers if not Syntax/Reading specific.
 
+    // Filter Classes by Branch first (avoid duplicate times from other branches)
+    final branchId = _defaultBranchId;
+    final branchClasses = branchId == null
+        ? _classes
+        : _classes.where((c) => c['branch_id'] == branchId).toList();
+    final effectiveClasses = branchId != null && branchClasses.isEmpty
+        ? _classes.where((c) => c['branch_id'] == null).toList()
+        : branchClasses;
+
     // Filter Classes by Type
-    final typeClasses = _classes.where((c) => c['type'] == dataType).toList();
+    final typeClasses =
+        effectiveClasses.where((c) => c['type'] == dataType).toList();
 
     // Extract Unique Days and Sort
     final dayMap = {

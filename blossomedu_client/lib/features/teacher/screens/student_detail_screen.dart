@@ -602,8 +602,18 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     }
     // For MOCK/EXTRA, use all or filter if needed
 
+    // Filter Classes by Branch first (avoid duplicate times from other branches)
+    final branchId = _selectedBranchId;
+    final branchClasses = branchId == null
+        ? _classes
+        : _classes.where((c) => c['branch_id'] == branchId).toList();
+    final effectiveClasses = branchId != null && branchClasses.isEmpty
+        ? _classes.where((c) => c['branch_id'] == null).toList()
+        : branchClasses;
+
     // Filter Classes by Type
-    final typeClasses = _classes.where((c) => c['type'] == dataType).toList();
+    final typeClasses =
+        effectiveClasses.where((c) => c['type'] == dataType).toList();
 
     // Extract Unique Days and Sort
     final dayMap = {

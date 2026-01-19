@@ -121,6 +121,7 @@ class StudentRegistrationViewSet(viewsets.ViewSet):
             classes_data = [{
                 'id': c.id,
                 'name': str(c),
+                'branch_id': c.branch_id,
                 'day': c.day,
                 'time': c.start_time.strftime('%H:%M') if c.start_time else '',
                 'type': c.class_type # Use actual DB field
