@@ -16,6 +16,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   bool _isLoading = true;
   List<dynamic> _students = [];
   List<dynamic> _assignments = [];
+  List<dynamic> _classes = [];
+  int? _defaultBranchId;
   List<dynamic> _dailyAttendances = []; // [NEW]
 
   // Timeline State
@@ -49,10 +51,13 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       final students = await _academyService.getStudents(scope: 'my');
       // Fetch teacher's assignments
       final assignments = await _academyService.getTeacherAssignments();
+      final metadata = await _academyService.getRegistrationMetadata();
 
       setState(() {
         _students = students;
         _assignments = assignments;
+        _classes = metadata['classes'] ?? [];
+        _defaultBranchId = metadata['default_branch_id'];
         _isLoading = false;
       });
       // [NEW] Scroll to today after layout
@@ -95,6 +100,94 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       default:
         return code ?? '';
     }
+  }
+
+  String _classTypeForSubject(String subject) {
+    if (subject.toUpperCase() == 'GRAMMAR') return 'EXTRA';
+    return subject.toUpperCase();
+  }
+
+  int _durationMinutesForSubject(String subject) {
+    switch (subject.toUpperCase()) {
+      case 'READING':
+        return 90;
+      case 'SYNTAX':
+        return 80;
+      case 'GRAMMAR':
+        return 80;
+      default:
+        return 80;
+    }
+  }
+
+  String _formatClassTimeLabel(Map<String, dynamic> classTime, String subject) {
+    final startTime = classTime['time']?.toString() ?? '';
+    if (startTime.isEmpty) return startTime;
+    final parts = startTime.split(':');
+    if (parts.length < 2) return startTime;
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    final startDt = DateTime(2022, 1, 1, hour, minute);
+    final endDt =
+        startDt.add(Duration(minutes: _durationMinutesForSubject(subject)));
+    final endStr =
+        '${endDt.hour.toString().padLeft(2, '0')}:${endDt.minute.toString().padLeft(2, '0')}';
+    return '$startTime - $endStr';
+  }
+
+  String _normalizeTime(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return '';
+    return timeStr.length >= 5 ? timeStr.substring(0, 5) : timeStr;
+  }
+
+  List<dynamic> _getEffectiveClassesForStudent(Map<String, dynamic> student) {
+    final branchId = student['branch'] ?? _defaultBranchId;
+    if (branchId == null) return _classes;
+    final branchClasses =
+        _classes.where((c) => c['branch_id'] == branchId).toList();
+    if (branchClasses.isNotEmpty) return branchClasses;
+    return _classes.where((c) => c['branch_id'] == null).toList();
+  }
+
+  List<dynamic> _getAvailableClassesForSchedule(
+      Map<String, dynamic> student, DateTime date, String subject) {
+    final dayCode = _getDayCode(date);
+    final effectiveClasses = _getEffectiveClassesForStudent(student);
+    final dayClasses =
+        effectiveClasses.where((c) => c['day'] == dayCode).toList();
+    if (dayClasses.isEmpty) return [];
+    final type = _classTypeForSubject(subject);
+    final hasType = dayClasses.any(
+        (c) => (c['type']?.toString().toUpperCase() ?? '') == type);
+    final filtered = hasType
+        ? dayClasses
+            .where((c) =>
+                (c['type']?.toString().toUpperCase() ?? '') == type)
+            .toList()
+        : dayClasses;
+    filtered.sort((a, b) =>
+        (a['time']?.toString() ?? '').compareTo(b['time']?.toString() ?? ''));
+    return filtered;
+  }
+
+  int? _defaultClassIdForSchedule(
+      Map<String, dynamic> student, DateTime date, String subject) {
+    final options = _getAvailableClassesForSchedule(student, date, subject);
+    if (options.isEmpty) return null;
+    return options.first['id'] as int?;
+  }
+
+  int? _findClassIdForSchedule(Map<String, dynamic> student, DateTime date,
+      String subject, String? timeStr) {
+    final timeKey = _normalizeTime(timeStr);
+    final options = _getAvailableClassesForSchedule(student, date, subject);
+    if (timeKey.isNotEmpty) {
+      for (final option in options) {
+        final optionTime = _normalizeTime(option['time']?.toString());
+        if (optionTime == timeKey) return option['id'] as int?;
+      }
+    }
+    return options.isNotEmpty ? options.first['id'] as int? : null;
   }
 
   /// Students who have classes on the given date.
@@ -783,8 +876,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       selectedDate = DateTime.now();
     }
 
-    TimeOfDay selectedTime = TimeOfDay.now();
     String selectedSubject = 'SYNTAX';
+    int? selectedClassId =
+        _defaultClassIdForSchedule(student, selectedDate, selectedSubject);
     bool isExtraClass = true; // Default: Make-up (Extra)
     final noteController = TextEditingController();
 
@@ -843,17 +937,48 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                             initialDate: selectedDate,
                             firstDate: DateTime(2025),
                             lastDate: DateTime(2030));
-                        if (d != null) setState(() => selectedDate = d);
+                        if (d != null) {
+                          setState(() {
+                            selectedDate = d;
+                            selectedClassId = _defaultClassIdForSchedule(
+                                student, selectedDate, selectedSubject);
+                          });
+                        }
                       }),
-                  ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('시간: ${selectedTime.format(context)}'),
-                      trailing: const Icon(Icons.access_time),
-                      onTap: () async {
-                        final t = await showTimePicker(
-                            context: context, initialTime: selectedTime);
-                        if (t != null) setState(() => selectedTime = t);
-                      }),
+                  Builder(builder: (context) {
+                    final availableClasses = _getAvailableClassesForSchedule(
+                        student, selectedDate, selectedSubject);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<int>(
+                          value: selectedClassId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: '시간'),
+                          items: availableClasses.map((c) {
+                            return DropdownMenuItem<int>(
+                              value: c['id'],
+                              child: Text(
+                                _formatClassTimeLabel(c, selectedSubject),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (v) =>
+                              setState(() => selectedClassId = v),
+                        ),
+                        if (availableClasses.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              '선택 가능한 시간표가 없습니다.',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 12),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
                   DropdownButtonFormField<String>(
                     value: selectedSubject,
                     items: const [
@@ -864,12 +989,16 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       DropdownMenuItem(
                           value: 'GRAMMAR', child: Text('문법 (GRAMMAR)')),
                     ],
-                    onChanged: (v) => setState(() => selectedSubject = v!),
+                    onChanged: (v) => setState(() {
+                      selectedSubject = v!;
+                      selectedClassId = _defaultClassIdForSchedule(
+                          student, selectedDate, selectedSubject);
+                    }),
                     decoration: const InputDecoration(labelText: '과목'),
                   ),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(labelText: '메모 (선택)'),
+                    decoration: const InputDecoration(labelText: '사유'),
                   )
                 ],
               ),
@@ -883,14 +1012,30 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     try {
                       final dateStr =
                           DateFormat('yyyy-MM-dd').format(selectedDate);
-                      final h = selectedTime.hour.toString().padLeft(2, '0');
-                      final m = selectedTime.minute.toString().padLeft(2, '0');
+                      if (selectedClassId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('시간표를 선택해주세요.')));
+                        return;
+                      }
+                      final availableClasses = _getAvailableClassesForSchedule(
+                          student, selectedDate, selectedSubject);
+                      final selectedClass = availableClasses.firstWhere(
+                          (c) => c['id'] == selectedClassId,
+                          orElse: () => null);
+                      if (selectedClass == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('시간표를 다시 선택해주세요.')));
+                        return;
+                      }
+                      final startTime =
+                          _normalizeTime(selectedClass?['time']?.toString());
 
                       final payload = {
                         'student': student['id'],
                         'subject': selectedSubject,
                         'new_date': dateStr,
-                        'new_start_time': '$h:$m',
+                        'target_class': selectedClassId,
+                        if (startTime.isNotEmpty) 'new_start_time': startTime,
                         'is_extra_class': isExtraClass,
                         'note': noteController.text,
                       };
@@ -934,10 +1079,10 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final scheduleDateStr = schedule['new_date']?.toString();
     DateTime selectedDate =
         DateTime.tryParse(scheduleDateStr ?? '') ?? _selectedDate;
-    TimeOfDay selectedTime =
-        _parseTimeOfDay(schedule['new_start_time']?.toString());
     String selectedSubject =
         (schedule['subject']?.toString() ?? 'SYNTAX').toUpperCase();
+    int? selectedClassId = _findClassIdForSchedule(
+        student, selectedDate, selectedSubject, schedule['new_start_time']);
     final noteController =
         TextEditingController(text: schedule['note']?.toString() ?? '');
 
@@ -963,17 +1108,48 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                             initialDate: selectedDate,
                             firstDate: DateTime(2025),
                             lastDate: DateTime(2030));
-                        if (d != null) setState(() => selectedDate = d);
+                        if (d != null) {
+                          setState(() {
+                            selectedDate = d;
+                            selectedClassId = _defaultClassIdForSchedule(
+                                student, selectedDate, selectedSubject);
+                          });
+                        }
                       }),
-                  ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('시간: ${selectedTime.format(context)}'),
-                      trailing: const Icon(Icons.access_time),
-                      onTap: () async {
-                        final t = await showTimePicker(
-                            context: context, initialTime: selectedTime);
-                        if (t != null) setState(() => selectedTime = t);
-                      }),
+                  Builder(builder: (context) {
+                    final availableClasses = _getAvailableClassesForSchedule(
+                        student, selectedDate, selectedSubject);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<int>(
+                          value: selectedClassId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: '시간'),
+                          items: availableClasses.map((c) {
+                            return DropdownMenuItem<int>(
+                              value: c['id'],
+                              child: Text(
+                                _formatClassTimeLabel(c, selectedSubject),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (v) =>
+                              setState(() => selectedClassId = v),
+                        ),
+                        if (availableClasses.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              '선택 가능한 시간표가 없습니다.',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 12),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
                   DropdownButtonFormField<String>(
                     value: selectedSubject,
                     items: const [
@@ -984,13 +1160,16 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                       DropdownMenuItem(
                           value: 'GRAMMAR', child: Text('문법 (GRAMMAR)')),
                     ],
-                    onChanged: (v) =>
-                        setState(() => selectedSubject = v ?? selectedSubject),
+                    onChanged: (v) => setState(() {
+                      selectedSubject = v ?? selectedSubject;
+                      selectedClassId = _defaultClassIdForSchedule(
+                          student, selectedDate, selectedSubject);
+                    }),
                     decoration: const InputDecoration(labelText: '과목'),
                   ),
                   TextField(
                     controller: noteController,
-                    decoration: const InputDecoration(labelText: '메모 (선택)'),
+                    decoration: const InputDecoration(labelText: '사유'),
                   )
                 ],
               ),
@@ -1038,13 +1217,29 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     try {
                       final dateStr =
                           DateFormat('yyyy-MM-dd').format(selectedDate);
-                      final h = selectedTime.hour.toString().padLeft(2, '0');
-                      final m = selectedTime.minute.toString().padLeft(2, '0');
+                      if (selectedClassId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('시간표를 선택해주세요.')));
+                        return;
+                      }
+                      final availableClasses = _getAvailableClassesForSchedule(
+                          student, selectedDate, selectedSubject);
+                      final selectedClass = availableClasses.firstWhere(
+                          (c) => c['id'] == selectedClassId,
+                          orElse: () => null);
+                      if (selectedClass == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('시간표를 다시 선택해주세요.')));
+                        return;
+                      }
+                      final startTime =
+                          _normalizeTime(selectedClass?['time']?.toString());
 
                       final payload = {
                         'subject': selectedSubject,
                         'new_date': dateStr,
-                        'new_start_time': '$h:$m',
+                        'target_class': selectedClassId,
+                        if (startTime.isNotEmpty) 'new_start_time': startTime,
                         'note': noteController.text,
                       };
 
@@ -1068,16 +1263,6 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         });
       },
     );
-  }
-
-  TimeOfDay _parseTimeOfDay(String? value) {
-    if (value == null || value.isEmpty) {
-      return TimeOfDay.now();
-    }
-    final parts = value.split(':');
-    final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 0 : 0;
-    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
-    return TimeOfDay(hour: hour, minute: minute);
   }
 
   Future<void> _fetchDailyData(DateTime date) async {

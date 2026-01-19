@@ -119,6 +119,8 @@ class AcademyService {
                   'grade': s['grade_display'] ?? '',
                   'is_active': s['is_active'] ?? true, // [NEW]
                   'start_date': s['start_date'], // [NEW]
+                  'branch': s['branch'],
+                  'branch_name': s['branch_name'] ?? '',
                   'class_times': s['class_times'] ?? [],
                   'temp_schedules': s['temp_schedules'] ?? [], // [NEW]
                 })
