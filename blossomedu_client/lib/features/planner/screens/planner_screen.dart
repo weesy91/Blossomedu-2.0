@@ -15,6 +15,7 @@ class PlannerScreen extends StatefulWidget {
 
 class _PlannerScreenState extends State<PlannerScreen> {
   final AcademyService _academyService = AcademyService();
+  final ScrollController _timelineScrollController = ScrollController();
   bool _isLoading = true;
   List<dynamic> _assignments = [];
   List<dynamic> _classTimes = []; // [NEW]
@@ -32,6 +33,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchData();
     });
+  }
+
+  @override
+  void dispose() {
+    _timelineScrollController.dispose();
+    super.dispose();
   }
 
   void _initializeDates() {
@@ -77,6 +84,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
           _classTimes = studentDetail?['class_times'] ?? [];
           _isLoading = false;
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToToday();
+        });
         // [DEBUG] Log class_times data
         print('=== PLANNER DEBUG ===');
         print('Fetched ${_classTimes.length} class times');
@@ -89,6 +99,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
       print('Error loading planner data: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _scrollToToday() {
+    if (!_timelineScrollController.hasClients) return;
+    final now = DateTime.now();
+    final todayIndex = _weekDates.indexWhere((d) => _isSameDay(d, now));
+    if (todayIndex == -1) return;
+    final offset = (todayIndex * 90.0);
+    _timelineScrollController.jumpTo(offset);
   }
 
   // Helper to check same day
@@ -224,6 +243,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 SizedBox(
                   width: 90,
                   child: ListView.builder(
+                    controller: _timelineScrollController,
+                    itemExtent: 90,
                     itemCount: _weekDates.length,
                     itemBuilder: (context, index) {
                       return _buildTimelineTile(
