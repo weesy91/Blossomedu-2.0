@@ -64,6 +64,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
           _classTimes = studentDetail['class_times'] ?? [];
           _isLoading = false;
         });
+        // [DEBUG] Log class_times data
+        print('=== PLANNER DEBUG ===');
+        print('Fetched ${_classTimes.length} class times');
+        if (_classTimes.isNotEmpty) {
+          print('Sample class_time: ${_classTimes.first}');
+        }
+        print('====================');
       }
     } catch (e) {
       print('Error loading planner data: $e');
@@ -130,6 +137,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     // 3. Combine & Sort
     final combined = [...dailyClasses, ...dailyAssignments];
+
+    // [DEBUG] Log filtering results
+    if (dailyClasses.isNotEmpty) {
+      print(
+          'Found ${dailyClasses.length} classes for ${DateFormat('yyyy-MM-dd').format(date)}');
+      print('Sample class: ${dailyClasses.first}');
+    }
 
     combined.sort((a, b) {
       // Sort by time
