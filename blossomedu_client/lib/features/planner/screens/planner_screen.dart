@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart'; // [NEW]
@@ -495,23 +495,25 @@ class _PlannerScreenState extends State<PlannerScreen> {
     // Check if assignment is locked (before start_date)
     bool isLocked = false;
     String? lockMessage;
-    final startDateStr = item['start_date']?.toString();
-    if (startDateStr != null && startDateStr.isNotEmpty) {
-      try {
-        final startDate = DateTime.parse(startDateStr);
-        final now = DateTime.now();
-        if (now.isBefore(startDate)) {
-          isLocked = true;
-          final startDateFormatted = DateFormat('M/d').format(startDate);
-          lockMessage = '$startDateFormatted부터 수행 가능';
-        }
-      } catch (e) {
-        // Invalid date format, ignore
+    DateTime? startDate = _parseDateOnly(item['start_date']);
+    if (startDate == null && item['assignment_type'] == 'VOCAB_TEST') {
+      final dueDate = _parseDateOnly(item['due_date']);
+      if (dueDate != null) {
+        startDate = dueDate.subtract(const Duration(days: 1));
+      }
+    }
+    if (startDate != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (today.isBefore(startDate)) {
+        isLocked = true;
+        final startDateFormatted = DateFormat('M/d').format(startDate);
+        lockMessage = '$startDateFormatted부터 수행 가능';
       }
     }
 
     if (isLocked) {
-      statusLabel = '🔒 잠금';
+      statusLabel = '잠금';
       statusColor = Colors.grey;
     } else if (isCompleted) {
       statusLabel = '완료';
@@ -668,3 +670,4 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 }
+

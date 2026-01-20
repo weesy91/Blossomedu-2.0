@@ -73,6 +73,27 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     return '${AppConfig.baseUrl}$url';
   }
 
+  DateTime? _parseDateOnly(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) {
+      return DateTime(value.year, value.month, value.day);
+    }
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return null;
+    DateTime? parsed;
+    try {
+      parsed = DateTime.parse(raw);
+    } catch (_) {
+      try {
+        parsed = DateFormat('yyyy-MM-dd HH:mm:ss').parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+    final local = parsed.isUtc ? parsed.toLocal() : parsed;
+    return DateTime(local.year, local.month, local.day);
+  }
+
   List<String> _getSubmissionImageUrls() {
     final submission = _getSubmission();
     final List<String> urls = [];
@@ -239,40 +260,41 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
 
   Widget _buildContent() {
     // [NEW] Check if assignment is locked (before start_date)
-    final startDateStr = _assignmentData!['start_date']?.toString();
-    if (startDateStr != null && startDateStr.isNotEmpty) {
-      try {
-        final startDate = DateTime.parse(startDateStr);
-        final now = DateTime.now();
-        if (now.isBefore(startDate)) {
-          final startDateFormatted =
-              DateFormat('M월 d일 HH:mm').format(startDate);
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.lock_outline, size: 80, color: Colors.grey),
-                const SizedBox(height: 24),
-                const Text(
-                  '아직 수행할 수 없는 과제입니다',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '$startDateFormatted부터 수행 가능합니다',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('돌아가기'),
-                ),
-              ],
-            ),
-          );
-        }
-      } catch (e) {
-        // Invalid date format, proceed normally
+    DateTime? startDate = _parseDateOnly(_assignmentData!['start_date']);
+    if (startDate == null && _assignmentData!['assignment_type'] == 'VOCAB_TEST') {
+      final dueDate = _parseDateOnly(_assignmentData!['due_date']);
+      if (dueDate != null) {
+        startDate = dueDate.subtract(const Duration(days: 1));
+      }
+    }
+    if (startDate != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (today.isBefore(startDate)) {
+        final startDateFormatted = DateFormat('M월 d일').format(startDate);
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 80, color: Colors.grey),
+              const SizedBox(height: 24),
+              const Text(
+                '아직 수행할 수 없는 과제입니다',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$startDateFormatted부터 수행 가능합니다',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => context.pop(),
+                child: const Text('돌아가기'),
+              ),
+            ],
+          ),
+        );
       }
     }
 
