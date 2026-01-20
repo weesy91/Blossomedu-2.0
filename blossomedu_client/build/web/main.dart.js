@@ -53858,9 +53858,10 @@ A.aN6.prototype={
 $1(a){return this.a.uX(a,this.b)},
 $S:235}
 A.aN1.prototype={
-$1(a){var s=this.a,r=J.Q(a),q=s.Fe(r.h(a,"due_date")),p=s.Fe(r.h(a,"start_date"))
-if(q!=null&&s.uX(q,this.b))return!0
-if(p!=null&&s.uX(p,this.b))return!0
+$1(a){var s,r=this.a,q=J.Q(a),p=r.Fe(q.h(a,"due_date")),o=p==null
+if(!o&&r.uX(p,this.b))return!0
+s=r.Fe(q.h(a,"start_date"))
+if(o&&s!=null&&r.uX(s,this.b))return!0
 return!1},
 $S:4}
 A.aN2.prototype={

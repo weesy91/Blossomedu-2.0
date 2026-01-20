@@ -170,9 +170,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final dailyAssignments = _assignments
         .where((a) {
           final dueDate = _parseDateOnly(a['due_date']);
-          final startDate = _parseDateOnly(a['start_date']);
           if (dueDate != null && _isSameDay(dueDate, date)) return true;
-          if (startDate != null && _isSameDay(startDate, date)) return true;
+          final startDate = _parseDateOnly(a['start_date']);
+          if (dueDate == null && startDate != null && _isSameDay(startDate, date)) {
+            return true;
+          }
           return false;
         })
         .map((a) => {...a, 'itemType': 'ASSIGNMENT'})
