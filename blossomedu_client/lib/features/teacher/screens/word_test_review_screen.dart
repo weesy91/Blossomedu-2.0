@@ -58,6 +58,7 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
           'isCorrect': d['is_correct'],
           'correctionRequested': d['is_correction_requested'] ?? false,
           'status': status,
+          'pos': d['question_pos'], // [NEW] Map POS
         };
       }).toList();
 
@@ -207,7 +208,7 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
                       final bool isRequest = q['correctionRequested'];
 
                       if (!isRequest && q['status'] != 'PENDING') {
-                        return _buildNormalWrongItem(q);
+                        return _buildResultItem(q);
                       }
 
                       return _buildCorrectionItem(q);
@@ -311,7 +312,8 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
                     const Text('정답 (한글)',
                         style: TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 4),
-                    Text(q['correctAnswer'],
+                    Text(
+                        '${q['correctAnswer']} ${q['pos'] != null ? '(${q['pos']})' : ''}',
                         style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -357,7 +359,7 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
     );
   }
 
-  Widget _buildNormalWrongItem(Map<String, dynamic> q) {
+  Widget _buildResultItem(Map<String, dynamic> q) {
     return Opacity(
       opacity: 0.6,
       child: Row(
@@ -369,7 +371,10 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
                 Text(q['word'],
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16)),
-                // Display Meaning as the correct answer context
+                // [NEW] Show POS clearly
+                if (q['pos'] != null)
+                  Text(q['pos'],
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               ],
             ),
           ),
@@ -377,10 +382,13 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(q['studentAnswer'],
-                  style: const TextStyle(
-                      color: Colors.red,
-                      decoration: TextDecoration.lineThrough)),
-              Text(q['correctAnswer'],
+                  style: TextStyle(
+                      color: q['isCorrect'] ? Colors.green : Colors.red,
+                      decoration: q['isCorrect']
+                          ? TextDecoration.none
+                          : TextDecoration.lineThrough)),
+              Text(
+                  '${q['correctAnswer']} ${q['pos'] != null ? '(${q['pos']})' : ''}',
                   style: const TextStyle(color: Colors.blue)),
             ],
           )

@@ -250,7 +250,8 @@ def calculate_score(details_data):
             'q': item.get('english'),
             'u': user_input,
             'a': ans_origin,
-            'c': is_correct
+            'c': is_correct,
+            'pos': item.get('pos')
         })
         
     return score, wrong_count, processed_details

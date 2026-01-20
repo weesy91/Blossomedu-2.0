@@ -135,7 +135,7 @@ class WordSerializer(serializers.ModelSerializer):
 class TestResultDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestResultDetail
-        fields = ['id', 'word_question', 'student_answer', 'correct_answer', 'is_correct', 'is_correction_requested', 'is_resolved']
+        fields = ['id', 'word_question', 'question_pos', 'student_answer', 'correct_answer', 'is_correct', 'is_correction_requested', 'is_resolved']
 
 class TestResultSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source='book.title', read_only=True)

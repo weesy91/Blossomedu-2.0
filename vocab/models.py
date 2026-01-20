@@ -226,6 +226,7 @@ class TestResultDetail(models.Model):
     is_correct = models.BooleanField(default=False)
     is_correction_requested = models.BooleanField(default=False, verbose_name="정답 정정 요청")
     is_resolved = models.BooleanField(default=False, verbose_name="처리 완료")
+    question_pos = models.CharField(max_length=10, blank=True, null=True, verbose_name="문제 품사")
 
     def __str__(self):
         return f"{self.word_question} ({'O' if self.is_correct else 'X'})"

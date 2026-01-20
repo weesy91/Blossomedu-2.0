@@ -766,7 +766,7 @@ class TestViewSet(viewsets.ModelViewSet):
             
             # 쿨타임 업데이트
             services.update_cooldown(profile, mode, score, total_count=len(processed_details))
-            
+
             # [NEW] 3-Strike Rule 및 오답 노트 업데이트
             services.process_snowball_results(profile, processed_details)
             
@@ -775,13 +775,14 @@ class TestViewSet(viewsets.ModelViewSet):
                 TestResultDetail(
                     result=result,
                     word_question=item['q'],
+                    question_pos=item.get('pos'),  # [NEW] Save POS info
                     student_answer=item['u'],
                     correct_answer=item['a'],
                     is_correct=item['c']
                 ) for item in processed_details
             ]
             TestResultDetail.objects.bulk_create(details_objs)
-
+            
             # [NEW] Assignment Completion Logic
             is_assignment_completed = False
             # [FIX] assignment_id가 문자열(예: 'self_study_...')이면 건너뛰기
