@@ -32,11 +32,23 @@ class _TeacherVocabEventManageScreenState
     return true;
   }
 
+  int? _asInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    if (value is Map) {
+      final id = value['id'];
+      if (id is int) return id;
+      if (id is String) return int.tryParse(id);
+    }
+    return null;
+  }
+
   List<Map<String, dynamic>> _sortEvents(List<Map<String, dynamic>> events) {
     final deduped = <Map<String, dynamic>>[];
     final seenIds = <dynamic>{};
     for (final event in events) {
-      final id = event['id'];
+      final id = _asInt(event['id']) ?? event['id'];
       if (id == null || seenIds.add(id)) {
         deduped.add(event);
       }
@@ -46,8 +58,8 @@ class _TeacherVocabEventManageScreenState
       final bDate = b['start_date']?.toString() ?? '';
       final dateCompare = bDate.compareTo(aDate);
       if (dateCompare != 0) return dateCompare;
-      final aId = a['id'] ?? 0;
-      final bId = b['id'] ?? 0;
+      final aId = _asInt(a['id']) ?? 0;
+      final bId = _asInt(b['id']) ?? 0;
       return bId.compareTo(aId);
     });
     return deduped;
@@ -81,7 +93,7 @@ class _TeacherVocabEventManageScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('??? ?? ??: $e')),
+          SnackBar(content: Text('이벤트 로드 실패: $e')),
         );
       }
     }
@@ -124,16 +136,23 @@ class _TeacherVocabEventManageScreenState
   Future<void> _openEventDialog({Map<String, dynamic>? event}) async {
     final titleController =
         TextEditingController(text: event?['title']?.toString() ?? '');
-    int? selectedBookId = event?['target_book'] as int?;
-    final availableBooks =
-        _books.where(_isEventCandidateBook).toList(growable: false);
+    int? selectedBookId = _asInt(event?['target_book']);
+    selectedBookId ??= _asInt(event?['target_book_id']);
+    final availableBooks = _books
+        .where(_isEventCandidateBook)
+        .where((b) => _asInt(b['id']) != null)
+        .toList(growable: false);
     if (selectedBookId != null &&
-        !availableBooks.any((b) => b['id'] == selectedBookId)) {
+        !availableBooks.any((b) => _asInt(b['id']) == selectedBookId)) {
       selectedBookId = null;
     }
 
     // [NEW] Branch Selection
-    int? selectedBranchId = event?['branch'] as int?;
+    int? selectedBranchId = _asInt(event?['branch']);
+    selectedBranchId ??= _asInt(event?['branch_id']);
+    final availableBranches = _branches
+        .where((b) => _asInt(b['id']) != null)
+        .toList(growable: false);
     // If Creating New, default to global (null) or user's branch?
     // Backend auto-sets creator's branch if null.
     // But now we allow EXPLICIT selection.
@@ -159,17 +178,25 @@ class _TeacherVocabEventManageScreenState
                 children: [
                   TextField(
                     controller: titleController,
+                    enabled: !isSaving,
                     decoration: const InputDecoration(labelText: '이벤트 제목'),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<int?>(
                     value: selectedBookId,
-                    items: availableBooks
-                        .map((b) => DropdownMenuItem<int>(
-                              value: b['id'] as int,
-                              child: Text(b['title']?.toString() ?? ''),
-                            ))
-                        .toList(),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('선택'),
+                      ),
+                      ...availableBooks.map((b) {
+                        final id = _asInt(b['id'])!;
+                        return DropdownMenuItem<int?>(
+                          value: id,
+                          child: Text(b['title']?.toString() ?? ''),
+                        );
+                      })
+                    ],
                     onChanged: isSaving
                         ? null
                         : (val) => setDialogState(() => selectedBookId = val),
@@ -184,10 +211,13 @@ class _TeacherVocabEventManageScreenState
                         value: null,
                         child: Text('전체 지점 (본사)'),
                       ),
-                      ..._branches.map((b) => DropdownMenuItem<int?>(
-                            value: b['id'] as int,
-                            child: Text(b['name']?.toString() ?? ''),
-                          )),
+                      ...availableBranches.map((b) {
+                        final id = _asInt(b['id'])!;
+                        return DropdownMenuItem<int?>(
+                          value: id,
+                          child: Text(b['name']?.toString() ?? ''),
+                        );
+                      }),
                     ],
                     onChanged: isSaving
                         ? null
@@ -268,11 +298,20 @@ class _TeacherVocabEventManageScreenState
                     'is_active': isActive,
                   };
 
+                  final eventId = event == null ? null : _asInt(event['id']);
+                  if (event != null && eventId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('이벤트 ID를 확인할 수 없습니다.')));
+                    return;
+                  }
+
+                  setDialogState(() => isSaving = true);
+
                   try {
                     final saved = event == null
                         ? await _vocabService.createRankingEvent(payload)
                         : await _vocabService.updateRankingEvent(
-                            event['id'] as int, payload);
+                            eventId!, payload);
                     if (!mounted) return;
                     Navigator.of(context).pop();
                     // Wait a bit for dialog to close before reloading
@@ -322,49 +361,51 @@ class _TeacherVocabEventManageScreenState
     final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-              title: const Text('??? ??'),
-              content: const Text('??? ? ???? ?????????'),
+              title: const Text('이벤트 삭제'),
+              content: const Text('이 이벤트를 삭제하시겠습니까?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('??'),
+                  child: const Text('취소'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('??'),
+                  child: const Text('삭제'),
                 ),
               ],
             ));
 
     if (confirm != true) return;
-    final eventId = event['id'] as int?;
+    final eventId = _asInt(event['id']);
     if (eventId == null) return;
     if (_deletingEventIds.contains(eventId)) return;
     setState(() => _deletingEventIds.add(eventId));
     try {
-      await _vocabService.deleteRankingEvent(event['id'] as int);
+      await _vocabService.deleteRankingEvent(eventId);
       if (!mounted) return;
       setState(() {
-        _events.removeWhere((e) => e['id'] == event['id']);
+        _events.removeWhere((e) =>
+            _asInt(e['id']) == eventId || e['id'] == event['id']);
       });
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('???? ???????.')));
+          .showSnackBar(const SnackBar(content: Text('이벤트가 삭제되었습니다.')));
     } on DioException catch (e) {
       if (!mounted) return;
       if (e.response?.statusCode == 404) {
         setState(() {
-          _events.removeWhere((item) => item['id'] == event['id']);
+          _events.removeWhere((item) =>
+              _asInt(item['id']) == eventId || item['id'] == event['id']);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('?? ??? ??????.')));
+            const SnackBar(content: Text('이미 삭제된 이벤트입니다.')));
       } else {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('?? ??: $e')));
+            .showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('?? ??: $e')));
+          .showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
     } finally {
       if (mounted) {
         setState(() => _deletingEventIds.remove(eventId));
@@ -398,7 +439,7 @@ class _TeacherVocabEventManageScreenState
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final event = _events[index];
-                    final eventId = event['id'] as int?;
+                    final eventId = _asInt(event['id']);
                     final isDeleting = eventId != null &&
                         _deletingEventIds.contains(eventId);
                     final title = event['title']?.toString() ?? '';
