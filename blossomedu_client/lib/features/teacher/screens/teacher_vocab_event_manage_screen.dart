@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../../../core/services/vocab_service.dart';
 import '../../../core/services/academy_service.dart';
 
@@ -31,8 +32,15 @@ class _TeacherVocabEventManageScreenState
   }
 
   List<Map<String, dynamic>> _sortEvents(List<Map<String, dynamic>> events) {
-    final sorted = List<Map<String, dynamic>>.from(events);
-    sorted.sort((a, b) {
+    final deduped = <Map<String, dynamic>>[];
+    final seenIds = <dynamic>{};
+    for (final event in events) {
+      final id = event['id'];
+      if (id == null || seenIds.add(id)) {
+        deduped.add(event);
+      }
+    }
+    deduped.sort((a, b) {
       final aDate = a['start_date']?.toString() ?? '';
       final bDate = b['start_date']?.toString() ?? '';
       final dateCompare = bDate.compareTo(aDate);
@@ -41,7 +49,7 @@ class _TeacherVocabEventManageScreenState
       final bId = b['id'] ?? 0;
       return bId.compareTo(aId);
     });
-    return sorted;
+    return deduped;
   }
 
   void _upsertEvent(Map<String, dynamic> event) {
@@ -65,30 +73,50 @@ class _TeacherVocabEventManageScreenState
     if (showLoading) {
       setState(() => _isLoading = true);
     }
+    List<Map<String, dynamic>>? events;
     try {
-      final results = await Future.wait([
-        _vocabService.getRankingEvents(),
-        _vocabService.getVocabBooks(),
-        _academyService.getBranches(), // [NEW]
-      ]);
-      final events =
-          (results[0]).map((e) => Map<String, dynamic>.from(e)).toList();
-      final books =
-          (results[1]).map((e) => Map<String, dynamic>.from(e)).toList();
-      final branches =
-          (results[2]).map((e) => Map<String, dynamic>.from(e)).toList();
-      if (!mounted) return;
-      setState(() {
-        _events = _sortEvents(events);
-        _books = books;
-        _branches = branches; // [NEW]
-        _isLoading = false;
-      });
+      final rawEvents = await _vocabService.getRankingEvents();
+      events = rawEvents.map((e) => Map<String, dynamic>.from(e)).toList();
     } catch (e) {
-      if (!mounted) return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('??? ?? ??: $e')),
+        );
+      }
+    }
+
+    if (!mounted) return;
+    if (events != null) {
+      setState(() {
+        _events = _sortEvents(events!);
+      });
+    }
+
+    try {
+      final rawBooks = await _vocabService.getVocabBooks();
+      if (mounted) {
+        setState(() {
+          _books = rawBooks.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Event books load failed: $e');
+    }
+
+    try {
+      final rawBranches = await _academyService.getBranches(); // [NEW]
+      if (mounted) {
+        setState(() {
+          _branches =
+              rawBranches.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Event branches load failed: $e');
+    }
+
+    if (mounted) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('이벤트 로딩 실패: $e')));
     }
   }
 
@@ -286,16 +314,16 @@ class _TeacherVocabEventManageScreenState
     final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-              title: const Text('이벤트 삭제'),
-              content: const Text('정말로 이 이벤트를 삭제하시겠습니까?'),
+              title: const Text('??? ??'),
+              content: const Text('??? ? ???? ?????????'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('취소'),
+                  child: const Text('??'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('삭제'),
+                  child: const Text('??'),
                 ),
               ],
             ));
@@ -308,12 +336,23 @@ class _TeacherVocabEventManageScreenState
         _events.removeWhere((e) => e['id'] == event['id']);
       });
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('이벤트가 삭제되었습니다.')));
+          .showSnackBar(const SnackBar(content: Text('???? ???????.')));
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 404) {
+        setState(() {
+          _events.removeWhere((item) => item['id'] == event['id']);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('?? ??? ??????.')));
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('?? ??: $e')));
+      }
     } catch (e) {
       if (!mounted) return;
-      // Even on error (like 404), refresh to sync with server state
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
+          .showSnackBar(SnackBar(content: Text('?? ??: $e')));
     } finally {
       // Always reload data to ensure UI matches server state
       if (mounted) {
