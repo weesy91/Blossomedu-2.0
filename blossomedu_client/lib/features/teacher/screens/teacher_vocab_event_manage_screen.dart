@@ -153,6 +153,10 @@ class _TeacherVocabEventManageScreenState
     final availableBranches = _branches
         .where((b) => _asInt(b['id']) != null)
         .toList(growable: false);
+    if (selectedBranchId != null &&
+        !availableBranches.any((b) => _asInt(b['id']) == selectedBranchId)) {
+      selectedBranchId = null;
+    }
     // If Creating New, default to global (null) or user's branch?
     // Backend auto-sets creator's branch if null.
     // But now we allow EXPLICIT selection.
