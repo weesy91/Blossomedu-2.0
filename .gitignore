@@ -11,3 +11,5 @@ media/
 *.jpg
 *.png
 *.pdf
+!blossomedu_client/assets/**
+!blossomedu_client/build/web/**
