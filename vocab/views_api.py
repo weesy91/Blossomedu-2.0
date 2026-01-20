@@ -223,6 +223,7 @@ class RankingEventViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if (
             not instance.branch
+            and 'branch' not in self.request.data
             and hasattr(user, 'staff_profile')
             and user.staff_profile.branch
         ):

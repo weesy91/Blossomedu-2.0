@@ -138,24 +138,23 @@ class _TeacherVocabEventManageScreenState
         TextEditingController(text: event?['title']?.toString() ?? '');
     int? selectedBookId = _asInt(event?['target_book']);
     selectedBookId ??= _asInt(event?['target_book_id']);
-    final availableBooks = _books
-        .where(_isEventCandidateBook)
-        .where((b) => _asInt(b['id']) != null)
-        .toList(growable: false);
-    if (selectedBookId != null &&
-        !availableBooks.any((b) => _asInt(b['id']) == selectedBookId)) {
-      selectedBookId = null;
+    final availableBooks = <Map<String, dynamic>>[];
+    final seenBookIds = <int>{};
+    for (final book in _books.where(_isEventCandidateBook)) {
+      final id = _asInt(book['id']);
+      if (id == null || !seenBookIds.add(id)) continue;
+      availableBooks.add(book);
     }
 
     // [NEW] Branch Selection
     int? selectedBranchId = _asInt(event?['branch']);
     selectedBranchId ??= _asInt(event?['branch_id']);
-    final availableBranches = _branches
-        .where((b) => _asInt(b['id']) != null)
-        .toList(growable: false);
-    if (selectedBranchId != null &&
-        !availableBranches.any((b) => _asInt(b['id']) == selectedBranchId)) {
-      selectedBranchId = null;
+    final availableBranches = <Map<String, dynamic>>[];
+    final seenBranchIds = <int>{};
+    for (final branch in _branches) {
+      final id = _asInt(branch['id']);
+      if (id == null || !seenBranchIds.add(id)) continue;
+      availableBranches.add(branch);
     }
     // If Creating New, default to global (null) or user's branch?
     // Backend auto-sets creator's branch if null.
@@ -174,6 +173,15 @@ class _TeacherVocabEventManageScreenState
       context: context,
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
+          final selectedBookValue = selectedBookId != null &&
+                  availableBooks.any((b) => _asInt(b['id']) == selectedBookId)
+              ? selectedBookId
+              : null;
+          final selectedBranchValue = selectedBranchId != null &&
+                  availableBranches
+                      .any((b) => _asInt(b['id']) == selectedBranchId)
+              ? selectedBranchId
+              : null;
           return AlertDialog(
             title: Text(event == null ? '이벤트 단어장 추가' : '이벤트 단어장 수정'),
             content: SingleChildScrollView(
@@ -187,7 +195,7 @@ class _TeacherVocabEventManageScreenState
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int?>(
-                    value: selectedBookId,
+                    value: selectedBookValue,
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
@@ -209,7 +217,7 @@ class _TeacherVocabEventManageScreenState
                   const SizedBox(height: 12),
                   // [NEW] Branch Selector
                   DropdownButtonFormField<int?>(
-                    value: selectedBranchId,
+                    value: selectedBranchValue,
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
