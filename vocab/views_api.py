@@ -836,17 +836,22 @@ class TestViewSet(viewsets.ModelViewSet):
                 word_text = item.get('word_id') # word identifier (english text)
                 accepted = item.get('accepted') # true=정답인정, false=반려(오답유지)
                 
-                if not accepted: continue
+                if accepted is None:
+                    continue
                 
                 # 1. Detail 업데이트 (정답 처리)
                 detail = TestResultDetail.objects.filter(result=result, word_question=word_text).first()
                 if detail:
                      detail.is_resolved = True # [FIX] Mark as resolved
+                     detail.is_correction_requested = False
                      if accepted and not detail.is_correct:
                          detail.is_correct = True
                          detail.save()
                          changed_count += 1
                      else:
+                         if not accepted and detail.is_correct:
+                             detail.is_correct = False
+                             changed_count -= 1
                          detail.save() # Save resolved status even if rejected
                      
                      # 2. 오답 노트(Snowball)에서 구출

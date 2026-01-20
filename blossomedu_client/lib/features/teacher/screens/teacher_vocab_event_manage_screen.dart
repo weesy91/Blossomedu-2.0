@@ -19,6 +19,7 @@ class _TeacherVocabEventManageScreenState
   List<Map<String, dynamic>> _events = [];
   List<Map<String, dynamic>> _books = [];
   List<Map<String, dynamic>> _branches = []; // [NEW]
+  final Set<int> _deletingEventIds = {};
 
   bool _isEventCandidateBook(Map<String, dynamic> book) {
     final title = (book['title'] ?? '').toString().trim().toLowerCase();
@@ -144,6 +145,7 @@ class _TeacherVocabEventManageScreenState
         DateTime.tryParse(event?['end_date']?.toString() ?? '') ??
             DateTime.now().add(const Duration(days: 7));
     bool isActive = event?['is_active'] == true;
+    bool isSaving = false;
 
     await showDialog(
       context: context,
@@ -168,8 +170,9 @@ class _TeacherVocabEventManageScreenState
                               child: Text(b['title']?.toString() ?? ''),
                             ))
                         .toList(),
-                    onChanged: (val) =>
-                        setDialogState(() => selectedBookId = val),
+                    onChanged: isSaving
+                        ? null
+                        : (val) => setDialogState(() => selectedBookId = val),
                     decoration: const InputDecoration(labelText: '이벤트 단어장'),
                   ),
                   const SizedBox(height: 12),
@@ -186,8 +189,9 @@ class _TeacherVocabEventManageScreenState
                             child: Text(b['name']?.toString() ?? ''),
                           )),
                     ],
-                    onChanged: (val) =>
-                        setDialogState(() => selectedBranchId = val),
+                    onChanged: isSaving
+                        ? null
+                        : (val) => setDialogState(() => selectedBranchId = val),
                     decoration: const InputDecoration(labelText: '적용 지점'),
                   ),
                   const SizedBox(height: 12),
@@ -195,6 +199,7 @@ class _TeacherVocabEventManageScreenState
                     label: '시작일',
                     date: startDate,
                     onPick: () async {
+                      if (isSaving) return;
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: startDate,
@@ -211,6 +216,7 @@ class _TeacherVocabEventManageScreenState
                     label: '종료일',
                     date: endDate,
                     onPick: () async {
+                      if (isSaving) return;
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: endDate,
@@ -225,7 +231,9 @@ class _TeacherVocabEventManageScreenState
                   const SizedBox(height: 12),
                   SwitchListTile(
                     value: isActive,
-                    onChanged: (val) => setDialogState(() => isActive = val),
+                    onChanged: isSaving
+                        ? null
+                        : (val) => setDialogState(() => isActive = val),
                     title: const Text('이벤트 진행 중'),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -234,11 +242,11 @@ class _TeacherVocabEventManageScreenState
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: isSaving ? null : () => Navigator.of(context).pop(),
                 child: const Text('취소'),
               ),
               ElevatedButton(
-                onPressed: () async {
+                onPressed: isSaving ? null : () async {
                   final title = titleController.text.trim();
                   if (title.isEmpty || selectedBookId == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -329,6 +337,10 @@ class _TeacherVocabEventManageScreenState
             ));
 
     if (confirm != true) return;
+    final eventId = event['id'] as int?;
+    if (eventId == null) return;
+    if (_deletingEventIds.contains(eventId)) return;
+    setState(() => _deletingEventIds.add(eventId));
     try {
       await _vocabService.deleteRankingEvent(event['id'] as int);
       if (!mounted) return;
@@ -354,6 +366,9 @@ class _TeacherVocabEventManageScreenState
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('?? ??: $e')));
     } finally {
+      if (mounted) {
+        setState(() => _deletingEventIds.remove(eventId));
+      }
       // Always reload data to ensure UI matches server state
       if (mounted) {
         _loadData(showLoading: false);
@@ -383,6 +398,9 @@ class _TeacherVocabEventManageScreenState
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final event = _events[index];
+                    final eventId = event['id'] as int?;
+                    final isDeleting = eventId != null &&
+                        _deletingEventIds.contains(eventId);
                     final title = event['title']?.toString() ?? '';
                     final bookTitle =
                         event['target_book_title']?.toString() ?? '';
@@ -411,11 +429,18 @@ class _TeacherVocabEventManageScreenState
                             ),
                           IconButton(
                             icon: const Icon(Icons.edit, size: 18),
-                            onPressed: () => _openEventDialog(event: event),
+                            onPressed:
+                                isDeleting ? null : () => _openEventDialog(event: event),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete, size: 18),
-                            onPressed: () => _deleteEvent(event),
+                            icon: isDeleting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.delete, size: 18),
+                            onPressed: isDeleting ? null : () => _deleteEvent(event),
                           ),
                         ],
                       ),

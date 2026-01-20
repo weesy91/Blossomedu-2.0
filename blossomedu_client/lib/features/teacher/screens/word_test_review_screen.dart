@@ -102,6 +102,17 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
     });
   }
 
+  void _resetCorrection(int detailId) {
+    setState(() {
+      final q =
+          (_d['questions'] as List).firstWhere((e) => e['id'] == detailId);
+      if (q['status'] == 'ACCEPTED') {
+        _d['score'] = (_d['score'] as int) - 1;
+      }
+      q['status'] = 'PENDING';
+    });
+  }
+
   Future<void> _saveReview() async {
     try {
       setState(() => _isLoading = true);
@@ -259,6 +270,11 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
                         fontWeight: FontWeight.bold)),
               ),
               const Spacer(),
+              if (status == 'ACCEPTED' || status == 'REJECTED')
+                TextButton(
+                  onPressed: () => _resetCorrection(q['id']),
+                  child: const Text('되돌리기'),
+                ),
               if (status == 'ACCEPTED')
                 const Icon(Icons.check_circle, color: Colors.green),
               if (status == 'REJECTED')
@@ -275,6 +291,9 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.indigo)),
+          if (q['pos'] != null)
+            Text(q['pos'],
+                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           const SizedBox(height: 12),
 
           Row(
