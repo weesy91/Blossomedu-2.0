@@ -1,17 +1,18 @@
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_tts/flutter_tts.dart';
-import 'dart:io' show Platform;
 
 class TtsService {
   final FlutterTts flutterTts = FlutterTts();
   Map<dynamic, dynamic>? _bestVoice;
   String _bestLocale = "en-US";
+  late final Future<void> _initFuture;
 
   TtsService() {
-    _initTts();
+    _initFuture = _initTts();
   }
   Future<void> _initTts() async {
     try {
-      if (Platform.isIOS) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         await flutterTts.setIosAudioCategory(
             IosTextToSpeechAudioCategory.playback,
             [
@@ -99,9 +100,13 @@ class TtsService {
   }
 
   Future<void> speak(String text) async {
-    if (text.isNotEmpty) {
-      await _ensureEnglishVoice();
+    if (text.isEmpty) return;
+    await _initFuture;
+    await _ensureEnglishVoice();
+    try {
       await flutterTts.speak(text);
+    } catch (e) {
+      print("TTS Speak Error: $e");
     }
   }
 

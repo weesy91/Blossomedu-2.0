@@ -214,9 +214,18 @@ class _TeacherVocabEventManageScreenState
                     }
                     if (!mounted) return;
                     Navigator.of(context).pop();
-                    _loadData();
+                    // Wait a bit for dialog to close before reloading
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (!mounted) return;
+                    await _loadData();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(event == null
+                            ? '이벤트가 생성되었습니다.'
+                            : '이벤트가 수정되었습니다.')));
                   } catch (e) {
                     if (!mounted) return;
+                    Navigator.of(context).pop();
                     ScaffoldMessenger.of(context)
                         .showSnackBar(SnackBar(content: Text('저장 실패: $e')));
                   }
@@ -269,11 +278,18 @@ class _TeacherVocabEventManageScreenState
     try {
       await _vocabService.deleteRankingEvent(event['id'] as int);
       if (!mounted) return;
-      _loadData();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('이벤트가 삭제되었습니다.')));
     } catch (e) {
       if (!mounted) return;
+      // Even on error (like 404), refresh to sync with server state
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
+    } finally {
+      // Always reload data to ensure UI matches server state
+      if (mounted) {
+        _loadData();
+      }
     }
   }
 

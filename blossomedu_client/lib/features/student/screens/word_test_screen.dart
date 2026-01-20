@@ -76,9 +76,13 @@ class _WordTestScreenState extends State<WordTestScreen>
       _isLoading = false;
     } else {
       try {
+        final int? studyCount = widget.testMode == 'study'
+            ? _inferRangeCount(widget.testRange)
+            : null;
         final rawQuestions = await _vocabService.generateTestQuestions(
           bookId: widget.bookId,
           range: widget.testRange, // Use the passed range
+          count: studyCount ?? 30,
         );
 
         // Map backend data to frontend format
@@ -229,6 +233,26 @@ class _WordTestScreenState extends State<WordTestScreen>
       }
     } else {
       _finishTest();
+    }
+  }
+
+  void _prevCard() {
+    if (_currentIndex > 0) {
+      setState(() {
+        _currentIndex--;
+        _isCardFlipped = false; // Reset for study mode
+      });
+      _speakCurrentWord(); // [TTS] Speak Previous Word
+    }
+  }
+
+  void _handleStudySwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity;
+    if (velocity == null || velocity.abs() < 150) return;
+    if (velocity < 0) {
+      _nextCard();
+    } else {
+      _prevCard();
     }
   }
 
@@ -491,14 +515,15 @@ class _WordTestScreenState extends State<WordTestScreen>
             ),
 
             // Bottom Button
-            Container(
+            if (!isStudy)
+              Container(
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(color: Colors.white),
               child: SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: isStudy ? _nextCard : _submitAnswer,
+                  onPressed: _submitAnswer,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
@@ -519,106 +544,189 @@ class _WordTestScreenState extends State<WordTestScreen>
   }
 
   Widget _buildStudyCard(Map<String, dynamic> word) {
-    return GestureDetector(
-      onTap: () => setState(() => _isCardFlipped = !_isCardFlipped),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        height: 350,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10))
-          ],
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: _isCardFlipped
-                ? SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (word['meaning_groups'] != null &&
-                            (word['meaning_groups'] as List).isNotEmpty)
-                          ...((word['meaning_groups'] as List).map((group) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      group['pos'] ?? '',
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      (group['meanings'] as List).join(', '),
-                                      style: const TextStyle(
-                                          fontSize: 18, color: Colors.black87),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList())
-                        else
-                          Text(word['meaning'] ?? '',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87)),
-                        const SizedBox(height: 20),
-                        if (word['example'] != null &&
-                            word['example'].toString().isNotEmpty)
-                          Text(word['example'],
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
-                                  fontStyle: FontStyle.italic)),
-                      ],
-                    ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(word['word'] ?? '',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary)),
-                      const SizedBox(height: 24),
-                      IconButton(
-                        onPressed: () => _ttsService.speak(word['word'] ?? ''),
-                        icon: const Icon(Icons.volume_up,
-                            color: AppColors.primary, size: 32),
-                      ),
+    return SizedBox(
+      height: 350,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: GestureDetector(
+                onTap: () => setState(() => _isCardFlipped = !_isCardFlipped),
+                onHorizontalDragEnd: _handleStudySwipe,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10))
                     ],
                   ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: _isCardFlipped
+                          ? SingleChildScrollView(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (word['meaning_groups'] != null &&
+                                      (word['meaning_groups'] as List)
+                                          .isNotEmpty)
+                                    ...((word['meaning_groups'] as List)
+                                        .map((group) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 4),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    Colors.blue.withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                group['pos'] ?? '',
+                                                style: const TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.blue),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                (group['meanings'] as List)
+                                                    .join(', '),
+                                                style: const TextStyle(
+                                                    fontSize: 18,
+                                                    color: Colors.black87),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList())
+                                  else
+                                    Text(word['meaning'] ?? '',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87)),
+                                  const SizedBox(height: 20),
+                                  if (word['example'] != null &&
+                                      word['example'].toString().isNotEmpty)
+                                    Text(word['example'],
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.grey,
+                                            fontStyle: FontStyle.italic)),
+                                ],
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(word['word'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary)),
+                                const SizedBox(height: 24),
+                                IconButton(
+                                  onPressed: () =>
+                                      _ttsService.speak(word['word'] ?? ''),
+                                  icon: const Icon(Icons.volume_up,
+                                      color: AppColors.primary, size: 32),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: _buildNavButton(
+              icon: Icons.chevron_left,
+              onPressed: _currentIndex > 0 ? _prevCard : null,
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: _buildNavButton(
+              icon: Icons.chevron_right,
+              onPressed:
+                  _currentIndex < _words.length - 1 ? _nextCard : _finishTest,
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildNavButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) {
+    final color = onPressed == null ? Colors.grey.shade300 : AppColors.primary;
+    return Center(
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: color),
+        iconSize: 36,
+      ),
+    );
+  }
+
+  int? _inferRangeCount(String range) {
+    final normalized =
+        range.replaceAll(RegExp(r'(?i)day'), '').replaceAll(' ', '').trim();
+    if (normalized.isEmpty ||
+        normalized == 'ALL' ||
+        normalized == 'WRONG_ONLY') {
+      return null;
+    }
+    int total = 0;
+    for (final chunk in normalized.split(',')) {
+      if (chunk.isEmpty) continue;
+      if (chunk.contains('-')) {
+        final parts = chunk.split('-');
+        if (parts.length != 2) continue;
+        final start = int.tryParse(parts[0]);
+        final end = int.tryParse(parts[1]);
+        if (start == null || end == null) continue;
+        total += (end - start).abs() + 1;
+      } else {
+        final single = int.tryParse(chunk);
+        if (single != null) total += 1;
+      }
+    }
+    return total > 0 ? total : null;
   }
 
   String _inferPos(String meaning) {
