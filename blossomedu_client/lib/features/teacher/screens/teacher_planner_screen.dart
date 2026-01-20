@@ -60,6 +60,12 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         _defaultBranchId = metadata['default_branch_id'];
         _isLoading = false;
       });
+    } catch (e) {
+      print('Error loading teacher planner data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _scrollToToday() {
     final now = DateTime.now();
     final todayIndex = _allDates.indexWhere((d) => _isSameDay(d, now));
@@ -147,12 +153,11 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         effectiveClasses.where((c) => c['day'] == dayCode).toList();
     if (dayClasses.isEmpty) return [];
     final type = _classTypeForSubject(subject);
-    final hasType = dayClasses.any(
-        (c) => (c['type']?.toString().toUpperCase() ?? '') == type);
+    final hasType = dayClasses
+        .any((c) => (c['type']?.toString().toUpperCase() ?? '') == type);
     final filtered = hasType
         ? dayClasses
-            .where((c) =>
-                (c['type']?.toString().toUpperCase() ?? '') == type)
+            .where((c) => (c['type']?.toString().toUpperCase() ?? '') == type)
             .toList()
         : dayClasses;
     filtered.sort((a, b) =>
@@ -954,8 +959,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                               ),
                             );
                           }).toList(),
-                          onChanged: (v) =>
-                              setState(() => selectedClassId = v),
+                          onChanged: (v) => setState(() => selectedClassId = v),
                         ),
                         if (availableClasses.isEmpty)
                           Padding(
@@ -1123,8 +1127,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                               ),
                             );
                           }).toList(),
-                          onChanged: (v) =>
-                              setState(() => selectedClassId = v),
+                          onChanged: (v) => setState(() => selectedClassId = v),
                         ),
                         if (availableClasses.isEmpty)
                           Padding(
