@@ -49,19 +49,19 @@ class _PlannerScreenState extends State<PlannerScreen> {
         return;
       }
 
-      // Fetch Assignments and Student Detail (for Timetable) in parallel
-      final results = await Future.wait([
-        _academyService.getAssignments(),
-        _academyService.getStudent(user.id),
-      ]);
-
-      final assignmentList = results[0] as List<dynamic>;
-      final studentDetail = results[1] as Map<String, dynamic>;
+      final assignmentList = await _academyService.getAssignments();
+      Map<String, dynamic>? studentDetail;
+      try {
+        final studentId = user.studentId ?? user.id;
+        studentDetail = await _academyService.getStudent(studentId);
+      } catch (e) {
+        print('Error loading student detail: $e');
+      }
 
       if (mounted) {
         setState(() {
           _assignments = assignmentList;
-          _classTimes = studentDetail['class_times'] ?? [];
+          _classTimes = studentDetail?['class_times'] ?? [];
           _isLoading = false;
         });
         // [DEBUG] Log class_times data

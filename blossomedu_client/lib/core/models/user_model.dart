@@ -6,6 +6,7 @@ class User {
   final bool isSuperuser;
   final String? position; // [NEW] TEACHER, VICE, PRINCIPAL, TA
   final int? branchId; // [NEW]
+  final int? studentId; // [NEW]
 
   User({
     required this.id,
@@ -15,6 +16,7 @@ class User {
     this.isSuperuser = false,
     this.position,
     this.branchId,
+    this.studentId,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class User {
       isSuperuser: json['is_superuser'] ?? false,
       position: json['position'],
       branchId: json['branch_id'],
+      studentId: json['student_id'],
     );
   }
 }

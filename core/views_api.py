@@ -295,6 +295,9 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
         # Base Queryset
         queryset = StudentProfile.objects.filter(user__is_staff=False)
 
+        if not user.is_staff and hasattr(user, 'profile'):
+            return queryset.filter(user=user)
+
         # 0. Force 'My Students' Scope
         if scope == 'my':
             return queryset.filter(

@@ -10,6 +10,7 @@ def _build_user_data(user):
     user_type = 'STUDENT'
     position = None
     branch_id = None
+    student_id = None
     name = user.username
 
     try:
@@ -32,8 +33,10 @@ def _build_user_data(user):
     else:
         try:
             profile = getattr(user, 'profile', None)
-            if profile and profile.name:
-                name = profile.name
+            if profile:
+                if profile.name:
+                    name = profile.name
+                student_id = profile.id
         except Exception:
             pass
 
@@ -48,6 +51,7 @@ def _build_user_data(user):
         'is_superuser': user.is_superuser,
         'position': position,
         'branch_id': branch_id,
+        'student_id': student_id,
     }
 
 class CustomAuthToken(ObtainAuthToken):
