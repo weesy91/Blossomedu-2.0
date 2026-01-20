@@ -558,7 +558,7 @@ class _StudyScreenState extends State<StudyScreen>
                   ),
                   title: Text(ranker['name'],
                       style: const TextStyle(fontSize: 12)),
-                  trailing: Text('${ranker['score']}?',
+                  trailing: Text('${ranker['score']}',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 11)),
                 );

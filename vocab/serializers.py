@@ -137,6 +137,14 @@ class TestResultDetailSerializer(serializers.ModelSerializer):
         model = TestResultDetail
         fields = ['id', 'word_question', 'question_pos', 'student_answer', 'correct_answer', 'is_correct', 'is_correction_requested', 'is_resolved']
 
+class TestResultSummarySerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source='book.title', read_only=True)
+    student_name = serializers.CharField(source='student.name', read_only=True)
+
+    class Meta:
+        model = TestResult
+        fields = ['id', 'student_name', 'book_title', 'score', 'wrong_count', 'test_range', 'created_at']
+
 class TestResultSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source='book.title', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)

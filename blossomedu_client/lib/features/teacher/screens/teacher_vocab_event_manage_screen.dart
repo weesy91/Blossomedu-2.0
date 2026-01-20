@@ -30,14 +30,41 @@ class _TeacherVocabEventManageScreenState
     return true;
   }
 
+  List<Map<String, dynamic>> _sortEvents(List<Map<String, dynamic>> events) {
+    final sorted = List<Map<String, dynamic>>.from(events);
+    sorted.sort((a, b) {
+      final aDate = a['start_date']?.toString() ?? '';
+      final bDate = b['start_date']?.toString() ?? '';
+      final dateCompare = bDate.compareTo(aDate);
+      if (dateCompare != 0) return dateCompare;
+      final aId = a['id'] ?? 0;
+      final bId = b['id'] ?? 0;
+      return bId.compareTo(aId);
+    });
+    return sorted;
+  }
+
+  void _upsertEvent(Map<String, dynamic> event) {
+    final next = List<Map<String, dynamic>>.from(_events);
+    final idx = next.indexWhere((e) => e['id'] == event['id']);
+    if (idx >= 0) {
+      next[idx] = event;
+    } else {
+      next.add(event);
+    }
+    setState(() => _events = _sortEvents(next));
+  }
+
   @override
   void initState() {
     super.initState();
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
     try {
       final results = await Future.wait([
         _vocabService.getRankingEvents(),
@@ -52,7 +79,7 @@ class _TeacherVocabEventManageScreenState
           (results[2]).map((e) => Map<String, dynamic>.from(e)).toList();
       if (!mounted) return;
       setState(() {
-        _events = events;
+        _events = _sortEvents(events);
         _books = books;
         _branches = branches; // [NEW]
         _isLoading = false;
@@ -206,18 +233,17 @@ class _TeacherVocabEventManageScreenState
                   };
 
                   try {
-                    if (event == null) {
-                      await _vocabService.createRankingEvent(payload);
-                    } else {
-                      await _vocabService.updateRankingEvent(
-                          event['id'] as int, payload);
-                    }
+                    final saved = event == null
+                        ? await _vocabService.createRankingEvent(payload)
+                        : await _vocabService.updateRankingEvent(
+                            event['id'] as int, payload);
                     if (!mounted) return;
                     Navigator.of(context).pop();
                     // Wait a bit for dialog to close before reloading
                     await Future.delayed(const Duration(milliseconds: 100));
                     if (!mounted) return;
-                    await _loadData();
+                    _upsertEvent(Map<String, dynamic>.from(saved));
+                    await _loadData(showLoading: false);
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(event == null
@@ -278,6 +304,9 @@ class _TeacherVocabEventManageScreenState
     try {
       await _vocabService.deleteRankingEvent(event['id'] as int);
       if (!mounted) return;
+      setState(() {
+        _events.removeWhere((e) => e['id'] == event['id']);
+      });
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('이벤트가 삭제되었습니다.')));
     } catch (e) {
@@ -288,7 +317,7 @@ class _TeacherVocabEventManageScreenState
     } finally {
       // Always reload data to ensure UI matches server state
       if (mounted) {
-        _loadData();
+        _loadData(showLoading: false);
       }
     }
   }

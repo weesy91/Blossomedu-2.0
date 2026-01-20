@@ -29,16 +29,11 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   Future<void> _fetchStats() async {
     try {
       // 1. Fetch Word Requests (Pending Corrections)
-      final requests = await _vocabService.getTeacherTestRequests();
-      int wordCount = 0;
-      for (var req in requests) {
-        if (req['details'] != null) {
-          final pending = (req['details'] as List).where((d) =>
-              d['is_correction_requested'] == true &&
-              d['is_resolved'] == false);
-          if (pending.isNotEmpty) wordCount++;
-        }
-      }
+      final requests = await _vocabService.getTeacherTestRequests(
+        pendingOnly: true,
+        includeDetails: false,
+      );
+      final wordCount = requests.length;
 
       // 2. Fetch Pending Assignments
       // Definition: Assignments that are submitted but not yet Approved?

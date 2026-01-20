@@ -6,6 +6,7 @@ from .serializers import (
     WordBookSerializer,
     WordSerializer,
     TestResultSerializer,
+    TestResultSummarySerializer,
     PersonalWrongWordSerializer,
     PublisherSerializer,
     RankingEventSerializer,
@@ -239,6 +240,9 @@ class TestViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = TestResult.objects.select_related('student', 'student__user', 'book').order_by('-created_at')
+        include_details = self.request.query_params.get('include_details') != 'false'
+        if include_details:
+            qs = qs.prefetch_related('details')
 
         # 1. Staff/Superuser (Teacher)
         # 1. Staff/Superuser (Teacher)
@@ -269,6 +273,14 @@ class TestViewSet(viewsets.ModelViewSet):
             return qs.filter(student=user.profile)
             
         return qs.none()
+
+    def get_serializer_class(self):
+        if (
+            self.action == 'list'
+            and self.request.query_params.get('include_details') == 'false'
+        ):
+            return TestResultSummarySerializer
+        return super().get_serializer_class()
         
     def filter_queryset(self, queryset):
         # [NEW] Filter Pending Requests

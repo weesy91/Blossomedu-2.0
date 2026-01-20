@@ -269,11 +269,14 @@ class VocabService {
 
   // [Teacher] Get all test requests
   Future<List<dynamic>> getTeacherTestRequests(
-      {bool pendingOnly = false}) async {
+      {bool pendingOnly = false, bool includeDetails = true}) async {
     try {
+      final params = <String, dynamic>{};
+      if (pendingOnly) params['pending'] = 'true';
+      if (!includeDetails) params['include_details'] = 'false';
       final response = await _dio.get(
         '/vocab/api/v1/tests/',
-        queryParameters: pendingOnly ? {'pending': 'true'} : null,
+        queryParameters: params.isEmpty ? null : params,
       );
       return response.data;
     } catch (e) {
