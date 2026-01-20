@@ -72,7 +72,10 @@ class _TeacherVocabEventManageScreenState
 
   void _upsertEvent(Map<String, dynamic> event) {
     final next = List<Map<String, dynamic>>.from(_events);
-    final idx = next.indexWhere((e) => e['id'] == event['id']);
+    final eventId = _asInt(event['id']);
+    final idx = eventId == null
+        ? -1
+        : next.indexWhere((e) => _asInt(e['id']) == eventId);
     if (idx >= 0) {
       next[idx] = event;
     } else {
