@@ -25,7 +25,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   late DateTime _selectedDate;
   late List<DateTime> _allDates;
   static const double _timelineItemExtent = 80.0;
+  static const int _maxScrollAttempts = 6;
   late final ScrollController _timelineScrollController;
+  int _scrollAttempts = 0;
 
   // Filter: 'all' | 'class' | 'assignment'
   String _filter = 'all';
@@ -37,7 +39,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     _timelineScrollController = ScrollController(
       initialScrollOffset: _getTodayOffset(),
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+    _scheduleScrollToToday();
     _fetchData();
   }
 
@@ -64,11 +66,24 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         _defaultBranchId = metadata['default_branch_id'];
         _isLoading = false;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+      _scheduleScrollToToday();
     } catch (e) {
       print('Error loading teacher planner data: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  void _scheduleScrollToToday() {
+    _scrollAttempts = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+  }
+
+  void _retryScrollToToday() {
+    if (_scrollAttempts >= _maxScrollAttempts) {
+      return;
+    }
+    _scrollAttempts += 1;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
   }
 
   double _getTodayOffset() {
@@ -84,15 +99,22 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     if (!mounted) {
       return;
     }
-    final target = _getTodayOffset();
-    if (_timelineScrollController.hasClients) {
-      final maxOffset = _timelineScrollController.position.maxScrollExtent;
-      final clamped =
-          target.clamp(0.0, maxOffset) as double;
-      _timelineScrollController.jumpTo(clamped);
+    if (!_timelineScrollController.hasClients) {
+      _retryScrollToToday();
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+    final position = _timelineScrollController.position;
+    if (!position.hasContentDimensions) {
+      _retryScrollToToday();
+      return;
+    }
+    final target = _getTodayOffset();
+    final maxOffset = position.maxScrollExtent;
+    final clamped = target.clamp(0.0, maxOffset) as double;
+    if ((position.pixels - clamped).abs() < 0.5) {
+      return;
+    }
+    _timelineScrollController.jumpTo(clamped);
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
