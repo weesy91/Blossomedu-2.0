@@ -140,6 +140,7 @@ class TestResultDetailSerializer(serializers.ModelSerializer):
 class TestResultSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source='book.title', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
+    assignment = serializers.CharField(source='assignment_id', read_only=True)
     details = TestResultDetailSerializer(many=True, read_only=True)
     
     class Meta:

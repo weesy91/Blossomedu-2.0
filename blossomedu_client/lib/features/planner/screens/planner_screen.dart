@@ -36,9 +36,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   void _initializeDates() {
     final now = DateTime.now();
-    _startDate = DateTime(now.year, now.month, now.day);
-    _weekDates = List.generate(8, (i) => _startDate.add(Duration(days: i)));
-    _selectedDate = _startDate;
+    final start = now.subtract(const Duration(days: 7));
+    _startDate = DateTime(start.year, start.month, start.day);
+    _weekDates = List.generate(15, (i) => _startDate.add(Duration(days: i)));
+    final today = DateTime(now.year, now.month, now.day);
+    _selectedDate = today;
   }
 
   Future<void> _fetchData() async {
