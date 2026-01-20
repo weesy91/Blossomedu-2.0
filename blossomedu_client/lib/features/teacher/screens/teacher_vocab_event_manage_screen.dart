@@ -179,6 +179,7 @@ class _TeacherVocabEventManageScreenState
       context: context,
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
+          final dialogContext = context;
           final selectedBookValue = selectedBookId != null &&
                   availableBooks.any((b) => _asInt(b['id']) == selectedBookId)
               ? selectedBookId
@@ -348,8 +349,8 @@ class _TeacherVocabEventManageScreenState
                         : await _vocabService.updateRankingEvent(
                             eventId!, payload);
                     if (!mounted) return;
-                    if (Navigator.of(rootContext).canPop()) {
-                      Navigator.of(rootContext).pop();
+                    if (Navigator.of(dialogContext).canPop()) {
+                      Navigator.of(dialogContext).pop();
                     }
                     // Wait a bit for dialog to close before reloading
                     await Future.delayed(const Duration(milliseconds: 100));
@@ -363,8 +364,8 @@ class _TeacherVocabEventManageScreenState
                             : '이벤트가 수정되었습니다.')));
                   } catch (e) {
                     if (!mounted) return;
-                    if (Navigator.of(rootContext).canPop()) {
-                      Navigator.of(rootContext).pop();
+                    if (Navigator.of(dialogContext).canPop()) {
+                      Navigator.of(dialogContext).pop();
                     }
                     ScaffoldMessenger.of(rootContext)
                         .showSnackBar(SnackBar(content: Text('저장 실패: $e')));
