@@ -225,7 +225,7 @@ class _TeacherClassLogCreateScreenState
               if (wordbookId != null) {
                 type = 'VOCAB';
                 bookId = wordbookId;
-                final book = _findBook(bookId);
+                final book = _findBook(bookId, type: 'VOCAB');
                 if (book != null) {
                   publisher =
                       _normalizePublisher(book['publisher']?.toString());
@@ -483,7 +483,8 @@ class _TeacherClassLogCreateScreenState
             title = row['range'] ?? '과제';
           }
 
-          final book = _findBook(row['bookId']);
+          final book =
+              _findBook(row['bookId'], type: row['type']?.toString());
           if (book != null) {
             title = '[${book['title']}] $title';
           }
@@ -534,7 +535,7 @@ class _TeacherClassLogCreateScreenState
             rangeEnd = int.tryParse(match.group(2) ?? '');
           }
 
-          final selectedBook = _findBook(bookId);
+          final selectedBook = _findBook(bookId, type: 'VOCAB');
           final bookTitle = selectedBook?['title'] ?? '단어 과제';
 
           assignments.add({
@@ -653,11 +654,26 @@ class _TeacherClassLogCreateScreenState
     return value.trim();
   }
 
-  // Find book by ID
-  Map<String, dynamic>? _findBook(int? id) {
+  // Find book by ID (optionally scoped by type to avoid ID collisions)
+  Map<String, dynamic>? _findBook(int? id, {String? type}) {
     if (id == null) return null;
     try {
-      return _allBooks.firstWhere((b) => b['id'] == id);
+      final matches = _allBooks.where((b) => b['id'] == id).toList();
+      if (matches.isEmpty) return null;
+      if (type != null && type.isNotEmpty) {
+        final targetType = type.toUpperCase();
+        for (final b in matches) {
+          final bType = (b['type']?.toString() ?? '').toUpperCase();
+          if (bType == targetType) return b;
+        }
+      }
+      if (matches.length == 1) return matches.first;
+      for (final b in matches) {
+        if ((b['type']?.toString() ?? '').toUpperCase() != 'VOCAB') {
+          return b;
+        }
+      }
+      return matches.first;
     } catch (_) {
       return null;
     }
@@ -1070,7 +1086,8 @@ class _TeacherClassLogCreateScreenState
     final bool isVocab = row['type'] == 'VOCAB';
 
     // Check if selected book has units
-    final selectedBook = _findBook(row['bookId']);
+    final selectedBook =
+        _findBook(row['bookId'], type: row['type']?.toString());
     final List<dynamic> units = selectedBook?['units'] ?? [];
     final bool hasUnits = units.isNotEmpty;
     // [NEW] OT Logic
@@ -1737,7 +1754,7 @@ class _TeacherClassLogCreateScreenState
         String? publisher;
 
         if (bookId != null) {
-          final book = _findBook(bookId);
+          final book = _findBook(bookId, type: 'VOCAB');
           if (book != null) {
             publisher = _normalizePublisher(book['publisher']?.toString());
           }

@@ -164,7 +164,12 @@ class ClassLogSerializer(serializers.ModelSerializer):
                 assignment_type = item.get('assignment_type', 'MANUAL')
                 start_date_obj = None
                 if assignment_type == 'VOCAB_TEST':
-                    start_date_obj = due_date_obj - timedelta(days=1)
+                    start_date_obj = due_date_obj.replace(
+                        hour=0,
+                        minute=0,
+                        second=0,
+                        microsecond=0,
+                    ) - timedelta(days=1)
                 
                 AssignmentTask.objects.create(
                     student=instance.student,
@@ -321,7 +326,12 @@ class ClassLogSerializer(serializers.ModelSerializer):
                 assignment_type = item.get('assignment_type', 'MANUAL')
                 start_date_obj = None
                 if assignment_type == 'VOCAB_TEST':
-                    start_date_obj = due_date_obj - timedelta(days=1)
+                    start_date_obj = due_date_obj.replace(
+                        hour=0,
+                        minute=0,
+                        second=0,
+                        microsecond=0,
+                    ) - timedelta(days=1)
                 
                 AssignmentTask.objects.create(
                     student=instance.student,
