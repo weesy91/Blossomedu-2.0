@@ -96,6 +96,27 @@ class _PlannerScreenState extends State<PlannerScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  DateTime? _parseDateOnly(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) {
+      return DateTime(value.year, value.month, value.day);
+    }
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return null;
+    DateTime? parsed;
+    try {
+      parsed = DateTime.parse(raw);
+    } catch (_) {
+      try {
+        parsed = DateFormat('yyyy-MM-dd HH:mm:ss').parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+    final local = parsed.isUtc ? parsed.toLocal() : parsed;
+    return DateTime(local.year, local.month, local.day);
+  }
+
   // Helper to map weekday string/int to DateTime weekday
   bool _isClassDay(String dayStr, DateTime date) {
     // Backend formats: 'Mon', 'Tue' OR 'Monday', 'Tuesday' OR '월', '화'
@@ -126,14 +147,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   List<dynamic> _getCombinedItemsForDate(DateTime date) {
-    final dateStr = DateFormat('yyyy-MM-dd').format(date);
-
     // 1. Assignments
     final dailyAssignments = _assignments
         .where((a) {
-          final dueDate = a['due_date']?.toString();
-          if (dueDate == null) return false;
-          return dueDate.startsWith(dateStr);
+          final dueDate = _parseDateOnly(a['due_date']);
+          final startDate = _parseDateOnly(a['start_date']);
+          if (dueDate != null && _isSameDay(dueDate, date)) return true;
+          if (startDate != null && _isSameDay(startDate, date)) return true;
+          return false;
         })
         .map((a) => {...a, 'itemType': 'ASSIGNMENT'})
         .toList();
