@@ -139,6 +139,7 @@ class _TeacherVocabEventManageScreenState
   }
 
   Future<void> _openEventDialog({Map<String, dynamic>? event}) async {
+    final rootContext = context;
     final titleController =
         TextEditingController(text: event?['title']?.toString() ?? '');
     int? selectedBookId = _asInt(event?['target_book']);
@@ -298,19 +299,19 @@ class _TeacherVocabEventManageScreenState
                 onPressed: isSaving ? null : () async {
                   final title = titleController.text.trim();
                   if (title.isEmpty || selectedBookId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(
                         const SnackBar(content: Text('제목과 단어장을 입력해주세요.')));
                     return;
                   }
                   if (startDate == null || endDate == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(
                         content: Text('시작일과 종료일을 확인해주세요.')));
                     return;
                   }
                   final start = startDate!;
                   final end = endDate!;
                   if (end.isBefore(start)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(
                         const SnackBar(content: Text('종료일은 시작일 이후여야 합니다.')));
                     return;
                   }
@@ -318,7 +319,7 @@ class _TeacherVocabEventManageScreenState
                   final startDateStr = _formatDate(start);
                   final endDateStr = _formatDate(end);
                   if (startDateStr == null || endDateStr == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(
                         content: Text('시작일과 종료일을 확인해주세요.')));
                     return;
                   }
@@ -334,7 +335,7 @@ class _TeacherVocabEventManageScreenState
 
                   final eventId = event == null ? null : _asInt(event['id']);
                   if (event != null && eventId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(const SnackBar(
                         content: Text('이벤트 ID를 확인할 수 없습니다.')));
                     return;
                   }
@@ -347,21 +348,25 @@ class _TeacherVocabEventManageScreenState
                         : await _vocabService.updateRankingEvent(
                             eventId!, payload);
                     if (!mounted) return;
-                    Navigator.of(context).pop();
+                    if (Navigator.of(rootContext).canPop()) {
+                      Navigator.of(rootContext).pop();
+                    }
                     // Wait a bit for dialog to close before reloading
                     await Future.delayed(const Duration(milliseconds: 100));
                     if (!mounted) return;
                     _upsertEvent(Map<String, dynamic>.from(saved));
                     await _loadData(showLoading: false);
                     if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    ScaffoldMessenger.of(rootContext).showSnackBar(SnackBar(
                         content: Text(event == null
                             ? '이벤트가 생성되었습니다.'
                             : '이벤트가 수정되었습니다.')));
                   } catch (e) {
                     if (!mounted) return;
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context)
+                    if (Navigator.of(rootContext).canPop()) {
+                      Navigator.of(rootContext).pop();
+                    }
+                    ScaffoldMessenger.of(rootContext)
                         .showSnackBar(SnackBar(content: Text('저장 실패: $e')));
                   }
                 },
