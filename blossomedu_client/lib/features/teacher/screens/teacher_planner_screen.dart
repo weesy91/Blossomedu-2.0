@@ -60,16 +60,6 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         _defaultBranchId = metadata['default_branch_id'];
         _isLoading = false;
       });
-      // [NEW] Scroll to today after layout
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
-      // [NEW] Fetch daily attendance
-      _fetchDailyData(_selectedDate);
-    } catch (e) {
-      debugPrint('Error fetching data: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
   void _scrollToToday() {
     final now = DateTime.now();
     final todayIndex = _allDates.indexWhere((d) => _isSameDay(d, now));

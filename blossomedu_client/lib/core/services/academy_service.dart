@@ -4,7 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
 // import '../models/assignment_model.dart'; // TODO: Create Model
 
+import 'package:flutter/material.dart'; // [NEW] For ValueNotifier
+
 class AcademyService {
+  // [NEW] Global Data Refresh Trigger
+  // Listen to this in TeacherPlannerScreen to refresh data when students/schedules change
+  static final ValueNotifier<int> refreshTrigger = ValueNotifier(0);
+
+  static void notifyDataChanged() {
+    refreshTrigger.value++;
+  }
   // Use SharedPreferences for token storage
 
   Future<Map<String, String>> _getHeaders() async {
@@ -340,6 +349,7 @@ class AcademyService {
     if (response.statusCode != 200) {
       throw Exception('Failed to update student: ${response.body}');
     }
+    notifyDataChanged(); // [NEW]
   }
 
   // [NEW] Delete Student
@@ -351,6 +361,7 @@ class AcademyService {
     if (response.statusCode != 204) {
       throw Exception('Failed to delete student: ${response.body}');
     }
+    notifyDataChanged(); // [NEW]
   }
 
   // [NEW] Get Staff Detail
@@ -629,6 +640,7 @@ class AcademyService {
     if (response.statusCode != 201) {
       throw Exception('Failed to create schedule: ${response.body}');
     }
+    notifyDataChanged(); // [NEW]
   }
 
   Future<void> updateTemporarySchedule(
@@ -644,6 +656,7 @@ class AcademyService {
     if (response.statusCode != 200) {
       throw Exception('Failed to update schedule: ${response.body}');
     }
+    notifyDataChanged(); // [NEW]
   }
 
   Future<void> deleteTemporarySchedule(int id) async {
@@ -653,6 +666,7 @@ class AcademyService {
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception('Failed to delete schedule: ${response.body}');
     }
+    notifyDataChanged(); // [NEW]
   }
 
   // 출석 목록 조회 (날짜 필터)

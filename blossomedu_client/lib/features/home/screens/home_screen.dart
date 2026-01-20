@@ -65,35 +65,51 @@ class _HomeScreenState extends State<HomeScreen> {
       todayTasks
           .sort((a, b) => (a['due_date'] ?? '').compareTo(b['due_date'] ?? ''));
 
-      // Filter Recent History (Completed/Submitted, excluding unsubmitted)
-      // Logic: is_completed == true OR status == 'SUBMITTED' OR status == 'APPROVED' OR status == 'REJECTED'
-      // Basically status != 'PENDING' if we had a status field, but currently we check is_completed and maybe manual check.
-      // Let's assume if is_completed is true, it's done.
-      // If it's manual assignment, it might be submitted but not approved yet.
-      // Let's map 'status' from backend if available, or infer.
-      // Looking at `StudentAssignmentHistoryScreen`, we used:
-      // _completed = is_completed == true
-      // _incomplete = is_completed != true
-      // The user wants "Exclude Unsubmitted".
-      // So we want: (is_completed == true) OR (status == 'SUBMITTED' || status == 'REJECTED')
+      // 2. Fetch Announcements
+      final announceData = await _announcementService.getAnnouncements();
+      final activeAnnounce = announceData.where((a) => a.isActive).toList();
+      activeAnnounce.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final topAnnounce = activeAnnounce.take(5).toList();
 
-      // [NEW] Filter Recent History (Assignments)
-      // [NEW] Filter Recent History (Assignments)
-      // We want to show:
-      // 1. Completed (Approved)
-      // 2. Rejected (Has submission, status=REJECTED)
-      // 3. Pending (Has submission, status=PENDING)
-      final recentAssignments = assignData.where((a) {
+      // [NEW] Process Vocab Tests (Source of Truth for Words)
+      final vocabHistory = vocabData.map((r) {
+        final score = r['score'] ?? 0;
+        final details = r['details'] as List<dynamic>? ?? [];
+        final hasPendingCorrection = details.any((d) =>
+            d['is_correction_requested'] == true && d['is_resolved'] == false);
+
+        // Status Logic
+        String status = 'COMPLETED'; // Default
+        if (hasPendingCorrection) {
+          status = 'REVIEWING';
+        } else if (score < 90) {
+          status = 'FAIL';
+        } else {
+          status = 'PASS';
+        }
+
+        return {
+          'id': r['id'],
+          'title': '${r['book_title']} - ${r['test_range']}',
+          'assignment_type': 'VOCAB_TEST',
+          'is_completed': status == 'PASS', // For UI check
+          'status': status,
+          'score': score,
+          'is_self_study': r['assignment'] == null,
+          'sort_date': r['created_at'] ?? '',
+        };
+      }).toList();
+
+      // [NEW] Process Assignments (Excluding Vocab Tests)
+      final assignmentHistory = assignData.where((a) {
+        final type = a['assignment_type'];
+        if (type == 'VOCAB_TEST') return false; // Handled by vocabData
+
         final isCompleted = a['is_completed'] == true;
         final submission = a['submission'];
 
-        // If completed, definitely show
         if (isCompleted) return true;
-
-        // If not completed, show ONLY if submitted (Pending or Rejected)
-        if (submission != null) return true;
-
-        // Otherwise (No submission, not completed) -> To-Do, not history
+        if (submission != null) return true; // Submitted (Pending/Rejected)
         return false;
       }).map((a) {
         final submission = a['submission'];
@@ -104,43 +120,20 @@ class _HomeScreenState extends State<HomeScreen> {
         return {
           ...a,
           'sort_date': sortDate,
-          'is_self_study': false,
+          'status': 'ASSIGNMENT', // Marker
           'submission_status': submission != null ? submission['status'] : null,
         };
       }).toList();
 
-      // [NEW] Filter Self-Study Records
-      final selfStudy = vocabData.where((r) {
-        return r['assignment'] == null; // Only independent tests
-      }).map((r) {
-        return {
-          'id': r['id'],
-          'title': '${r['book_title']} - ${r['test_range']}',
-          'assignment_type': 'VOCAB_TEST',
-          'is_completed': true,
-          'status': 'SELF_STUDY',
-          'score': r['score'],
-          'is_self_study': true,
-          'sort_date': r['created_at'] ?? '',
-          'submission_status': 'ACCEPTED', // Self-study is always done
-        };
-      }).toList();
-
       // Merge and Sort
-      final combinedRecent = [...recentAssignments, ...selfStudy];
+      final combinedRecent = [...vocabHistory, ...assignmentHistory];
       combinedRecent.sort((a, b) {
         final da = a['sort_date']?.toString() ?? '';
         final db = b['sort_date']?.toString() ?? '';
-        return db.compareTo(da); // Descending (Newest first)
+        return db.compareTo(da);
       });
 
       final topRecent = combinedRecent.take(5).toList();
-
-      // 2. Fetch Announcements
-      final announceData = await _announcementService.getAnnouncements();
-      final activeAnnounce = announceData.where((a) => a.isActive).toList();
-      activeAnnounce.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      final topAnnounce = activeAnnounce.take(5).toList();
 
       if (mounted) {
         setState(() {
@@ -355,23 +348,44 @@ class _HomeScreenState extends State<HomeScreen> {
     final type = item['assignment_type'] ?? 'MANUAL';
     final isCompleted = item['is_completed'] == true;
     final submissionStatus = item['submission_status'];
+    final status = item['status']; // [NEW]
 
     Color cardColor = Colors.white;
     Color iconColor = Colors.grey;
     String statusText = '';
 
-    if (isCompleted || submissionStatus == 'ACCEPTED') {
-      statusText = '인증 완료';
+    // [NEW] Explicit Status Logic from _fetchData
+    if (status == 'PASS') {
+      statusText = '완료';
       iconColor = Colors.green;
-    } else if (submissionStatus == 'REJECTED') {
-      statusText = '반려';
+    } else if (status == 'FAIL') {
+      statusText = '불통';
       iconColor = Colors.red;
-    } else if (submissionStatus == 'PENDING') {
-      statusText = '검사 대기';
-      iconColor = Colors.blue;
-    } else if (item['status'] == 'SELF_STUDY') {
+    } else if (status == 'REVIEWING') {
+      statusText = '검토중';
+      iconColor = Colors
+          .orange; // Changed from Blue to Orange as per user preference (or consistent with Review)
+    } else if (status == 'SELF_STUDY') {
+      // Should be covered by PASS/FAIL if we processed it in _fetchData,
+      // but if we look at _fetchData, vocabHistory covers self-study too and sets PASS/FAIL/REVIEWING.
+      // So this might be redundant, but good fallback.
       statusText = '자율 학습';
-      iconColor = Colors.orange;
+      iconColor = Colors.blueGrey;
+    } else {
+      // Fallback for Assignments (Manual/Photo)
+      if (isCompleted || submissionStatus == 'ACCEPTED') {
+        statusText = '인증 완료';
+        iconColor = Colors.green;
+      } else if (submissionStatus == 'REJECTED') {
+        statusText = '반려';
+        iconColor = Colors.red;
+      } else if (submissionStatus == 'PENDING') {
+        statusText = '검토중'; // Updated to '검토중' to be consistent
+        iconColor = Colors.orange;
+      } else {
+        statusText = '미완료';
+        iconColor = Colors.grey;
+      }
     }
 
     return Container(

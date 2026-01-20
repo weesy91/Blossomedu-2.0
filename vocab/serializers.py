@@ -144,7 +144,7 @@ class TestResultSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = TestResult
-        fields = ['id', 'student_name', 'book_title', 'score', 'wrong_count', 'test_range', 'created_at', 'details']
+        fields = ['id', 'student_name', 'book_title', 'score', 'wrong_count', 'test_range', 'created_at', 'details', 'assignment']
 
 class PersonalWrongWordSerializer(serializers.ModelSerializer):
     english = serializers.CharField(source='word.english', read_only=True)

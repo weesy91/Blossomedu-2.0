@@ -1,4 +1,5 @@
 import 'package:flutter_tts/flutter_tts.dart';
+import 'dart:io' show Platform;
 
 class TtsService {
   final FlutterTts flutterTts = FlutterTts();
@@ -8,21 +9,28 @@ class TtsService {
   TtsService() {
     _initTts();
   }
-
   Future<void> _initTts() async {
     try {
+      if (Platform.isIOS) {
+        await flutterTts.setIosAudioCategory(
+            IosTextToSpeechAudioCategory.playback,
+            [
+              IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+              IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+              IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+              IosTextToSpeechAudioCategoryOptions.defaultToSpeaker
+            ],
+            IosTextToSpeechAudioMode.defaultMode);
+      }
+
       await flutterTts.setLanguage(_bestLocale);
 
-      // [Quality Fix] Attempt to pick a better voice (US/UK Priority)
-      // [Robust Fix] Priority: Locale Match (en-US > en-GB) -> Name Match
       try {
         final voices = await flutterTts.getVoices;
         final List<dynamic> voiceList = voices as List<dynamic>;
 
         Map<dynamic, dynamic>? bestVoice;
 
-        // 1. Try matching Locales explicitly
-        // Chrome/Web often uses 'en-US', 'en_US', 'en-GB', 'en_GB'
         final targetLocales = ["en-US", "en_US", "en-GB", "en_GB"];
 
         for (var locale in targetLocales) {
@@ -36,7 +44,6 @@ class TtsService {
           if (bestVoice != null) break;
         }
 
-        // 2. Fallback: Specific High-Quality Voice Names
         if (bestVoice == null) {
           final targetNames = [
             "Google US English",
@@ -57,14 +64,11 @@ class TtsService {
         if (bestVoice != null) {
           _bestVoice = bestVoice;
           _bestLocale = (bestVoice["locale"] ?? "en-US").toString();
-          await flutterTts.setVoice({
-            "name": bestVoice["name"],
-            "locale": _bestLocale
-          });
+          await flutterTts
+              .setVoice({"name": bestVoice["name"], "locale": _bestLocale});
           print(
               "TTS Configured: ${bestVoice['name']} [${bestVoice['locale']}]");
         } else {
-          // Last Resort
           _bestLocale = "en-US";
           await flutterTts.setLanguage(_bestLocale);
         }
@@ -73,8 +77,8 @@ class TtsService {
       }
 
       await flutterTts.setPitch(1.0);
-      await flutterTts
-          .setSpeechRate(0.8); // Slightly slower than 1.0 for clarity
+      await flutterTts.setSpeechRate(0.5); // Slower for learning
+      await flutterTts.setVolume(1.0); // [NEW] Max Volume
     } catch (e) {
       print("TTS Error: $e");
     }
