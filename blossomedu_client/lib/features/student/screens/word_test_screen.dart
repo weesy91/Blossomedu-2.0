@@ -705,7 +705,7 @@ class _WordTestScreenState extends State<WordTestScreen>
 
   int? _inferRangeCount(String range) {
     final normalized =
-        range.replaceAll(RegExp(r'(?i)day'), '').replaceAll(' ', '').trim();
+        range.replaceAll(RegExp(r'day', caseSensitive: false), '').replaceAll(' ', '').trim();
     if (normalized.isEmpty ||
         normalized == 'ALL' ||
         normalized == 'WRONG_ONLY') {

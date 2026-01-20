@@ -45,16 +45,27 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   Future<void> _fetchData() async {
     try {
-      final user = context.read<UserProvider>().user;
+      final userProvider = context.read<UserProvider>();
+      final user = userProvider.user;
       if (user == null) {
-        setState(() => _isLoading = false);
+        if (userProvider.isLoading) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          if (mounted) {
+            return _fetchData();
+          }
+          return;
+        }
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
         return;
       }
 
-      final assignmentList = await _academyService.getAssignments();
+      final studentId = user.studentId ?? user.id;
+      final assignmentList =
+          await _academyService.getAssignments(studentId: studentId);
       Map<String, dynamic>? studentDetail;
       try {
-        final studentId = user.studentId ?? user.id;
         studentDetail = await _academyService.getStudent(studentId);
       } catch (e) {
         print('Error loading student detail: $e');
