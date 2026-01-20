@@ -24,8 +24,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   late DateTime _startDate;
   late DateTime _selectedDate;
   late List<DateTime> _allDates;
-  final ScrollController _timelineScrollController =
-      ScrollController(); // [NEW]
+  static const double _timelineItemExtent = 80.0;
+  late final ScrollController _timelineScrollController;
 
   // Filter: 'all' | 'class' | 'assignment'
   String _filter = 'all';
@@ -34,6 +34,10 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
   void initState() {
     super.initState();
     _initializeDates();
+    _timelineScrollController = ScrollController(
+      initialScrollOffset: _getTodayOffset(),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
     _fetchData();
   }
 
@@ -60,20 +64,35 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
         _defaultBranchId = metadata['default_branch_id'];
         _isLoading = false;
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
     } catch (e) {
       print('Error loading teacher planner data: $e');
       setState(() => _isLoading = false);
     }
   }
 
-  void _scrollToToday() {
+  double _getTodayOffset() {
     final now = DateTime.now();
     final todayIndex = _allDates.indexWhere((d) => _isSameDay(d, now));
-    if (todayIndex != -1 && _timelineScrollController.hasClients) {
-      // Each tile is ~80 height, scroll to put today near top
-      final offset = (todayIndex * 80.0);
-      _timelineScrollController.jumpTo(offset);
+    if (todayIndex <= 0) {
+      return 0.0;
     }
+    return todayIndex * _timelineItemExtent;
+  }
+
+  void _scrollToToday() {
+    if (!mounted) {
+      return;
+    }
+    final target = _getTodayOffset();
+    if (_timelineScrollController.hasClients) {
+      final maxOffset = _timelineScrollController.position.maxScrollExtent;
+      final clamped =
+          target.clamp(0.0, maxOffset) as double;
+      _timelineScrollController.jumpTo(clamped);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -383,7 +402,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                   width: 80,
                   child: ListView.builder(
                     controller: _timelineScrollController, // [NEW]
-                    itemExtent: 80, // [NEW] Fixed height for accurate scrolling
+                    itemExtent:
+                        _timelineItemExtent, // [NEW] Fixed height for accurate scrolling
                     itemCount: _allDates.length,
                     itemBuilder: (context, index) {
                       return _buildTimelineTile(
