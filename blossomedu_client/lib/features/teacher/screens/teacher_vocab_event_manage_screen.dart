@@ -44,6 +44,11 @@ class _TeacherVocabEventManageScreenState
     return null;
   }
 
+  String? _formatDate(DateTime? date) {
+    if (date == null) return null;
+    return date.toIso8601String().substring(0, 10);
+  }
+
   List<Map<String, dynamic>> _sortEvents(List<Map<String, dynamic>> events) {
     final deduped = <Map<String, dynamic>>[];
     final seenIds = <dynamic>{};
@@ -160,10 +165,10 @@ class _TeacherVocabEventManageScreenState
     // Backend auto-sets creator's branch if null.
     // But now we allow EXPLICIT selection.
     // Let's default to null (Global) or leave as is.
-    DateTime startDate =
+    DateTime? startDate =
         DateTime.tryParse(event?['start_date']?.toString() ?? '') ??
             DateTime.now();
-    DateTime endDate =
+    DateTime? endDate =
         DateTime.tryParse(event?['end_date']?.toString() ?? '') ??
             DateTime.now().add(const Duration(days: 7));
     bool isActive = event?['is_active'] == true;
@@ -242,9 +247,10 @@ class _TeacherVocabEventManageScreenState
                     date: startDate,
                     onPick: () async {
                       if (isSaving) return;
+                      final baseDate = startDate ?? DateTime.now();
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: startDate,
+                        initialDate: baseDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2100),
                       );
@@ -259,9 +265,10 @@ class _TeacherVocabEventManageScreenState
                     date: endDate,
                     onPick: () async {
                       if (isSaving) return;
+                      final baseDate = endDate ?? DateTime.now();
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: endDate,
+                        initialDate: baseDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2100),
                       );
@@ -295,9 +302,24 @@ class _TeacherVocabEventManageScreenState
                         const SnackBar(content: Text('제목과 단어장을 입력해주세요.')));
                     return;
                   }
-                  if (endDate.isBefore(startDate)) {
+                  if (startDate == null || endDate == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('시작일과 종료일을 확인해주세요.')));
+                    return;
+                  }
+                  final start = startDate!;
+                  final end = endDate!;
+                  if (end.isBefore(start)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('종료일은 시작일 이후여야 합니다.')));
+                    return;
+                  }
+
+                  final startDateStr = _formatDate(start);
+                  final endDateStr = _formatDate(end);
+                  if (startDateStr == null || endDateStr == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('시작일과 종료일을 확인해주세요.')));
                     return;
                   }
 
@@ -305,8 +327,8 @@ class _TeacherVocabEventManageScreenState
                     'title': title,
                     'target_book': selectedBookId,
                     'branch': selectedBranchId, // [NEW]
-                    'start_date': startDate.toString().substring(0, 10),
-                    'end_date': endDate.toString().substring(0, 10),
+                    'start_date': startDateStr,
+                    'end_date': endDateStr,
                     'is_active': isActive,
                   };
 
@@ -354,15 +376,16 @@ class _TeacherVocabEventManageScreenState
 
   Widget _buildDateRow(
       {required String label,
-      required DateTime date,
+      required DateTime? date,
       required VoidCallback onPick}) {
+    final dateText = _formatDate(date) ?? '-';
     return Row(
       children: [
         SizedBox(width: 60, child: Text(label)),
         Expanded(
           child: OutlinedButton(
             onPressed: onPick,
-            child: Text(date.toString().substring(0, 10)),
+            child: Text(dateText),
           ),
         ),
       ],
