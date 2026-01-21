@@ -361,9 +361,11 @@ def generate_test_questions(student_profile, book_id, day_range, total_count=30,
     candidates = list(word_qs)
     random.shuffle(candidates)
     selected = candidates[:total_count]
-    if len(selected) < total_count and candidates:
-        needed = total_count - len(selected)
-        selected.extend(random.choices(candidates, k=needed))
+    # [FIX] Do NOT force fill up to total_count with duplicates.
+    # If there are only 25 words, just return 25 questions.
+    # if len(selected) < total_count and candidates:
+    #     needed = total_count - len(selected)
+    #     selected.extend(random.choices(candidates, k=needed))
     
     for w in selected:
         pos_tag = get_primary_pos(w.korean) if w.korean else None

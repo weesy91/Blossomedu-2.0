@@ -196,6 +196,57 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
   }
 
+  String _normalizeSubjectCode(String? raw) {
+    if (raw == null) return '';
+    final trimmed = raw.toString().trim();
+    if (trimmed.isEmpty) return '';
+    final upper = trimmed.toUpperCase();
+    if (upper.contains('SYNTAX')) return 'SYNTAX';
+    if (upper.contains('READING')) return 'READING';
+    if (upper.contains('GRAMMAR')) return 'GRAMMAR';
+    if (trimmed.contains('\uAD6C\uBB38')) return 'SYNTAX';
+    if (trimmed.contains('\uB3C5\uD574')) return 'READING';
+    if (trimmed.contains('\uBB38\uBC95')) return 'GRAMMAR';
+    return upper;
+  }
+
+  String _extractTeacherName(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value.trim();
+    if (value is Map) {
+      final keys = [
+        'name',
+        'full_name',
+        'display_name',
+        'teacher_name',
+        'username'
+      ];
+      for (final key in keys) {
+        final candidate = value[key]?.toString().trim();
+        if (candidate != null && candidate.isNotEmpty) return candidate;
+      }
+      return '';
+    }
+    if (value is num) return '';
+    return value.toString().trim();
+  }
+
+  String _resolveTeacherNameForTempSchedule(Map<String, dynamic> ts) {
+    final direct = _extractTeacherName(
+        ts['teacher_name'] ?? ts['teacher_display'] ?? ts['teacher']);
+    if (direct.isNotEmpty) return direct;
+    final subjectCode = _normalizeSubjectCode(ts['subject']?.toString());
+    if (subjectCode.isEmpty) return '';
+    for (final ct in _classTimes) {
+      final ctSubjectCode =
+          _normalizeSubjectCode(ct['subject']?.toString());
+      if (ctSubjectCode != subjectCode) continue;
+      final teacher = _extractTeacherName(ct['teacher_name'] ?? ct['teacher']);
+      if (teacher.isNotEmpty) return teacher;
+    }
+    return '';
+  }
+
   List<dynamic> _getCombinedItemsForDate(DateTime date) {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
     // 1. Assignments
@@ -254,7 +305,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             'start_time':
                 startTime.length >= 5 ? startTime.substring(0, 5) : startTime,
             'end_time': endTime.length >= 5 ? endTime.substring(0, 5) : endTime,
-            'teacher_name': ts['teacher_name'],
+            'teacher_name': _resolveTeacherNameForTempSchedule(ts),
             'is_makeup': isExtraClass,
             'temp_schedule': ts,
           };
@@ -495,7 +546,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final subject = item['subject'] ?? '수업';
     final startTime = _formatTimeShort(item['start_time']);
     final endTime = _formatTimeShort(item['end_time']);
-    final teacherRaw = item['teacher_name']?.toString().trim() ?? '';
+    final teacherRaw =
+        _extractTeacherName(item['teacher_name'] ?? item['teacher']);
     const teacherSuffix = '\uC120\uC0DD\uB2D8';
     final teacherLabel = teacherRaw.isEmpty
         ? teacherSuffix

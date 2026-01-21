@@ -913,13 +913,14 @@ class TestViewSet(viewsets.ModelViewSet):
         if not word:
             return Response({'error': 'Word required'}, status=status.HTTP_400_BAD_REQUEST)
             
-        try:
-            detail = TestResultDetail.objects.get(result=test_result, word_question=word)
-            detail.is_correction_requested = True
-            detail.save()
-            return Response({'status': 'requested', 'word': word})
-        except TestResultDetail.DoesNotExist:
+        # [FIX] Use filter() instead of get() to handle potential duplicates from old tests
+        details = TestResultDetail.objects.filter(result=test_result, word_question=word)
+        if not details.exists():
             return Response({'error': 'Detail not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Update all matching details (in case of duplicates)
+        count = details.update(is_correction_requested=True)
+        return Response({'status': 'requested', 'word': word, 'count': count})
 
 class WordViewSet(viewsets.ModelViewSet):
     """
