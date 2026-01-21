@@ -224,7 +224,8 @@ class _StudyScreenState extends State<StudyScreen>
                               children: [
                                 Row(
                                   children: [
-                                    Text('\uC6D4\uAC04 \uD559\uC2B5 \uAE30\uB85D',
+                                    Text(
+                                        '\uC6D4\uAC04 \uD559\uC2B5 \uAE30\uB85D',
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleSmall
@@ -497,23 +498,6 @@ class _StudyScreenState extends State<StudyScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: selectedEvent == null
-                              ? null
-                              : () => _handleEventChallenge(selectedEvent),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 0),
-                            minimumSize: const Size(0, 32),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20)),
-                          ),
-                          child: const Text('\uB3C4\uC804\uD558\uAE30',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.white)),
-                        )
                       ],
                     ),
             ),
@@ -643,7 +627,8 @@ class _StudyScreenState extends State<StudyScreen>
                   return const SizedBox(
                     height: 300,
                     child: Center(
-                      child: Text('\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.',
+                      child: Text(
+                          '\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.',
                           style: TextStyle(color: Colors.grey)),
                     ),
                   );
@@ -666,7 +651,8 @@ class _StudyScreenState extends State<StudyScreen>
                         const Center(
                             child: Padding(
                                 padding: EdgeInsets.all(20),
-                                child: Text('\uD559\uC2B5 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
+                                child: Text(
+                                    '\uD559\uC2B5 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
                                     style: TextStyle(color: Colors.grey))))
                       else
                         Expanded(
@@ -741,8 +727,9 @@ class _StudyScreenState extends State<StudyScreen>
             } else if (method['route'] == 'search') {
               _showWordSearchSheet(context);
             } else {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('\uC900\uBE44\uC911\uC778 \uAE30\uB2A5\uC785\uB2C8\uB2E4.')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text(
+                      '\uC900\uBE44\uC911\uC778 \uAE30\uB2A5\uC785\uB2C8\uB2E4.')));
             }
           },
           borderRadius: BorderRadius.circular(16),
@@ -803,8 +790,8 @@ class _StudyScreenState extends State<StudyScreen>
                     TextButton.icon(
                       onPressed: () async {
                         Navigator.pop(context);
-                        final added = await this.context
-                            .push('/student/book/select');
+                        final added =
+                            await this.context.push('/student/book/select');
                         if (added == true) {
                           _loadData();
                         }
@@ -815,7 +802,8 @@ class _StudyScreenState extends State<StudyScreen>
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text('\uD559\uC2B5\uD560 \uAD50\uC7AC\uB97C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.',
+                const Text(
+                    '\uD559\uC2B5\uD560 \uAD50\uC7AC\uB97C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.',
                     style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 20),
                 Expanded(
@@ -823,7 +811,8 @@ class _StudyScreenState extends State<StudyScreen>
                       ? const Center(child: CircularProgressIndicator())
                       : _myBooks.isEmpty
                           ? const Center(
-                              child: Text('\uB4F1\uB85D\uB41C \uB2E8\uC5B4\uC7A5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.'),
+                              child: Text(
+                                  '\uB4F1\uB85D\uB41C \uB2E8\uC5B4\uC7A5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.'),
                             )
                           : ListView.separated(
                               itemCount: _myBooks.length,
@@ -887,12 +876,14 @@ class _StudyScreenState extends State<StudyScreen>
       showDialog(
           context: context,
           builder: (_) => AlertDialog(
-                title: const Text('\uD544\uC694\uD55C \uAD50\uC7AC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'),
+                title: const Text(
+                    '\uD544\uC694\uD55C \uAD50\uC7AC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'),
                 content: Text(
                     "'$eventName'\uC5D0 \uCC38\uC5EC\uD558\uB824\uBA74 \uD574\uB2F9 \uAD50\uC7AC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.\n\uB2E8\uC5B4\uC7A5\uC5D0 \uCD94\uAC00\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."),
                 actions: [
                   TextButton(
-                      onPressed: () => context.pop(), child: const Text('\uD655\uC778')),
+                      onPressed: () => context.pop(),
+                      child: const Text('\uD655\uC778')),
                 ],
               ));
     }
@@ -984,7 +975,8 @@ class _StudyScreenState extends State<StudyScreen>
                         style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('\uD559\uC2B5 \uBC94\uC704\uC640 \uBAA8\uB4DC\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694.',
+                    const Text(
+                        '\uD559\uC2B5 \uBC94\uC704\uC640 \uBAA8\uB4DC\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694.',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
 
@@ -1150,7 +1142,8 @@ class _StudyScreenState extends State<StudyScreen>
                       Row(
                         children: [
                           FilterChip(
-                            label: const Text('\uB2E8\uC5B4 -> \uB73B (\uC8FC\uAD00\uC2DD)'),
+                            label: const Text(
+                                '\uB2E8\uC5B4 -> \uB73B (\uC8FC\uAD00\uC2DD)'),
                             selected: isWordToMeaning,
                             showCheckmark: false,
                             onSelected: (val) =>
@@ -1177,7 +1170,8 @@ class _StudyScreenState extends State<StudyScreen>
                           ),
                           const SizedBox(width: 8),
                           FilterChip(
-                            label: const Text('\uB73B -> \uB2E8\uC5B4 (\uC8FC\uAD00\uC2DD)'),
+                            label: const Text(
+                                '\uB73B -> \uB2E8\uC5B4 (\uC8FC\uAD00\uC2DD)'),
                             selected: !isWordToMeaning,
                             showCheckmark: false,
                             onSelected: (val) =>
@@ -1232,7 +1226,10 @@ class _StudyScreenState extends State<StudyScreen>
                               borderRadius: BorderRadius.circular(16)),
                           elevation: 2,
                         ),
-                        child: Text(testMode == 'study' ? '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30' : '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30',
+                        child: Text(
+                            testMode == 'study'
+                                ? '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30'
+                                : '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30',
                             style: const TextStyle(
                                 fontSize: 18,
                                 color: Colors.white,
@@ -1484,7 +1481,8 @@ class _StudyScreenState extends State<StudyScreen>
                         style: TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('\uD2C0\uB9B0 \uB2E8\uC5B4\uB97C \uBAA8\uC544 \uC9D1\uC911 \uD559\uC2B5\uD569\uB2C8\uB2E4.',
+                    const Text(
+                        '\uD2C0\uB9B0 \uB2E8\uC5B4\uB97C \uBAA8\uC544 \uC9D1\uC911 \uD559\uC2B5\uD569\uB2C8\uB2E4.',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
 
@@ -1506,7 +1504,8 @@ class _StudyScreenState extends State<StudyScreen>
                                   color: Colors.red)),
                           const SizedBox(height: 4),
                           // [Fix] Text Update
-                          const Text('\uC9C0\uAE08\uAE4C\uC9C0 \uD559\uC2B5\uD558\uBA70 \uD2C0\uB9B0 \uBAA8\uB4E0 \uB2E8\uC5B4\uAC00 \uD3EC\uD568\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.',
+                          const Text(
+                              '\uC9C0\uAE08\uAE4C\uC9C0 \uD559\uC2B5\uD558\uBA70 \uD2C0\uB9B0 \uBAA8\uB4E0 \uB2E8\uC5B4\uAC00 \uD3EC\uD568\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.',
                               style: TextStyle(
                                   fontSize: 12, color: Colors.black54)),
                         ],
@@ -1524,12 +1523,14 @@ class _StudyScreenState extends State<StudyScreen>
                               Icon(Icons.check_circle_outline,
                                   size: 64, color: Colors.green),
                               SizedBox(height: 16),
-                              Text('\uC644\uBCBD\uD569\uB2C8\uB2E4! \uD559\uC2B5\uD560 \uC624\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
+                              Text(
+                                  '\uC644\uBCBD\uD569\uB2C8\uB2E4! \uD559\uC2B5\uD560 \uC624\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold)),
                               SizedBox(height: 8),
-                              Text('\uC544\uB798\uC5D0\uC11C \uB2E8\uC5B4\uC7A5\uC744 \uD559\uC2B5\uD558\uAC70\uB098 \uC2E4\uD5D8\uC744 \uBD10\uBCF4\uC138\uC694.',
+                              Text(
+                                  '\uC544\uB798\uC5D0\uC11C \uB2E8\uC5B4\uC7A5\uC744 \uD559\uC2B5\uD558\uAC70\uB098 \uC2E4\uD5D8\uC744 \uBD10\uBCF4\uC138\uC694.',
                                   style: TextStyle(color: Colors.grey)),
                             ],
                           ),
@@ -1582,7 +1583,8 @@ class _StudyScreenState extends State<StudyScreen>
                                             ? AppColors.primary
                                             : Colors.grey),
                                     const SizedBox(height: 8),
-                                    Text('\uCE74\uB4DC \uC624\uB2F5 \uD559\uC2B5',
+                                    Text(
+                                        '\uCE74\uB4DC \uC624\uB2F5 \uD559\uC2B5',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: testMode == 'study'
@@ -1722,7 +1724,10 @@ class _StudyScreenState extends State<StudyScreen>
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: Text(testMode == 'test' ? '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30' : '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30',
+                          child: Text(
+                              testMode == 'test'
+                                  ? '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30'
+                                  : '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
