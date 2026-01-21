@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -32,7 +32,7 @@ class _StudyScreenState extends State<StudyScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 화면 재진입 시 오답 카운트 등 데이터 갱신
+    // ?붾㈃ ?ъ쭊?????ㅻ떟 移댁슫?????곗씠??媛깆떊
     _loadData();
   }
 
@@ -176,7 +176,7 @@ class _StudyScreenState extends State<StudyScreen>
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('학습 대시보드'),
+        title: const Text('?숈뒿 ??쒕낫??),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -224,7 +224,7 @@ class _StudyScreenState extends State<StudyScreen>
                               children: [
                                 Row(
                                   children: [
-                                    Text('🌱 학습 잔디',
+                                    Text('?뙮 ?숈뒿 ?붾뵒',
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleSmall
@@ -466,7 +466,7 @@ class _StudyScreenState extends State<StudyScreen>
                   ? const Text(
                       '\uC9C4\uD589 \uC911\uC778 \uC774\uBCA4\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
                       style: TextStyle(fontSize: 12, color: Colors.grey))
-                  : Row(
+                  : DropdownButtonHideUnderline(
                       children: [
                         Expanded(
                           child: DropdownButtonHideUnderline(
@@ -643,7 +643,7 @@ class _StudyScreenState extends State<StudyScreen>
                   return const SizedBox(
                     height: 300,
                     child: Center(
-                      child: Text('데이터를 불러오지 못했습니다.',
+                      child: Text('?곗씠?곕? 遺덈윭?ㅼ? 紐삵뻽?듬땲??',
                           style: TextStyle(color: Colors.grey)),
                     ),
                   );
@@ -658,7 +658,7 @@ class _StudyScreenState extends State<StudyScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$dateStr 학습 기록',
+                      Text('$dateStr ?숈뒿 湲곕줉',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 18)),
                       const SizedBox(height: 16),
@@ -666,7 +666,7 @@ class _StudyScreenState extends State<StudyScreen>
                         const Center(
                             child: Padding(
                                 padding: EdgeInsets.all(20),
-                                child: Text('학습 기록이 없습니다. 😴',
+                                child: Text('?숈뒿 湲곕줉???놁뒿?덈떎. ?샂',
                                     style: TextStyle(color: Colors.grey))))
                       else
                         Expanded(
@@ -688,7 +688,7 @@ class _StudyScreenState extends State<StudyScreen>
                                       item['total']?.toString() ?? '0') ??
                                   0;
                               final titleText = type == 'monthly'
-                                  ? '[월말] $bookTitle'
+                                  ? '[?붾쭚] $bookTitle'
                                   : bookTitle;
 
                               return ListTile(
@@ -742,7 +742,7 @@ class _StudyScreenState extends State<StudyScreen>
               _showWordSearchSheet(context);
             } else {
               ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('준비 중인 기능입니다.')));
+                  .showSnackBar(const SnackBar(content: Text('以鍮?以묒씤 湲곕뒫?낅땲??')));
             }
           },
           borderRadius: BorderRadius.circular(16),
@@ -797,7 +797,7 @@ class _StudyScreenState extends State<StudyScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('내 단어장 (My Books)',
+                    const Text('???⑥뼱??(My Books)',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 18)),
                     TextButton.icon(
@@ -810,12 +810,12 @@ class _StudyScreenState extends State<StudyScreen>
                         }
                       },
                       icon: const Icon(Icons.add),
-                      label: const Text('추가'),
+                      label: const Text('異붽?'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text('학습할 교재를 선택해 주세요.',
+                const Text('?숈뒿??援먯옱瑜??좏깮??二쇱꽭??',
                     style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 20),
                 Expanded(
@@ -823,7 +823,7 @@ class _StudyScreenState extends State<StudyScreen>
                       ? const Center(child: CircularProgressIndicator())
                       : _myBooks.isEmpty
                           ? const Center(
-                              child: Text('등록된 단어장이 없습니다.'),
+                              child: Text('?깅줉???⑥뼱?μ씠 ?놁뒿?덈떎.'),
                             )
                           : ListView.separated(
                               itemCount: _myBooks.length,
@@ -854,7 +854,7 @@ class _StudyScreenState extends State<StudyScreen>
                                         style: const TextStyle(
                                             fontWeight: FontWeight.bold)),
                                     subtitle: Text(
-                                        '${book['publisher_name'] ?? '출판사 없음'} · 총 ${book['total_days'] ?? book['totalDays'] ?? 0}일차'),
+                                        '${book['publisher_name'] ?? '異쒗뙋???놁쓬'} 쨌 珥?${book['total_days'] ?? book['totalDays'] ?? 0}?쇱감'),
                                     trailing: const Icon(
                                         Icons.arrow_forward_ios,
                                         size: 16,
@@ -887,12 +887,12 @@ class _StudyScreenState extends State<StudyScreen>
       showDialog(
           context: context,
           builder: (_) => AlertDialog(
-                title: const Text('필요한 교재가 없습니다'),
+                title: const Text('?꾩슂??援먯옱媛 ?놁뒿?덈떎'),
                 content: Text(
-                    "'$eventName'에 참여하려면 해당 교재가 필요합니다.\n내 단어장에 추가한 뒤 다시 시도해 주세요."),
+                    "'$eventName'??李몄뿬?섎젮硫??대떦 援먯옱媛 ?꾩슂?⑸땲??\n???⑥뼱?μ뿉 異붽??????ㅼ떆 ?쒕룄??二쇱꽭??"),
                 actions: [
                   TextButton(
-                      onPressed: () => context.pop(), child: const Text('확인')),
+                      onPressed: () => context.pop(), child: const Text('?뺤씤')),
                 ],
               ));
     }
@@ -984,12 +984,12 @@ class _StudyScreenState extends State<StudyScreen>
                         style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('학습 범위와 모드를 설정해주세요.',
+                    const Text('?숈뒿 踰붿쐞? 紐⑤뱶瑜??ㅼ젙?댁＜?몄슂.',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
 
                     // 1. Day Range Picker
-                    const Text('학습 범위 (Day)',
+                    const Text('?숈뒿 踰붿쐞 (Day)',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 12),
@@ -999,7 +999,7 @@ class _StudyScreenState extends State<StudyScreen>
                           child: TextField(
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: '시작 Day',
+                              labelText: '?쒖옉 Day',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1031,7 +1031,7 @@ class _StudyScreenState extends State<StudyScreen>
                           child: TextField(
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: '종료 Day',
+                              labelText: '醫낅즺 Day',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1056,7 +1056,7 @@ class _StudyScreenState extends State<StudyScreen>
                     const SizedBox(height: 24),
 
                     // 2. Mode Selector (Study vs Test)
-                    const Text('학습 모드',
+                    const Text('?숈뒿 紐⑤뱶',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 12),
@@ -1084,14 +1084,14 @@ class _StudyScreenState extends State<StudyScreen>
                                           ? AppColors.primary
                                           : Colors.grey),
                                   const SizedBox(height: 8),
-                                  Text('📖 카드 학습',
+                                  Text('?뱰 移대뱶 ?숈뒿',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: testMode == 'study'
                                               ? AppColors.primary
                                               : Colors.black)),
                                   const SizedBox(height: 4),
-                                  const Text('시간제한 X',
+                                  const Text('?쒓컙?쒗븳 X',
                                       style: TextStyle(
                                           fontSize: 11, color: Colors.grey)),
                                 ],
@@ -1122,14 +1122,14 @@ class _StudyScreenState extends State<StudyScreen>
                                           ? Colors.red
                                           : Colors.grey),
                                   const SizedBox(height: 8),
-                                  Text('🔥 실전 시험',
+                                  Text('?뵦 ?ㅼ쟾 ?쒗뿕',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: testMode == 'test'
                                               ? Colors.red
                                               : Colors.black)),
                                   const SizedBox(height: 4),
-                                  const Text('기록 반영 O',
+                                  const Text('湲곕줉 諛섏쁺 O',
                                       style: TextStyle(
                                           fontSize: 11, color: Colors.grey)),
                                 ],
@@ -1143,14 +1143,14 @@ class _StudyScreenState extends State<StudyScreen>
 
                     // 3. Question Type
                     if (testMode == 'test') ...[
-                      const Text('문제 유형',
+                      const Text('臾몄젣 ?좏삎',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           FilterChip(
-                            label: const Text('영단어 ➡ 뜻 (주관식)'),
+                            label: const Text('?곷떒??????(二쇨???'),
                             selected: isWordToMeaning,
                             showCheckmark: false,
                             onSelected: (val) =>
@@ -1177,7 +1177,7 @@ class _StudyScreenState extends State<StudyScreen>
                           ),
                           const SizedBox(width: 8),
                           FilterChip(
-                            label: const Text('뜻 ➡ 영단어 (주관식)'),
+                            label: const Text('?????곷떒??(二쇨???'),
                             selected: !isWordToMeaning,
                             showCheckmark: false,
                             onSelected: (val) =>
@@ -1232,7 +1232,7 @@ class _StudyScreenState extends State<StudyScreen>
                               borderRadius: BorderRadius.circular(16)),
                           elevation: 2,
                         ),
-                        child: Text(testMode == 'study' ? '학습 시작하기' : '시험 응시하기',
+                        child: Text(testMode == 'study' ? '?숈뒿 ?쒖옉?섍린' : '?쒗뿕 ?묒떆?섍린',
                             style: const TextStyle(
                                 fontSize: 18,
                                 color: Colors.white,
@@ -1480,11 +1480,11 @@ class _StudyScreenState extends State<StudyScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('오답 격파 (Snowball)',
+                    const Text('?ㅻ떟 寃⑺뙆 (Snowball)',
                         style: TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('틀린 단어를 집중 학습합니다.',
+                    const Text('?由??⑥뼱瑜?吏묒쨷 ?숈뒿?⑸땲??',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
 
@@ -1500,13 +1500,13 @@ class _StudyScreenState extends State<StudyScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('🔥 현재 누적 오답: $wrongCount개',
+                          Text('?뵦 ?꾩옱 ?꾩쟻 ?ㅻ떟: $wrongCount媛?,
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.red)),
                           const SizedBox(height: 4),
                           // [Fix] Text Update
-                          const Text('지금까지 학습하며 틀린 모든 단어가 포함되어 있습니다.',
+                          const Text('吏湲덇퉴吏 ?숈뒿?섎ŉ ?由?紐⑤뱺 ?⑥뼱媛 ?ы븿?섏뼱 ?덉뒿?덈떎.',
                               style: TextStyle(
                                   fontSize: 12, color: Colors.black54)),
                         ],
@@ -1524,12 +1524,12 @@ class _StudyScreenState extends State<StudyScreen>
                               Icon(Icons.check_circle_outline,
                                   size: 64, color: Colors.green),
                               SizedBox(height: 16),
-                              Text('완벽합니다! 학습할 오답이 없습니다.',
+                              Text('?꾨꼍?⑸땲?? ?숈뒿???ㅻ떟???놁뒿?덈떎.',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold)),
                               SizedBox(height: 8),
-                              Text('새로운 단어장을 학습하거나 시험을 봐보세요.',
+                              Text('?덈줈???⑥뼱?μ쓣 ?숈뒿?섍굅???쒗뿕??遊먮낫?몄슂.',
                                   style: TextStyle(color: Colors.grey)),
                             ],
                           ),
@@ -1546,14 +1546,14 @@ class _StudyScreenState extends State<StudyScreen>
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: const Text('닫기',
+                          child: const Text('?リ린',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 18)),
                         ),
                       ),
                     ] else ...[
                       // 2. Mode Selector (Study vs Test)
-                      const Text('학습 모드 선택',
+                      const Text('?숈뒿 紐⑤뱶 ?좏깮',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 12),
@@ -1582,14 +1582,14 @@ class _StudyScreenState extends State<StudyScreen>
                                             ? AppColors.primary
                                             : Colors.grey),
                                     const SizedBox(height: 8),
-                                    Text('📖 오답 학습',
+                                    Text('?뱰 ?ㅻ떟 ?숈뒿',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: testMode == 'study'
                                                 ? AppColors.primary
                                                 : Colors.black)),
                                     const SizedBox(height: 4),
-                                    const Text('카드 뒤집기',
+                                    const Text('移대뱶 ?ㅼ쭛湲?,
                                         style: TextStyle(
                                             fontSize: 11, color: Colors.grey)),
                                   ],
@@ -1621,14 +1621,14 @@ class _StudyScreenState extends State<StudyScreen>
                                             ? Colors.red
                                             : Colors.grey),
                                     const SizedBox(height: 8),
-                                    Text('💀 격파 시험',
+                                    Text('?? 寃⑺뙆 ?쒗뿕',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: testMode == 'test'
                                                 ? Colors.red
                                                 : Colors.black)),
                                     const SizedBox(height: 4),
-                                    const Text('통과 시 오답 삭제',
+                                    const Text('?듦낵 ???ㅻ떟 ??젣',
                                         style: TextStyle(
                                             fontSize: 11, color: Colors.grey)),
                                   ],
@@ -1642,14 +1642,14 @@ class _StudyScreenState extends State<StudyScreen>
 
                       // 3. Question Type
                       if (testMode == 'test') ...[
-                        const Text('문제 유형',
+                        const Text('臾몄젣 ?좏삎',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
                         const SizedBox(height: 12),
                         Row(
                           children: [
                             FilterChip(
-                              label: const Text('영단어 ➡ 뜻'),
+                              label: const Text('?곷떒??????),
                               selected: isWordToMeaning,
                               showCheckmark: false,
                               onSelected: (val) =>
@@ -1672,7 +1672,7 @@ class _StudyScreenState extends State<StudyScreen>
                             ),
                             const SizedBox(width: 8),
                             FilterChip(
-                              label: const Text('뜻 ➡ 영단어'),
+                              label: const Text('?????곷떒??),
                               selected: !isWordToMeaning,
                               showCheckmark: false,
                               onSelected: (val) =>
@@ -1722,7 +1722,7 @@ class _StudyScreenState extends State<StudyScreen>
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: Text(testMode == 'test' ? '오답 격파 시작' : '학습 시작',
+                          child: Text(testMode == 'test' ? '?ㅻ떟 寃⑺뙆 ?쒖옉' : '?숈뒿 ?쒖옉',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,

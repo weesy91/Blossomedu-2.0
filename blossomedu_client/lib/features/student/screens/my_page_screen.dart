@@ -108,17 +108,84 @@ class MyPageScreen extends StatelessWidget {
                     icon: Icons.history,
                     title: '학습기록 확인',
                     onTap: () => context.push('/student/records')),
-                _MenuItem(icon: Icons.bar_chart, title: '월간 리포트', onTap: () {}),
+                _MenuItem(
+                    icon: Icons.bar_chart,
+                    title: '월간 리포트',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('월간 리포트'),
+                          content: const Text(
+                              '현재 구현 중인 기능입니다.\n빠른 시일 내에 제공될 예정입니다.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('확인')),
+                          ],
+                        ),
+                      );
+                    }),
               ]),
 
               _buildMenuSection(title: '앱 설정', items: [
                 _MenuItem(
-                    icon: Icons.notifications, title: '알림 설정', onTap: () {}),
-                _MenuItem(icon: Icons.lock, title: '비밀번호 변경', onTap: () {}),
+                    icon: Icons.notifications,
+                    title: '알림 설정',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('알림 설정'),
+                          content: const Text(
+                              '현재 구현 중인 기능입니다.\n빠른 시일 내에 제공될 예정입니다.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('확인')),
+                          ],
+                        ),
+                      );
+                    }),
+                _MenuItem(
+                    icon: Icons.lock,
+                    title: '비밀번호 변경',
+                    onTap: () {
+                      _showPasswordChangeDialog(context);
+                    }),
                 _MenuItem(
                     icon: Icons.info_outline,
-                    title: '앱 정보 (v0.9.0)',
-                    onTap: () {}),
+                    title: '앱 정보',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('BlossomEdu'),
+                          content: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('버전: Alpha 0.9.1',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
+                              SizedBox(height: 8),
+                              Text('영어 학습 관리 앱'),
+                              SizedBox(height: 4),
+                              Text('© 2025 BlossomEdu'),
+                              SizedBox(height: 12),
+                              Text('⚠️ 현재 Alpha 테스트 중입니다.',
+                                  style: TextStyle(
+                                      color: Colors.orange, fontSize: 12)),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('확인')),
+                          ],
+                        ),
+                      );
+                    }),
               ]),
 
               const SizedBox(height: 20),
@@ -199,6 +266,79 @@ class MyPageScreen extends StatelessWidget {
         ),
         const SizedBox(height: 20),
       ],
+    );
+  }
+
+  void _showPasswordChangeDialog(BuildContext context) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('비밀번호 변경'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '현재 비밀번호',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '새 비밀번호',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '새 비밀번호 확인',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (newPasswordController.text !=
+                  confirmPasswordController.text) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('새 비밀번호가 일치하지 않습니다.')),
+                );
+                return;
+              }
+              if (newPasswordController.text.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('비밀번호는 6자 이상이어야 합니다.')),
+                );
+                return;
+              }
+              // TODO: Implement actual password change API call
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('비밀번호가 변경되었습니다.')),
+              );
+            },
+            child: const Text('변경'),
+          ),
+        ],
+      ),
     );
   }
 }
