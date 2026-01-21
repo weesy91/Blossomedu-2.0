@@ -495,7 +495,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final subject = item['subject'] ?? '수업';
     final startTime = _formatTimeShort(item['start_time']);
     final endTime = _formatTimeShort(item['end_time']);
-    final teacher = item['teacher_name'] ?? '선생님';
+    final teacherRaw = item['teacher_name']?.toString().trim() ?? '';
+    const teacherSuffix = '\uC120\uC0DD\uB2D8';
+    final teacherLabel = teacherRaw.isEmpty
+        ? teacherSuffix
+        : (teacherRaw.contains(teacherSuffix)
+            ? teacherRaw
+            : '$teacherRaw $teacherSuffix');
     final rescheduleNote = item['reschedule_note']?.toString() ?? '';
 
     return Card(
@@ -541,7 +547,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     children: [
                       const Icon(Icons.person, size: 14, color: Colors.grey),
                       const SizedBox(width: 4),
-                      Text('$teacher 선생님',
+                      Text(teacherLabel,
                           style: TextStyle(
                               fontSize: 13, color: Colors.grey.shade700)),
                     ],
