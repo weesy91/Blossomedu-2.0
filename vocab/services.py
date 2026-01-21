@@ -83,6 +83,10 @@ def parse_meaning_tokens(meaning_text):
             manual_pos = _normalize_pos_tag(match.group(1))
             clean = p[match.end():].strip()
 
+        # [FIX] Remove invisible characters (Zero Width Space, etc.)
+        # \u200b: Zero width space, \u200c: ZWNJ, \u200d: ZWJ, \ufeff: BOM
+        clean = re.sub(r'[\u200b\u200c\u200d\ufeff]', '', clean).strip()
+
         if not clean:
             continue
 
