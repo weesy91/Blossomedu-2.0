@@ -372,36 +372,6 @@ class _TeacherClassLogCreateScreenState
             'publisher': null,
             'bookId': null,
             'range': '',
-            'isOt': false,
-            'dueDate': _defaultDueDate
-          });
-        }
-
-        // Real Past Info
-        if (historyLogs.isNotEmpty) {
-          // Filter out TODAY's log for "Past Info"
-          final pastLogs =
-              historyLogs.where((l) => l['date'] != widget.date).toList();
-          if (pastLogs.isNotEmpty) {
-            final last = pastLogs.first;
-            _prevMyLog = {
-              'date': last['date'],
-              'hw': last['hw_main_range'] ?? last['comment'] ?? '내용 없음'
-            };
-          }
-        }
-
-        if (otherLogs.isNotEmpty) {
-          final last = otherLogs.first;
-          _prevOtherLog = {
-            'date': last['date'],
-            'content': last['hw_main_range'] ?? last['comment'] ?? '내용 없음'
-          };
-        }
-      });
-    } catch (e) {
-      print('Error fetching data: $e');
-      // Ensure UI still loads even on error
       setState(() {
         _isLoading = false;
         // Ensure rows exist
