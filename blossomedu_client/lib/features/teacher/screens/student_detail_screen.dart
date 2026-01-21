@@ -464,8 +464,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
               icon: const Icon(Icons.add),
               label: const Text('새 수업일지 작성'),
               onPressed: () {
+                // [FIX] Auto-detect subject based on today's day
+                String subjectParam = 'SYNTAX';
+                final todayCode =
+                    DateFormat('E', 'en_US').format(DateTime.now());
+                if (_selectedReadingDay == todayCode) {
+                  subjectParam = 'READING';
+                }
+                // If matched Syntax day, prioritize Syntax (or overwrite)
+                if (_selectedSyntaxDay == todayCode) {
+                  subjectParam = 'SYNTAX';
+                }
+
                 context.push(
-                    '/teacher/class_log/create?studentId=${widget.studentId}&studentName=$_name');
+                    '/teacher/class_log/create?studentId=${widget.studentId}&studentName=$_name&subject=$subjectParam');
               },
             ),
           ],

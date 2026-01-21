@@ -186,10 +186,25 @@ class _StudentListScreenState extends State<StudentListScreen> {
   void _navigateToLogCreate(Map<String, dynamic> student) {
     // Pass selected date!
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    // [FIX] Determine Subject for the selected day
+    String subject = 'SYNTAX';
+    try {
+      final dayCode = _getDayCode(_selectedDate);
+      final times = student['class_times'] as List? ?? [];
+      final todayClasses = times.where((t) => t['day'] == dayCode).toList();
+      if (todayClasses.isNotEmpty) {
+        // Use the first class type found for today
+        // (Assuming 1 subject per day usually, or prioritizing the first one)
+        subject = todayClasses.first['type'] ?? 'SYNTAX';
+      }
+    } catch (_) {}
+
     context.push(Uri(path: '/teacher/class_log/create', queryParameters: {
       'studentId': student['id'].toString(),
       'studentName': student['name'],
-      'date': dateStr // Pre-fill date
+      'date': dateStr, // Pre-fill date
+      'subject': subject, // [FIX] Pass subject
     }).toString());
   }
 

@@ -172,9 +172,11 @@ final router = GoRouter(
         final studentId = state.uri.queryParameters['studentId'] ?? '';
         final studentName = state.uri.queryParameters['studentName'] ?? '학생';
         final date = state.uri.queryParameters['date'];
+        final subject = state.uri.queryParameters['subject'];
         return TeacherClassLogCreateScreen(
             studentId: studentId.toString(),
             studentName: studentName,
+            subject: subject ?? 'SYNTAX',
             date: date);
       },
     ),
