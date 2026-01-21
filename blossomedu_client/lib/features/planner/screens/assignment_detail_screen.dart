@@ -128,7 +128,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
 
   Future<void> _pickImages(ImageSource source) async {
     if (source == ImageSource.gallery) {
-      final images = await _picker.pickMultiImage();
+      // [FIX] Compress: Quality 70, MaxWidth FHD (1920)
+      final images =
+          await _picker.pickMultiImage(imageQuality: 70, maxWidth: 1920);
       if (images.isNotEmpty) {
         setState(() {
           _selectedImages.addAll(images);
@@ -138,7 +140,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
       return;
     }
 
-    final XFile? image = await _picker.pickImage(source: source);
+    // [FIX] Compress: Quality 70, MaxWidth FHD (1920)
+    final XFile? image = await _picker.pickImage(
+        source: source, imageQuality: 70, maxWidth: 1920);
     if (image != null) {
       setState(() {
         _selectedImages.add(image);
@@ -261,7 +265,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   Widget _buildContent() {
     // [NEW] Check if assignment is locked (before start_date)
     DateTime? startDate = _parseDateOnly(_assignmentData!['start_date']);
-    if (startDate == null && _assignmentData!['assignment_type'] == 'VOCAB_TEST') {
+    if (startDate == null &&
+        _assignmentData!['assignment_type'] == 'VOCAB_TEST') {
       final dueDate = _parseDateOnly(_assignmentData!['due_date']);
       if (dueDate != null) {
         startDate = dueDate.subtract(const Duration(days: 1));
