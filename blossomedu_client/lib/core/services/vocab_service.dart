@@ -143,9 +143,21 @@ class VocabService {
   }
 
   // Get words for a specific book
-  Future<List<dynamic>> getWords(int bookId) async {
+  Future<List<dynamic>> getWords(
+    int bookId, {
+    String? dayRange,
+    bool shuffle = false,
+  }) async {
     try {
-      final response = await _dio.get('/vocab/api/v1/books/$bookId/words/');
+      final params = <String, dynamic>{};
+      if (dayRange != null && dayRange.isNotEmpty) {
+        params['day_range'] = dayRange;
+      }
+      if (shuffle) params['shuffle'] = 'true';
+      final response = await _dio.get(
+        '/vocab/api/v1/books/$bookId/words/',
+        queryParameters: params.isEmpty ? null : params,
+      );
       return response.data;
     } catch (e) {
       throw Exception('Failed to load words: $e');

@@ -76,35 +76,64 @@ class _WordTestScreenState extends State<WordTestScreen>
       _isLoading = false;
     } else {
       try {
-        final int? studyCount = widget.testMode == 'study'
-            ? _inferRangeCount(widget.testRange)
-            : null;
-        final rawQuestions = await _vocabService.generateTestQuestions(
-          bookId: widget.bookId,
-          range: widget.testRange, // Use the passed range
-          count: studyCount ?? 30,
-        );
+        final normalizedRange = _normalizeRange(widget.testRange);
+        if (widget.testMode == 'study' &&
+            widget.bookId > 0 &&
+            normalizedRange != 'WRONG_ONLY') {
+          final rawWords = await _vocabService.getWords(
+            widget.bookId,
+            dayRange: normalizedRange.isEmpty ? 'ALL' : normalizedRange,
+          );
 
-        // Map backend data to frontend format
-        final mappedWords = rawQuestions
-            .map((w) => {
-                  'id': w['id'],
-                  'wordId': w['word_id'],
-                  'word': w['english'],
-                  'meaning': w['korean'],
-                  'meaning_groups': w['meaning_groups'],
-                  'example': w['example_sentence'] ?? '',
-                  'pos': w['pos']
-                })
-            .toList()
-            .cast<Map<String, dynamic>>();
+          // Map backend data to frontend format
+          final mappedWords = rawWords
+              .map((w) => {
+                    'id': w['id'],
+                    'wordId': w['id'],
+                    'word': w['english'],
+                    'meaning': w['korean'],
+                    'meaning_groups': w['meaning_groups'],
+                    'example': w['example_sentence'] ?? '',
+                    'pos': w['pos']
+                  })
+              .toList()
+              .cast<Map<String, dynamic>>();
 
-        if (mounted) {
-          setState(() {
-            _words = mappedWords;
-            _isLoading = false;
-          });
-          _speakCurrentWord(); // [TTS] Speak First Word
+          if (mounted) {
+            setState(() {
+              _words = mappedWords;
+              _isLoading = false;
+            });
+            _speakCurrentWord(); // [TTS] Speak First Word
+          }
+        } else {
+          final rawQuestions = await _vocabService.generateTestQuestions(
+            bookId: widget.bookId,
+            range: widget.testRange, // Use the passed range
+            count: 30,
+          );
+
+          // Map backend data to frontend format
+          final mappedWords = rawQuestions
+              .map((w) => {
+                    'id': w['id'],
+                    'wordId': w['word_id'],
+                    'word': w['english'],
+                    'meaning': w['korean'],
+                    'meaning_groups': w['meaning_groups'],
+                    'example': w['example_sentence'] ?? '',
+                    'pos': w['pos']
+                  })
+              .toList()
+              .cast<Map<String, dynamic>>();
+
+          if (mounted) {
+            setState(() {
+              _words = mappedWords;
+              _isLoading = false;
+            });
+            _speakCurrentWord(); // [TTS] Speak First Word
+          }
         }
       } catch (e) {
         debugPrint('Error loading test questions: $e');
@@ -703,30 +732,11 @@ class _WordTestScreenState extends State<WordTestScreen>
     );
   }
 
-  int? _inferRangeCount(String range) {
-    final normalized =
-        range.replaceAll(RegExp(r'day', caseSensitive: false), '').replaceAll(' ', '').trim();
-    if (normalized.isEmpty ||
-        normalized == 'ALL' ||
-        normalized == 'WRONG_ONLY') {
-      return null;
-    }
-    int total = 0;
-    for (final chunk in normalized.split(',')) {
-      if (chunk.isEmpty) continue;
-      if (chunk.contains('-')) {
-        final parts = chunk.split('-');
-        if (parts.length != 2) continue;
-        final start = int.tryParse(parts[0]);
-        final end = int.tryParse(parts[1]);
-        if (start == null || end == null) continue;
-        total += (end - start).abs() + 1;
-      } else {
-        final single = int.tryParse(chunk);
-        if (single != null) total += 1;
-      }
-    }
-    return total > 0 ? total : null;
+  String _normalizeRange(String range) {
+    return range
+        .replaceAll(RegExp(r'day', caseSensitive: false), '')
+        .replaceAll(' ', '')
+        .trim();
   }
 
   String _inferPos(String meaning) {

@@ -176,7 +176,7 @@ class _StudyScreenState extends State<StudyScreen>
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('?숈뒿 ??쒕낫??),
+        title: const Text('학습 대시보드'),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -466,7 +466,7 @@ class _StudyScreenState extends State<StudyScreen>
                   ? const Text(
                       '\uC9C4\uD589 \uC911\uC778 \uC774\uBCA4\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.',
                       style: TextStyle(fontSize: 12, color: Colors.grey))
-                  : DropdownButtonHideUnderline(
+                  : Row(
                       children: [
                         Expanded(
                           child: DropdownButtonHideUnderline(
@@ -1500,7 +1500,7 @@ class _StudyScreenState extends State<StudyScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('?뵦 ?꾩옱 ?꾩쟻 ?ㅻ떟: $wrongCount媛?,
+                          Text('현재 누적 오답: $wrongCount개',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.red)),
@@ -1589,7 +1589,7 @@ class _StudyScreenState extends State<StudyScreen>
                                                 ? AppColors.primary
                                                 : Colors.black)),
                                     const SizedBox(height: 4),
-                                    const Text('移대뱶 ?ㅼ쭛湲?,
+                                    const Text('시간제한 X',
                                         style: TextStyle(
                                             fontSize: 11, color: Colors.grey)),
                                   ],
@@ -1649,7 +1649,7 @@ class _StudyScreenState extends State<StudyScreen>
                         Row(
                           children: [
                             FilterChip(
-                              label: const Text('?곷떒??????),
+                              label: const Text('단어 -> 뜻'),
                               selected: isWordToMeaning,
                               showCheckmark: false,
                               onSelected: (val) =>
@@ -1672,7 +1672,7 @@ class _StudyScreenState extends State<StudyScreen>
                             ),
                             const SizedBox(width: 8),
                             FilterChip(
-                              label: const Text('?????곷떒??),
+                              label: const Text('뜻 -> 단어'),
                               selected: !isWordToMeaning,
                               showCheckmark: false,
                               onSelected: (val) =>
