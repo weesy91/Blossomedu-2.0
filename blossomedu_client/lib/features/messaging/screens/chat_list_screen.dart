@@ -91,9 +91,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ),
                           ),
                         ),
-                        title: Text(
-                          conv['other_user_name'] ?? '알 수 없음',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        title: Row(
+                          children: [
+                            Text(
+                              conv['other_user_name'] ?? '알 수 없음',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            if (conv['other_user_info'] != null &&
+                                conv['other_user_info']
+                                    .toString()
+                                    .isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                conv['other_user_info'],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         subtitle: Text(
                           conv['last_message'] ?? '대화 없음',

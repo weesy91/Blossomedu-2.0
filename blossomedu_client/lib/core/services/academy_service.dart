@@ -775,4 +775,21 @@ class AcademyService {
       throw Exception('Failed to mark as read: ${response.statusCode}');
     }
   }
+
+  /// 전체 안 읽은 메시지 수 조회 (배지용)
+  Future<int> getUnreadMessageCount() async {
+    final uri =
+        Uri.parse('${AppConfig.baseUrl}/messaging/conversations/unread_total/');
+    final headers = await _getHeaders();
+    try {
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data['unread_total'] ?? 0;
+      }
+    } catch (e) {
+      print('Error getting unread count: $e');
+    }
+    return 0;
+  }
 }

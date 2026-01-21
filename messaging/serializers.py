@@ -25,12 +25,13 @@ class MessageSerializer(serializers.ModelSerializer):
 class ConversationSerializer(serializers.ModelSerializer):
     other_user_id = serializers.SerializerMethodField()
     other_user_name = serializers.SerializerMethodField()
+    other_user_info = serializers.SerializerMethodField()  # NEW: school/grade
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
-        fields = ['id', 'other_user_id', 'other_user_name', 'last_message', 'unread_count', 'last_message_at']
+        fields = ['id', 'other_user_id', 'other_user_name', 'other_user_info', 'last_message', 'unread_count', 'last_message_at']
 
     def _get_other_user(self, obj):
         request = self.context.get('request')
@@ -48,6 +49,28 @@ class ConversationSerializer(serializers.ModelSerializer):
         if hasattr(other, 'staff_profile') and other.staff_profile:
             return other.staff_profile.name or other.first_name or other.username
         return other.first_name or other.username
+
+    def get_other_user_info(self, obj):
+        """Return school/grade for students, role for staff"""
+        other = self._get_other_user(obj)
+        # For students
+        if hasattr(other, 'profile') and other.profile:
+            profile = other.profile
+            school = profile.school.name if profile.school else ''
+            grade = profile.current_grade_display if hasattr(profile, 'current_grade_display') else ''
+            if school and grade:
+                return f"{school} {grade}"
+            return school or grade or ''
+        # For staff
+        if hasattr(other, 'staff_profile') and other.staff_profile:
+            sp = other.staff_profile
+            roles = []
+            if sp.is_syntax_teacher:
+                roles.append('구문')
+            if sp.is_reading_teacher:
+                roles.append('독해')
+            return '/'.join(roles) + ' 선생님' if roles else '선생님'
+        return ''
 
     def get_last_message(self, obj):
         msg = obj.messages.last()

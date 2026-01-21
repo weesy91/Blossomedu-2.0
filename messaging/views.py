@@ -18,6 +18,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
             Q(participant1=user) | Q(participant2=user)
         ).prefetch_related('messages')
 
+    @action(detail=False, methods=['get'])
+    def unread_total(self, request):
+        """전체 안 읽은 메시지 수 반환 (배지용)"""
+        user = request.user
+        conversations = Conversation.objects.filter(
+            Q(participant1=user) | Q(participant2=user)
+        )
+        total = 0
+        for conv in conversations:
+            total += conv.messages.filter(is_read=False).exclude(sender=user).count()
+        return Response({'unread_total': total})
+
     @action(detail=False, methods=['post'])
     def get_or_create(self, request):
         """상대방 ID로 대화방 조회 또는 생성"""
