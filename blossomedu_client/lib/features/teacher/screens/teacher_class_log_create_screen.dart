@@ -372,6 +372,49 @@ class _TeacherClassLogCreateScreenState
             'publisher': null,
             'bookId': null,
             'range': '',
+            'isOt': false,
+            'dueDate': _defaultDueDate
+          });
+        }
+
+        final targetDateStr =
+            widget.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+        // Real Past Info
+        if (historyLogs.isNotEmpty) {
+          // [FIX] Filter strictly for logs BEFORE the target date
+          final pastLogs = historyLogs.where((l) {
+            final d = l['date'];
+            return d != null && d.compareTo(targetDateStr) < 0;
+          }).toList();
+
+          if (pastLogs.isNotEmpty) {
+            final last = pastLogs.first;
+            _prevMyLog = {
+              'date': last['date'],
+              'hw': last['hw_main_range'] ?? last['comment'] ?? '내용 없음'
+            };
+          }
+        }
+
+        if (otherLogs.isNotEmpty) {
+          // [FIX] Apply same past filter to Other Subject logs
+          final pastOtherLogs = otherLogs.where((l) {
+            final d = l['date'];
+            return d != null && d.compareTo(targetDateStr) < 0;
+          }).toList();
+
+          if (pastOtherLogs.isNotEmpty) {
+            final last = pastOtherLogs.first;
+            _prevOtherLog = {
+              'date': last['date'],
+              'content': last['hw_main_range'] ?? last['comment'] ?? '내용 없음'
+            };
+          }
+        }
+      });
+    } catch (e) {
+      print('Error fetching data: $e');
       setState(() {
         _isLoading = false;
         // Ensure rows exist
@@ -453,8 +496,7 @@ class _TeacherClassLogCreateScreenState
             title = row['range'] ?? '과제';
           }
 
-          final book =
-              _findBook(row['bookId'], type: row['type']?.toString());
+          final book = _findBook(row['bookId'], type: row['type']?.toString());
           if (book != null) {
             title = '[${book['title']}] $title';
           }
