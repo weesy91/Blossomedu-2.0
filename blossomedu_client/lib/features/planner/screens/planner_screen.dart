@@ -139,6 +139,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
     return DateTime(local.year, local.month, local.day);
   }
 
+  String _formatTimeShort(dynamic value) {
+    if (value == null) return '';
+    final raw = value.toString();
+    if (raw.isEmpty) return '';
+    return raw.length >= 5 ? raw.substring(0, 5) : raw;
+  }
+
+  String _extractTime(dynamic value) {
+    if (value == null) return '';
+    final raw = value.toString();
+    if (raw.isEmpty) return '';
+    final match = RegExp(r'(\d{1,2}:\d{2})').firstMatch(raw);
+    return match?.group(1) ?? '';
+  }
+
   // Helper to map weekday string/int to DateTime weekday
   bool _isClassDay(String dayStr, DateTime date) {
     // Backend formats: 'Mon', 'Tue' OR 'Monday', 'Tuesday' OR '월', '화'
@@ -264,17 +279,19 @@ class _PlannerScreenState extends State<PlannerScreen> {
       String timeB = '';
 
       if (a['itemType'] == 'CLASS') {
-        timeA = a['start_time'] ?? '00:00';
+        timeA = _formatTimeShort(a['start_time']);
+        if (timeA.isEmpty) timeA = '00:00';
       } else {
-        timeA = (a['due_date']?.toString().split('T').last.substring(0, 5)) ??
-            '23:59';
+        timeA = _extractTime(a['due_date']);
+        if (timeA.isEmpty) timeA = '23:59';
       }
 
       if (b['itemType'] == 'CLASS') {
-        timeB = b['start_time'] ?? '00:00';
+        timeB = _formatTimeShort(b['start_time']);
+        if (timeB.isEmpty) timeB = '00:00';
       } else {
-        timeB = (b['due_date']?.toString().split('T').last.substring(0, 5)) ??
-            '23:59';
+        timeB = _extractTime(b['due_date']);
+        if (timeB.isEmpty) timeB = '23:59';
       }
 
       return timeA.compareTo(timeB);
@@ -476,8 +493,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildClassCard(Map<String, dynamic> item) {
     // Expected fields: subject, start_time, end_time, teacher_name
     final subject = item['subject'] ?? '수업';
-    final startTime = item['start_time']?.toString().substring(0, 5) ?? '';
-    final endTime = item['end_time']?.toString().substring(0, 5) ?? '';
+    final startTime = _formatTimeShort(item['start_time']);
+    final endTime = _formatTimeShort(item['end_time']);
     final teacher = item['teacher_name'] ?? '선생님';
     final rescheduleNote = item['reschedule_note']?.toString() ?? '';
 
