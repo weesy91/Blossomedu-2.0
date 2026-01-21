@@ -224,7 +224,7 @@ class _StudyScreenState extends State<StudyScreen>
                               children: [
                                 Row(
                                   children: [
-                                    Text('?뙮 ?숈뒿 ?붾뵒',
+                                    Text('\uC6D4\uAC04 \uD559\uC2B5 \uAE30\uB85D',
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleSmall
@@ -643,7 +643,7 @@ class _StudyScreenState extends State<StudyScreen>
                   return const SizedBox(
                     height: 300,
                     child: Center(
-                      child: Text('?곗씠?곕? 遺덈윭?ㅼ? 紐삵뻽?듬땲??',
+                      child: Text('\uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.',
                           style: TextStyle(color: Colors.grey)),
                     ),
                   );
@@ -658,7 +658,7 @@ class _StudyScreenState extends State<StudyScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$dateStr ?숈뒿 湲곕줉',
+                      Text('$dateStr \uD559\uC2B5 \uAE30\uB85D',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 18)),
                       const SizedBox(height: 16),
@@ -666,7 +666,7 @@ class _StudyScreenState extends State<StudyScreen>
                         const Center(
                             child: Padding(
                                 padding: EdgeInsets.all(20),
-                                child: Text('?숈뒿 湲곕줉???놁뒿?덈떎. ?샂',
+                                child: Text('\uD559\uC2B5 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
                                     style: TextStyle(color: Colors.grey))))
                       else
                         Expanded(
@@ -688,7 +688,7 @@ class _StudyScreenState extends State<StudyScreen>
                                       item['total']?.toString() ?? '0') ??
                                   0;
                               final titleText = type == 'monthly'
-                                  ? '[?붾쭚] $bookTitle'
+                                  ? '[\uC6D4\uAC04] $bookTitle'
                                   : bookTitle;
 
                               return ListTile(
@@ -742,7 +742,7 @@ class _StudyScreenState extends State<StudyScreen>
               _showWordSearchSheet(context);
             } else {
               ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('以鍮?以묒씤 湲곕뒫?낅땲??')));
+                  .showSnackBar(const SnackBar(content: Text('\uC900\uBE44\uC911\uC778 \uAE30\uB2A5\uC785\uB2C8\uB2E4.')));
             }
           },
           borderRadius: BorderRadius.circular(16),
@@ -797,7 +797,7 @@ class _StudyScreenState extends State<StudyScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('???⑥뼱??(My Books)',
+                    const Text('\uB0B4 \uB2E8\uC5B4\uC7A5 (My Books)',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 18)),
                     TextButton.icon(
@@ -810,12 +810,12 @@ class _StudyScreenState extends State<StudyScreen>
                         }
                       },
                       icon: const Icon(Icons.add),
-                      label: const Text('異붽?'),
+                      label: const Text('\uCD94\uAC00'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text('?숈뒿??援먯옱瑜??좏깮??二쇱꽭??',
+                const Text('\uD559\uC2B5\uD560 \uAD50\uC7AC\uB97C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.',
                     style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 20),
                 Expanded(
@@ -823,7 +823,7 @@ class _StudyScreenState extends State<StudyScreen>
                       ? const Center(child: CircularProgressIndicator())
                       : _myBooks.isEmpty
                           ? const Center(
-                              child: Text('?깅줉???⑥뼱?μ씠 ?놁뒿?덈떎.'),
+                              child: Text('\uB4F1\uB85D\uB41C \uB2E8\uC5B4\uC7A5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.'),
                             )
                           : ListView.separated(
                               itemCount: _myBooks.length,
@@ -854,7 +854,7 @@ class _StudyScreenState extends State<StudyScreen>
                                         style: const TextStyle(
                                             fontWeight: FontWeight.bold)),
                                     subtitle: Text(
-                                        '${book['publisher_name'] ?? '異쒗뙋???놁쓬'} 쨌 珥?${book['total_days'] ?? book['totalDays'] ?? 0}?쇱감'),
+                                        '${book['publisher_name'] ?? '\uCD9C\uD310\uC0AC \uC5C6\uC74C'} \u00B7 \uCD1D ${book['total_days'] ?? book['totalDays'] ?? 0}\uC77C\uCC28'),
                                     trailing: const Icon(
                                         Icons.arrow_forward_ios,
                                         size: 16,
@@ -887,12 +887,12 @@ class _StudyScreenState extends State<StudyScreen>
       showDialog(
           context: context,
           builder: (_) => AlertDialog(
-                title: const Text('?꾩슂??援먯옱媛 ?놁뒿?덈떎'),
+                title: const Text('\uD544\uC694\uD55C \uAD50\uC7AC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'),
                 content: Text(
-                    "'$eventName'??李몄뿬?섎젮硫??대떦 援먯옱媛 ?꾩슂?⑸땲??\n???⑥뼱?μ뿉 異붽??????ㅼ떆 ?쒕룄??二쇱꽭??"),
+                    "'$eventName'\uC5D0 \uCC38\uC5EC\uD558\uB824\uBA74 \uD574\uB2F9 \uAD50\uC7AC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.\n\uB2E8\uC5B4\uC7A5\uC5D0 \uCD94\uAC00\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."),
                 actions: [
                   TextButton(
-                      onPressed: () => context.pop(), child: const Text('?뺤씤')),
+                      onPressed: () => context.pop(), child: const Text('\uD655\uC778')),
                 ],
               ));
     }
@@ -984,12 +984,12 @@ class _StudyScreenState extends State<StudyScreen>
                         style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('?숈뒿 踰붿쐞? 紐⑤뱶瑜??ㅼ젙?댁＜?몄슂.',
+                    const Text('\uD559\uC2B5 \uBC94\uC704\uC640 \uBAA8\uB4DC\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694.',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
 
                     // 1. Day Range Picker
-                    const Text('?숈뒿 踰붿쐞 (Day)',
+                    const Text('\uD559\uC2B5 \uBC94\uC704 (Day)',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 12),
@@ -999,7 +999,7 @@ class _StudyScreenState extends State<StudyScreen>
                           child: TextField(
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: '?쒖옉 Day',
+                              labelText: '\uC2DC\uC791 Day',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1031,7 +1031,7 @@ class _StudyScreenState extends State<StudyScreen>
                           child: TextField(
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: '醫낅즺 Day',
+                              labelText: '\uC885\uB8CC Day',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1056,7 +1056,7 @@ class _StudyScreenState extends State<StudyScreen>
                     const SizedBox(height: 24),
 
                     // 2. Mode Selector (Study vs Test)
-                    const Text('?숈뒿 紐⑤뱶',
+                    const Text('\uD559\uC2B5 \uBAA8\uB4DC',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 12),
@@ -1084,14 +1084,14 @@ class _StudyScreenState extends State<StudyScreen>
                                           ? AppColors.primary
                                           : Colors.grey),
                                   const SizedBox(height: 8),
-                                  Text('?뱰 移대뱶 ?숈뒿',
+                                  Text('\uCE74\uB4DC \uD559\uC2B5',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: testMode == 'study'
                                               ? AppColors.primary
                                               : Colors.black)),
                                   const SizedBox(height: 4),
-                                  const Text('?쒓컙?쒗븳 X',
+                                  const Text('\uC2DC\uAC04\uC81C\uD55C X',
                                       style: TextStyle(
                                           fontSize: 11, color: Colors.grey)),
                                 ],
@@ -1122,14 +1122,14 @@ class _StudyScreenState extends State<StudyScreen>
                                           ? Colors.red
                                           : Colors.grey),
                                   const SizedBox(height: 8),
-                                  Text('?뵦 ?ㅼ쟾 ?쒗뿕',
+                                  Text('\uC2E4\uC804 \uC2E4\uD5D8',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: testMode == 'test'
                                               ? Colors.red
                                               : Colors.black)),
                                   const SizedBox(height: 4),
-                                  const Text('湲곕줉 諛섏쁺 O',
+                                  const Text('\uAE30\uB85D \uBC18\uC601 O',
                                       style: TextStyle(
                                           fontSize: 11, color: Colors.grey)),
                                 ],
@@ -1143,14 +1143,14 @@ class _StudyScreenState extends State<StudyScreen>
 
                     // 3. Question Type
                     if (testMode == 'test') ...[
-                      const Text('臾몄젣 ?좏삎',
+                      const Text('\uBB38\uC81C \uC720\uD615',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           FilterChip(
-                            label: const Text('?곷떒??????(二쇨???'),
+                            label: const Text('\uB2E8\uC5B4 -> \uB73B (\uC8FC\uAD00\uC2DD)'),
                             selected: isWordToMeaning,
                             showCheckmark: false,
                             onSelected: (val) =>
@@ -1177,7 +1177,7 @@ class _StudyScreenState extends State<StudyScreen>
                           ),
                           const SizedBox(width: 8),
                           FilterChip(
-                            label: const Text('?????곷떒??(二쇨???'),
+                            label: const Text('\uB73B -> \uB2E8\uC5B4 (\uC8FC\uAD00\uC2DD)'),
                             selected: !isWordToMeaning,
                             showCheckmark: false,
                             onSelected: (val) =>
@@ -1232,7 +1232,7 @@ class _StudyScreenState extends State<StudyScreen>
                               borderRadius: BorderRadius.circular(16)),
                           elevation: 2,
                         ),
-                        child: Text(testMode == 'study' ? '?숈뒿 ?쒖옉?섍린' : '?쒗뿕 ?묒떆?섍린',
+                        child: Text(testMode == 'study' ? '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30' : '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30',
                             style: const TextStyle(
                                 fontSize: 18,
                                 color: Colors.white,
@@ -1480,11 +1480,11 @@ class _StudyScreenState extends State<StudyScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('?ㅻ떟 寃⑺뙆 (Snowball)',
+                    const Text('\uC624\uB2F5 \uC9D1\uC911 (Snowball)',
                         style: TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('?由??⑥뼱瑜?吏묒쨷 ?숈뒿?⑸땲??',
+                    const Text('\uD2C0\uB9B0 \uB2E8\uC5B4\uB97C \uBAA8\uC544 \uC9D1\uC911 \uD559\uC2B5\uD569\uB2C8\uB2E4.',
                         style: TextStyle(color: Colors.grey)),
                     const SizedBox(height: 24),
 
@@ -1506,7 +1506,7 @@ class _StudyScreenState extends State<StudyScreen>
                                   color: Colors.red)),
                           const SizedBox(height: 4),
                           // [Fix] Text Update
-                          const Text('吏湲덇퉴吏 ?숈뒿?섎ŉ ?由?紐⑤뱺 ?⑥뼱媛 ?ы븿?섏뼱 ?덉뒿?덈떎.',
+                          const Text('\uC9C0\uAE08\uAE4C\uC9C0 \uD559\uC2B5\uD558\uBA70 \uD2C0\uB9B0 \uBAA8\uB4E0 \uB2E8\uC5B4\uAC00 \uD3EC\uD568\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.',
                               style: TextStyle(
                                   fontSize: 12, color: Colors.black54)),
                         ],
@@ -1524,12 +1524,12 @@ class _StudyScreenState extends State<StudyScreen>
                               Icon(Icons.check_circle_outline,
                                   size: 64, color: Colors.green),
                               SizedBox(height: 16),
-                              Text('?꾨꼍?⑸땲?? ?숈뒿???ㅻ떟???놁뒿?덈떎.',
+                              Text('\uC644\uBCBD\uD569\uB2C8\uB2E4! \uD559\uC2B5\uD560 \uC624\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold)),
                               SizedBox(height: 8),
-                              Text('?덈줈???⑥뼱?μ쓣 ?숈뒿?섍굅???쒗뿕??遊먮낫?몄슂.',
+                              Text('\uC544\uB798\uC5D0\uC11C \uB2E8\uC5B4\uC7A5\uC744 \uD559\uC2B5\uD558\uAC70\uB098 \uC2E4\uD5D8\uC744 \uBD10\uBCF4\uC138\uC694.',
                                   style: TextStyle(color: Colors.grey)),
                             ],
                           ),
@@ -1546,14 +1546,14 @@ class _StudyScreenState extends State<StudyScreen>
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: const Text('?リ린',
+                          child: const Text('\uB2EB\uAE30',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 18)),
                         ),
                       ),
                     ] else ...[
                       // 2. Mode Selector (Study vs Test)
-                      const Text('?숈뒿 紐⑤뱶 ?좏깮',
+                      const Text('\uD559\uC2B5 \uBAA8\uB4DC \uC120\uD0DD',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 12),
@@ -1582,7 +1582,7 @@ class _StudyScreenState extends State<StudyScreen>
                                             ? AppColors.primary
                                             : Colors.grey),
                                     const SizedBox(height: 8),
-                                    Text('?뱰 ?ㅻ떟 ?숈뒿',
+                                    Text('\uCE74\uB4DC \uC624\uB2F5 \uD559\uC2B5',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: testMode == 'study'
@@ -1621,14 +1621,14 @@ class _StudyScreenState extends State<StudyScreen>
                                             ? Colors.red
                                             : Colors.grey),
                                     const SizedBox(height: 8),
-                                    Text('?? 寃⑺뙆 ?쒗뿕',
+                                    Text('\uC2E4\uC804 \uC2E4\uD5D8',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: testMode == 'test'
                                                 ? Colors.red
                                                 : Colors.black)),
                                     const SizedBox(height: 4),
-                                    const Text('?듦낵 ???ㅻ떟 ??젣',
+                                    const Text('\uAE30\uB85D \uBC18\uC601 O',
                                         style: TextStyle(
                                             fontSize: 11, color: Colors.grey)),
                                   ],
@@ -1642,7 +1642,7 @@ class _StudyScreenState extends State<StudyScreen>
 
                       // 3. Question Type
                       if (testMode == 'test') ...[
-                        const Text('臾몄젣 ?좏삎',
+                        const Text('\uBB38\uC81C \uC720\uD615',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
                         const SizedBox(height: 12),
@@ -1722,7 +1722,7 @@ class _StudyScreenState extends State<StudyScreen>
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
                           ),
-                          child: Text(testMode == 'test' ? '?ㅻ떟 寃⑺뙆 ?쒖옉' : '?숈뒿 ?쒖옉',
+                          child: Text(testMode == 'test' ? '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30' : '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
