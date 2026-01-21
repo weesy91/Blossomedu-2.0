@@ -26,9 +26,7 @@ class MainScaffold extends StatelessWidget {
         width: 60,
         child: FloatingActionButton(
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('메시지(소통) 기능 준비 중...')),
-            );
+            context.push('/chat');
           },
           backgroundColor: AppColors.primary,
           elevation: 4,
@@ -45,7 +43,8 @@ class MainScaffold extends StatelessWidget {
         showUnselectedLabels: true,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: '플래너'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today), label: '플래너'),
           BottomNavigationBarItem(
             icon: SizedBox.shrink(), // Accessability-only
             label: '', // Label removed for cleaner FAB look
