@@ -546,26 +546,27 @@ class _WordTestScreenState extends State<WordTestScreen>
             // Bottom Button
             if (!isStudy)
               Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(color: Colors.white),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _submitAnswer,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(color: Colors.white),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _submitAnswer,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Text(
+                        _currentIndex == _words.length - 1 ? '완료' : '다음',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.white)),
                   ),
-                  child: Text(_currentIndex == _words.length - 1 ? '완료' : '다음',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.white)),
                 ),
-              ),
-            )
+              )
           ],
         ),
       ),
@@ -605,10 +606,15 @@ class _WordTestScreenState extends State<WordTestScreen>
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   if (word['meaning_groups'] != null &&
+                                      (word['meaning_groups'] is List) &&
                                       (word['meaning_groups'] as List)
                                           .isNotEmpty)
                                     ...((word['meaning_groups'] as List)
                                         .map((group) {
+                                      final meanings = group['meanings'];
+                                      final meaningText = (meanings is List)
+                                          ? meanings.join(', ')
+                                          : (meanings?.toString() ?? '');
                                       return Padding(
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 4),
@@ -624,8 +630,8 @@ class _WordTestScreenState extends State<WordTestScreen>
                                                       horizontal: 6,
                                                       vertical: 2),
                                               decoration: BoxDecoration(
-                                                color:
-                                                    Colors.blue.withOpacity(0.1),
+                                                color: Colors.blue
+                                                    .withOpacity(0.1),
                                                 borderRadius:
                                                     BorderRadius.circular(4),
                                               ),
@@ -640,8 +646,7 @@ class _WordTestScreenState extends State<WordTestScreen>
                                             const SizedBox(width: 8),
                                             Flexible(
                                               child: Text(
-                                                (group['meanings'] as List)
-                                                    .join(', '),
+                                                meaningText,
                                                 style: const TextStyle(
                                                     fontSize: 18,
                                                     color: Colors.black87),
