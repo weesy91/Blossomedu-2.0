@@ -25,9 +25,7 @@ class TeacherMainScaffold extends StatelessWidget {
         width: 60,
         child: FloatingActionButton(
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('메시지(소통) 기능 준비 중...')),
-            );
+            context.push('/chat');
           },
           backgroundColor: Colors.indigo,
           elevation: 4,
