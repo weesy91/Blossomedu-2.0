@@ -569,6 +569,18 @@ class AcademyService {
     }
   }
 
+  Future<void> deleteClassLog(int id) async {
+    final url =
+        Uri.parse('${AppConfig.baseUrl}/academy/api/v1/class-logs/$id/');
+    final headers = await _getHeaders();
+
+    final response = await http.delete(url, headers: headers);
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete class log: ${response.body}');
+    }
+  }
+
   // [NEW] Get Class Logs (Filtered)
   Future<List<dynamic>> getClassLogs(
       {int? studentId, String? subject, String? date}) async {

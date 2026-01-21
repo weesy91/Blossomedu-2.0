@@ -611,10 +611,16 @@ class _WordTestScreenState extends State<WordTestScreen>
                                           .isNotEmpty)
                                     ...((word['meaning_groups'] as List)
                                         .map((group) {
-                                      final meanings = group['meanings'];
-                                      final meaningText = (meanings is List)
-                                          ? meanings.join(', ')
-                                          : (meanings?.toString() ?? '');
+                                      final meaningsRaw = group['meanings'];
+                                      final meaningRaw = group['meaning'];
+                                      String meaningText = '';
+                                      if (meaningsRaw is List) {
+                                        meaningText = meaningsRaw.join(', ');
+                                      } else if (meaningRaw != null) {
+                                        meaningText = meaningRaw.toString();
+                                      } else if (meaningsRaw != null) {
+                                        meaningText = meaningsRaw.toString();
+                                      }
                                       return Padding(
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 4),
