@@ -62,10 +62,13 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
+        print(f"Submit Request for Task {pk}")
         task = self.get_object()
         student_profile = request.user.profile
+        print(f"User: {request.user}, Student: {student_profile}")
         
         if task.student != student_profile:
+            print("Error: Task student mismatch")
             return Response({'error': '본인의 과제만 제출할 수 있습니다.'}, status=status.HTTP_403_FORBIDDEN)
             
         files = request.FILES.getlist('images')
@@ -73,7 +76,10 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             single = request.FILES.get('image') or request.FILES.get('evidence_image')
             if single:
                 files = [single]
+        
+        print(f"Files received: {len(files)}")
         if not files:
+            print("Error: No files")
             return Response({'error': 'Please attach an image.'}, status=status.HTTP_400_BAD_REQUEST)
             
         submission, created = AssignmentSubmission.objects.get_or_create(task=task, student=student_profile)
@@ -85,11 +91,16 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         submission.save()
 
         AssignmentSubmissionImage.objects.filter(submission=submission).delete()
-        for upload in files:
-            AssignmentSubmissionImage.objects.create(
-                submission=submission,
-                image=upload,
-            )
+        try:
+            for upload in files:
+                print(f"Saving image: {upload.name}, size: {upload.size}")
+                AssignmentSubmissionImage.objects.create(
+                    submission=submission,
+                    image=upload,
+                )
+        except Exception as e:
+            print(f"Error saving images: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         task.is_completed = False
         task.completed_at = None
@@ -97,6 +108,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         task.resubmission_deadline = None
         task.save(update_fields=['is_completed', 'completed_at', 'is_rejected', 'resubmission_deadline'])
         
+        print("Submit Success")
         return Response({'status': 'submitted'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])

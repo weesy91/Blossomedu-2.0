@@ -38,6 +38,7 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
 class AssignmentTaskSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.name', read_only=True)
     submission = AssignmentSubmissionSerializer(read_only=True)
+    origin_log_subject = serializers.CharField(source='origin_log.subject', read_only=True)
 
     class Meta:
         model = AssignmentTask

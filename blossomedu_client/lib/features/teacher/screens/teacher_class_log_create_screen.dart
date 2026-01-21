@@ -272,6 +272,12 @@ class _TeacherClassLogCreateScreenState
                 final classDate = DateTime.parse(widget.date!);
                 // Filter: Assignments due ON or AFTER this class date
                 final relevant = extraAndPending.where((asm) {
+                  // [FIX] Cross-Subject Filtering
+                  // If assignment belongs to another subject log, SKIP it.
+                  final originSub = asm['origin_log_subject'];
+                  if (originSub != null && originSub != widget.subject)
+                    return false;
+
                   final dStr = asm['due_date'];
                   if (dStr == null) return false;
                   final d = DateTime.tryParse(dStr);
@@ -314,6 +320,11 @@ class _TeacherClassLogCreateScreenState
               final classDate = DateTime.parse(widget.date!);
               // Filter: Assignments due ON or AFTER this class date
               final relevant = extraAndPending.where((asm) {
+                // [FIX] Cross-Subject Filtering
+                final originSub = asm['origin_log_subject'];
+                if (originSub != null && originSub != widget.subject)
+                  return false;
+
                 final dStr = asm['due_date'];
                 if (dStr == null) return false;
                 final d = DateTime.tryParse(dStr);
