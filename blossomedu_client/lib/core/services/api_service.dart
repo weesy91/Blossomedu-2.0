@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -9,13 +10,10 @@ class ApiService {
   late Dio _dio;
   // final FlutterSecureStorage _storage = const FlutterSecureStorage(); // Removed
 
-  // Production Server IP
-  static const String baseUrl = 'https://b-edu.site';
-
   ApiService._internal() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: AppConfig.baseUrl,
         connectTimeout: const Duration(seconds: 5),
         receiveTimeout: const Duration(seconds: 3),
         headers: {

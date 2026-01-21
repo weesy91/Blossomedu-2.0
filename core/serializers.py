@@ -104,6 +104,14 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             allowed.append('GRAMMAR')
         return allowed
 
+    def _get_teacher_name(self, teacher):
+        """Helper to get teacher's display name"""
+        if teacher is None:
+            return None
+        if hasattr(teacher, 'staff_profile') and teacher.staff_profile:
+            return teacher.staff_profile.name
+        return teacher.username
+
     def get_class_times(self, obj):
         times = []
         filter_by_teacher = self._should_filter_by_teacher()
@@ -113,21 +121,24 @@ class StudentProfileSerializer(serializers.ModelSerializer):
                 'day': obj.syntax_class.day,
                 'start_time': obj.syntax_class.start_time.strftime('%H:%M'),
                 'subject': '구문',
-                'type': 'SYNTAX'
+                'type': 'SYNTAX',
+                'teacher_name': self._get_teacher_name(obj.syntax_teacher)
             })
         if obj.reading_class and (not filter_by_teacher or obj.reading_teacher_id == user.id):
             times.append({
                 'day': obj.reading_class.day,
                 'start_time': obj.reading_class.start_time.strftime('%H:%M'),
                 'subject': '독해',
-                'type': 'READING'
+                'type': 'READING',
+                'teacher_name': self._get_teacher_name(obj.reading_teacher)
             })
         if obj.extra_class and (not filter_by_teacher or obj.extra_class_teacher_id == user.id):
             times.append({
                 'day': obj.extra_class.day,
                 'start_time': obj.extra_class.start_time.strftime('%H:%M'),
                 'subject': obj.get_extra_class_category_display(),
-                'type': obj.extra_class_category
+                'type': obj.extra_class_category,
+                'teacher_name': self._get_teacher_name(obj.extra_class_teacher)
             })
         return times
 

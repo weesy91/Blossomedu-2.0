@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -10,9 +11,12 @@ class AppColors {
 }
 
 class AppConfig {
-  // 개발용 로컬 주소 (Web에서는 localhost가 브라우저 자신을 가리키므로 주의 필요하지만,
-  // Flutter Web debug에서는 localhost:8000 접근 가능. 단 CORS 설정 필수)
-  // 실제 배포 시에는 blossomedu.com 등으로 변경
-  static const String baseUrl = 'https://b-edu.site';
+  // 환경에 따른 자동 URL 설정
+  // - Debug 모드 (flutter run): localhost:8000
+  // - Release 모드 (flutter build): 프로덕션 서버
+  static const String _devUrl = 'http://localhost:8000';
+  static const String _prodUrl = 'https://b-edu.site';
+
+  static String get baseUrl => kReleaseMode ? _prodUrl : _devUrl;
   static const String apiVersion = '/api/v1';
 }
