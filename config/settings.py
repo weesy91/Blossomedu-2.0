@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken', # [NEW] Token Auth App
     'corsheaders',
+    'messaging',  # [NEW] 메시지 기능
 ]
 
 MIDDLEWARE = [

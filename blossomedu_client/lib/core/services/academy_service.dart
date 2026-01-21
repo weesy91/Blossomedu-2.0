@@ -694,4 +694,85 @@ class AcademyService {
       throw Exception('Failed to load attendances');
     }
   }
+
+  // ============ MESSAGING API ============
+
+  /// 대화 목록 조회
+  Future<List<dynamic>> getConversations() async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/messaging/conversations/');
+    final headers = await _getHeaders();
+    final response = await http.get(uri, headers: headers);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load conversations: ${response.statusCode}');
+    }
+  }
+
+  /// 대화방 조회 또는 생성
+  Future<Map<String, dynamic>> getOrCreateConversation(int otherUserId) async {
+    final uri = Uri.parse(
+        '${AppConfig.baseUrl}/messaging/conversations/get_or_create/');
+    final headers = await _getHeaders();
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({'other_user_id': otherUserId}),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception(
+          'Failed to get/create conversation: ${response.statusCode}');
+    }
+  }
+
+  /// 메시지 목록 조회
+  Future<List<dynamic>> getMessages(int conversationId) async {
+    final uri = Uri.parse(
+        '${AppConfig.baseUrl}/messaging/messages/?conversation=$conversationId');
+    final headers = await _getHeaders();
+    final response = await http.get(uri, headers: headers);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load messages: ${response.statusCode}');
+    }
+  }
+
+  /// 메시지 전송
+  Future<void> sendMessage(int conversationId, String content) async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/messaging/messages/');
+    final headers = await _getHeaders();
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'conversation': conversationId,
+        'content': content,
+      }),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to send message: ${response.statusCode}');
+    }
+  }
+
+  /// 메시지 읽음 처리
+  Future<void> markMessagesAsRead(int conversationId) async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/messaging/messages/mark_read/');
+    final headers = await _getHeaders();
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({'conversation': conversationId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark as read: ${response.statusCode}');
+    }
+  }
 }

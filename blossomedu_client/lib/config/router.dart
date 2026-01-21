@@ -35,6 +35,8 @@ import '../features/academy/screens/textbook_create_screen.dart';
 import '../features/student/screens/student_book_selection_screen.dart';
 import '../features/student/screens/study_record_screen.dart';
 import '../features/student/screens/student_assignment_history_screen.dart'; // [NEW]
+import '../features/messaging/screens/chat_list_screen.dart'; // [NEW]
+import '../features/messaging/screens/chat_room_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -314,6 +316,22 @@ final router = GoRouter(
     GoRoute(
       path: '/student/assignments/history',
       builder: (context, state) => const StudentAssignmentHistoryScreen(),
+    ),
+    // [NEW] Messaging Routes
+    GoRoute(
+      path: '/chat',
+      builder: (context, state) => const ChatListScreen(),
+    ),
+    GoRoute(
+      path: '/chat/:id',
+      builder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return ChatRoomScreen(
+          conversationId: id,
+          otherUserName: extra['otherUserName'] ?? '채팅',
+        );
+      },
     ),
   ],
 );

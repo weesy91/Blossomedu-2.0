@@ -828,7 +828,8 @@ class _TeacherClassLogCreateScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.studentName} 일지 (${isSyntax ? '구문' : '독해'})'),
+        title: Text(
+            '${widget.studentName} 일지 (${isSyntax ? '구문' : '독해'}) - ${widget.date ?? ""}'),
         backgroundColor: isSyntax ? Colors.indigo : Colors.teal,
         foregroundColor: Colors.white,
         actions: [

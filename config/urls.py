@@ -24,6 +24,7 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('exam/', include('exam.urls')),
     path('mock/', include('mock.urls')),
+    path('messaging/', include('messaging.urls')),  # [NEW] 메시지 API
 ]
 
 if settings.DEBUG:
