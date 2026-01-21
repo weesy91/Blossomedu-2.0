@@ -582,10 +582,17 @@ class _TeacherClassLogCreateScreenState
 
           int? rangeStart;
           int? rangeEnd;
-          final match = RegExp(r'^(\d+)\s*-\s*(\d+)$').firstMatch(range);
+          // [FIX] Support single number ("10") or range ("10-12")
+          final match = RegExp(r'^(\d+)(\s*-\s*(\d+))?$').firstMatch(range);
           if (match != null) {
-            rangeStart = int.tryParse(match.group(1) ?? '');
-            rangeEnd = int.tryParse(match.group(2) ?? '');
+            final first = int.tryParse(match.group(1) ?? '');
+            final second = int.tryParse(match.group(3) ?? '');
+            if (first != null) {
+              rangeStart = first;
+              rangeEnd = second ??
+                  first; // If "10", treat as 10-10 so test can be generated?
+              // Or if user meant "Day 10", it usually means chapter 10.
+            }
           }
 
           final selectedBook = _findBook(bookId, type: 'VOCAB');
@@ -593,7 +600,8 @@ class _TeacherClassLogCreateScreenState
 
           assignments.add({
             if (assignment['id'] != null) 'id': assignment['id'],
-            'title': '[$bookTitle] Day $range 암기',
+            'title':
+                '[$bookTitle] $range', // [FIX] Remove "Day... 암기" to avoid duplication
             'assignment_type': 'VOCAB_TEST',
             'due_date': dueDate.toIso8601String(),
             'related_vocab_book': bookId,

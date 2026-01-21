@@ -58705,72 +58705,72 @@ break
 case 5:return A.t(null,r)
 case 1:return A.r(p,r)}})
 return A.u($async$lZ,r)},
-vl(){var s=0,r=A.v(t.H),q,p=2,o,n=[],m=this,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,d0,d1,d2,d3,d4,d5
-var $async$vl=A.q(function(d6,d7){if(d6===1){o=d7
+vl(){var s=0,r=A.v(t.H),q,p=2,o,n=[],m=this,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,d0,d1,d2,d3,d4,d5,d6,d7,d8
+var $async$vl=A.q(function(d9,e0){if(d9===1){o=e0
 s=p}while(true)switch(s){case 0:if(m.f){s=1
 break}m.B(new A.aWX(m))
 p=4
 l=A.a([],t.c)
 k=A.fE(m.ch,t.S)
 j=k
-for(k=m.ay,b8=k.length,b9=0;b9<k.length;k.length===b8||(0,A.U)(k),++b9){i=k[b9]
+for(k=m.ay,c0=k.length,c1=0;c1<k.length;k.length===c0||(0,A.U)(k),++c1){i=k[c1]
 h=J.k(i,"submissionStatus")!=null
 g=J.c(J.k(i,"isCompleted"),!0)
-if(J.k(i,"id")!=null&&!h&&!g)J.dj(j,J.k(i,"id"))}for(b8=m.CW,c0=b8.length,b9=0;b9<b8.length;b8.length===c0||(0,A.U)(b8),++b9){f=b8[b9]
+if(J.k(i,"id")!=null&&!h&&!g)J.dj(j,J.k(i,"id"))}for(c0=m.CW,c2=c0.length,c1=0;c1<c0.length;c0.length===c2||(0,A.U)(c0),++c1){f=c0[c1]
 e=J.k(f,"submissionStatus")!=null
 d=J.c(J.k(f,"isCompleted"),!0)
-if(J.k(f,"id")!=null&&!e&&!d)J.dj(j,J.k(f,"id"))}c0=j,c0=A.db(c0,c0.r,A.o(c0).c),c1=c0.$ti.c,c2=m.d
-case 7:if(!c0.u()){s=8
-break}c3=c0.d
-c=c3==null?c1.a(c3):c3
+if(J.k(f,"id")!=null&&!e&&!d)J.dj(j,J.k(f,"id"))}c2=j,c2=A.db(c2,c2.r,A.o(c2).c),c3=c2.$ti.c,c4=m.d
+case 7:if(!c2.u()){s=8
+break}c5=c2.d
+c=c5==null?c3.a(c5):c5
 p=10
 s=c>0?13:14
 break
 case 13:A.Co("Deleting assignment "+A.f(c)+" before saving log...")
 s=15
-return A.l(c2.w7(c),$async$vl)
+return A.l(c4.w7(c),$async$vl)
 case 15:case 14:p=4
 s=12
 break
 case 10:p=9
-d4=o
-b=A.W(d4)
-c3=A.f(c)
-c5=A.f(b)
-A.Co("Error deleting assignment "+c3+": "+c5)
+d7=o
+b=A.W(d7)
+c5=A.f(c)
+c7=A.f(b)
+A.Co("Error deleting assignment "+c5+": "+c7)
 s=12
 break
 case 9:s=4
 break
 case 12:s=7
 break
-case 8:for(c0=k.length,c1=t.N,c3=t.z,c6=m.Q,b9=0;b9<k.length;k.length===c0||(0,A.U)(k),++b9){a=k[b9]
+case 8:for(c2=k.length,c3=t.N,c5=t.z,c8=m.Q,c1=0;c1<k.length;k.length===c2||(0,A.U)(k),++c1){a=k[c1]
 if(J.k(a,"bookId")!=null){a0=""
 if(J.k(a,"startUnit")!=null&&J.k(a,"endUnit")!=null)a0=A.f(J.k(a,"startUnit"))+"\uac15 ~ "+A.f(J.k(a,"endUnit"))+"\uac15"
-else{c7=J.k(a,"range")
-a0=c7==null?"\uacfc\uc81c":c7}c5=J.k(a,"bookId")
-c8=J.k(a,"type")
-a1=m.uS(c5,c8==null?null:J.a7(c8))
+else{c9=J.k(a,"range")
+a0=c9==null?"\uacfc\uc81c":c9}c7=J.k(a,"bookId")
+d0=J.k(a,"type")
+a1=m.uS(c7,d0==null?null:J.a7(d0))
 if(a1!=null)a0="["+A.f(J.k(a1,"title"))+"] "+A.f(a0)
-a2=A.D(c1,c3)
+a2=A.D(c3,c5)
 if(J.k(a,"id")!=null)J.b3(a2,"id",J.k(a,"id"))
 J.b3(a2,"title",a0)
 J.b3(a2,"assignment_type","MANUAL")
-c5=J.k(a,"dueDate")
-c5=c5==null?null:c5.j8()
-if(c5==null)c5=c6.j8()
-J.b3(a2,"due_date",c5)
-c5=J.k(a,"description")
-if(c5==null)c5=""
-J.b3(a2,"description",c5)
-J.dj(l,a2)}}for(k=b8.length,a2=t.Q0,b9=0;b9<b8.length;b8.length===k||(0,A.U)(b8),++b9){a3=b8[b9]
-c9=J.k(a3,"isWrongWords")
-a4=c9==null?!1:c9
-d0=a2.a(J.k(a3,"dueDate"))
-a5=d0==null?c6:d0
-if(a4){d1=J.k(a3,"wrongWordsCount")
-a6=d1==null?30:d1
-a7=A.D(c1,c3)
+c7=J.k(a,"dueDate")
+c7=c7==null?null:c7.j8()
+if(c7==null)c7=c8.j8()
+J.b3(a2,"due_date",c7)
+c7=J.k(a,"description")
+if(c7==null)c7=""
+J.b3(a2,"description",c7)
+J.dj(l,a2)}}for(k=c0.length,a2=t.Q0,c1=0;c1<c0.length;c0.length===k||(0,A.U)(c0),++c1){a3=c0[c1]
+d1=J.k(a3,"isWrongWords")
+a4=d1==null?!1:d1
+d2=a2.a(J.k(a3,"dueDate"))
+a5=d2==null?c8:d2
+if(a4){d3=J.k(a3,"wrongWordsCount")
+a6=d3==null?30:d3
+a7=A.D(c3,c5)
 if(J.k(a3,"id")!=null)J.b3(a7,"id",J.k(a3,"id"))
 J.b3(a7,"title","\ud83d\udd25 \uc624\ub2f5 \ub2e8\uc5b4 \ubcf5\uc2b5 ("+A.f(a6)+"\uac1c)")
 J.b3(a7,"assignment_type","VOCAB_TEST")
@@ -58780,47 +58780,50 @@ J.b3(a7,"vocab_range_start",0)
 J.b3(a7,"vocab_range_end",a6)
 J.b3(a7,"is_cumulative",!0)
 J.dj(l,a7)}else{a8=J.k(a3,"bookId")
-c0=J.k(a3,"range")
-d2=c0==null?null:B.d.d1(J.a7(c0))
-a9=d2==null?"":d2
+c2=J.k(a3,"range")
+d4=c2==null?null:B.d.d1(J.a7(c2))
+a9=d4==null?"":d4
 if(a8==null||J.aD(a9)===0)continue
 b0=null
 b1=null
-b2=A.cu("^(\\d+)\\s*-\\s*(\\d+)$",!0,!1).md(a9)
-if(b2!=null){c0=b2.b[1]
-b0=A.d8(c0==null?"":c0,null)
-c0=b2.b[2]
-b1=A.d8(c0==null?"":c0,null)}b3=m.uS(a8,"VOCAB")
-c0=b3
-d3=c0==null?null:J.k(c0,"title")
-b4=d3==null?"\ub2e8\uc5b4 \uacfc\uc81c":d3
-b5=A.D(c1,c3)
-if(J.k(a3,"id")!=null)J.b3(b5,"id",J.k(a3,"id"))
-J.b3(b5,"title","["+A.f(b4)+"] Day "+A.f(a9)+" \uc554\uae30")
-J.b3(b5,"assignment_type","VOCAB_TEST")
-J.b3(b5,"due_date",a5.j8())
-J.b3(b5,"related_vocab_book",a8)
-if(b0!=null)J.b3(b5,"vocab_range_start",b0)
-if(b1!=null)J.b3(b5,"vocab_range_end",b1)
-J.b3(b5,"is_cumulative",!1)
-J.dj(l,b5)}}k=A.d8(m.a.c,null)
+b2=A.cu("^(\\d+)(\\s*-\\s*(\\d+))?$",!0,!1).md(a9)
+if(b2!=null){c2=b2.b[1]
+b3=A.d8(c2==null?"":c2,null)
+c2=b2.b[3]
+b4=A.d8(c2==null?"":c2,null)
+if(b3!=null){b0=b3
+d5=b4
+b1=d5==null?b3:d5}}b5=m.uS(a8,"VOCAB")
+c2=b5
+d6=c2==null?null:J.k(c2,"title")
+b6=d6==null?"\ub2e8\uc5b4 \uacfc\uc81c":d6
+b7=A.D(c3,c5)
+if(J.k(a3,"id")!=null)J.b3(b7,"id",J.k(a3,"id"))
+J.b3(b7,"title","["+A.f(b6)+"] "+A.f(a9))
+J.b3(b7,"assignment_type","VOCAB_TEST")
+J.b3(b7,"due_date",a5.j8())
+J.b3(b7,"related_vocab_book",a8)
+if(b0!=null)J.b3(b7,"vocab_range_start",b0)
+if(b1!=null)J.b3(b7,"vocab_range_end",b1)
+J.b3(b7,"is_cumulative",!1)
+J.dj(l,b7)}}k=A.d8(m.a.c,null)
 a2=m.a
 a7=a2.e
 a2=a2.f
 if(a2==null)a2=A.cx("yyyy-MM-dd",null).cu(new A.b8(Date.now(),0,!1))
-b5=m.at
-b8=A.a2(b5)
-c0=b8.i("dX<1,aq<j,@>>")
-b6=A.a1(["student",k,"subject",a7,"date",a2,"comment",m.as.a.a,"hw_due_date",c6.j8(),"assignments",l,"entries_input",A.S(new A.dX(new A.b5(b5,new A.aWY(),b8.i("b5<1>")),new A.aWZ(),c0),!0,c0.i("w.E"))],c1,t.X)
+b7=m.at
+c0=A.a2(b7)
+c2=c0.i("dX<1,aq<j,@>>")
+b8=A.a1(["student",k,"subject",a7,"date",a2,"comment",m.as.a.a,"hw_due_date",c8.j8(),"assignments",l,"entries_input",A.S(new A.dX(new A.b5(b7,new A.aWY(),c0.i("b5<1>")),new A.aWZ(),c2),!0,c2.i("w.E"))],c3,t.X)
 k=m.y
 s=k!=null?16:18
 break
 case 16:s=19
-return A.l(c2.CG(k,b6),$async$vl)
+return A.l(c4.CG(k,b8),$async$vl)
 case 19:s=17
 break
 case 18:s=20
-return A.l(c2.Au(b6),$async$vl)
+return A.l(c4.Au(b8),$async$vl)
 case 20:case 17:k=m.c
 if(k!=null){k.J(t.q).f.aq(B.ami)
 k=m.c
@@ -58831,10 +58834,10 @@ k.bf(null)}n.push(6)
 s=5
 break
 case 4:p=3
-d5=o
-b7=A.W(d5)
+d8=o
+b9=A.W(d8)
 k=m.c
-if(k!=null)k.J(t.q).f.aq(A.bY(null,null,null,null,null,B.m,null,A.p("Error: "+A.f(b7),null,null,null,null,null,null,null,null),null,B.x,null,null,null,null,null,null,null,null,null))
+if(k!=null)k.J(t.q).f.aq(A.bY(null,null,null,null,null,B.m,null,A.p("Error: "+A.f(b9),null,null,null,null,null,null,null,null),null,B.x,null,null,null,null,null,null,null,null,null))
 n.push(6)
 s=5
 break
