@@ -585,7 +585,11 @@ class _WordTestScreenState extends State<WordTestScreen>
           final meaningRaw = group['meaning'];
           pos = group['pos']?.toString() ?? '';
           if (meaningsRaw is List) {
-            meaningText = meaningsRaw.join(', ');
+            // Filter out empty strings if any
+            final validMeanings = meaningsRaw
+                .where((e) => e.toString().trim().isNotEmpty)
+                .toList();
+            meaningText = validMeanings.join(', ');
           } else if (meaningRaw != null) {
             meaningText = meaningRaw.toString();
           } else if (meaningsRaw != null) {
@@ -594,6 +598,7 @@ class _WordTestScreenState extends State<WordTestScreen>
         } else if (group is String) {
           meaningText = group;
         }
+
         if (meaningText.trim().isEmpty) {
           continue;
         }

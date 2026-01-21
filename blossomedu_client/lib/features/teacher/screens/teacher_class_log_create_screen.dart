@@ -198,6 +198,15 @@ class _TeacherClassLogCreateScreenState
         final otherSubject = widget.subject == 'SYNTAX' ? 'READING' : 'SYNTAX';
         otherLogs = await _academyService.getClassLogs(
             studentId: int.parse(widget.studentId), subject: otherSubject);
+
+        // 4. Fetch Student Schedule for Regular/Makeup Distinction
+        try {
+          final studentData =
+              await _academyService.getStudent(int.parse(widget.studentId));
+          _studentSchedule = studentData['class_times'] ?? [];
+        } catch (e) {
+          print('Error fetching student details: $e');
+        }
       } catch (e) {
         print('Log fetch failed: $e');
         // Continue even if log fetch fails, just with empty log data
@@ -359,8 +368,6 @@ class _TeacherClassLogCreateScreenState
         if (_hwVocabRows.isEmpty) {
           _hwVocabRows.add({
             'type': 'VOCAB',
-            'publisher': null,
-            'bookId': null,
             'range': '',
             'isOt': false,
             'dueDate': _defaultDueDate
@@ -369,8 +376,6 @@ class _TeacherClassLogCreateScreenState
         if (_hwMainRows.isEmpty) {
           _hwMainRows.add({
             'type': null,
-            'publisher': null,
-            'bookId': null,
             'range': '',
             'isOt': false,
             'dueDate': _defaultDueDate
@@ -380,35 +385,60 @@ class _TeacherClassLogCreateScreenState
         final targetDateStr =
             widget.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-        // Real Past Info
+        // Real Past Info (My Log - Aggregation)
         if (historyLogs.isNotEmpty) {
-          // [FIX] Filter strictly for logs BEFORE the target date
+          // Filter strictly for logs BEFORE the target date and sort DESC
           final pastLogs = historyLogs.where((l) {
             final d = l['date'];
             return d != null && d.compareTo(targetDateStr) < 0;
-          }).toList();
+          }).toList()
+            ..sort((a, b) => b['date'].compareTo(a['date'])); // ensure desc
 
           if (pastLogs.isNotEmpty) {
-            final last = pastLogs.first;
-            _prevMyLog = {
-              'date': last['date'],
-              'hw': last['hw_main_range'] ?? last['comment'] ?? '내용 없음'
-            };
+            final aggregated = _aggregatePastAssignments(pastLogs);
+            if (aggregated.isNotEmpty) {
+              _prevMyLog = {
+                'date': aggregated['lastRegularDate'],
+                'hw': '', // Not used for display, assignments are used
+                'assignments': aggregated['assignments'],
+              };
+            }
           }
         }
 
         if (otherLogs.isNotEmpty) {
-          // [FIX] Apply same past filter to Other Subject logs
+          // Real Past Info (Cross Log - Single)
           final pastOtherLogs = otherLogs.where((l) {
             final d = l['date'];
             return d != null && d.compareTo(targetDateStr) < 0;
-          }).toList();
+          }).toList()
+            ..sort((a, b) => b['date'].compareTo(a['date']));
 
           if (pastOtherLogs.isNotEmpty) {
             final last = pastOtherLogs.first;
+
+            // Construct Summary Content
+            final parts = <String>[];
+            final comment = last['comment'];
+            if (comment != null && comment.toString().trim().isNotEmpty) {
+              parts.add('[T] $comment'); // Teacher Comment
+            }
+
+            final entries = last['entries'] as List?;
+            if (entries != null) {
+              for (var e in entries) {
+                final txt = e['textbook_title'] ?? e['wordbook_title'] ?? '';
+                final rng = e['progress_range'] ?? '';
+                final scr = e['score'] ?? '';
+                if (txt.isNotEmpty) {
+                  parts.add('• $txt $rng ($scr)');
+                }
+              }
+            }
+
             _prevOtherLog = {
               'date': last['date'],
-              'content': last['hw_main_range'] ?? last['comment'] ?? '내용 없음'
+              'content': parts.isNotEmpty ? parts.join('\n') : '내용 없음'
             };
           }
         }
@@ -691,7 +721,89 @@ class _TeacherClassLogCreateScreenState
     }
   }
 
-  @override
+  // State variables
+  List<dynamic> _studentSchedule = []; // [NEW] For Regular/Makeup Check
+
+  // Helper: Check if a date corresponds to a "Regular Class" day
+  bool _isRegularClass(String dateStr) {
+    if (_studentSchedule.isEmpty)
+      return true; // Default to Regular if unknown? Or Makeup? Let's assume Regular to include everything if no schedule.
+    try {
+      final date = DateTime.parse(dateStr);
+      // Weekday: 1=Mon, ..., 7=Sun
+      // Backend 'class_times' format expected: List of objects or strings?
+      // Based on typical Blossomedu: [{'day': 'Mon', 'subject': 'SYNTAX'}, ...]
+      // OR ['Mon', 'Tue']?
+      // Need to check getStudent response structure.
+      // Based on previous view of academy_service.dart:
+      // 'class_times': s['class_times'] ?? [],
+
+      // Let's assume it matches the day of week.
+      // DateFormat('E').format(date) -> "Mon", "Tue"
+      final dayStr = DateFormat('E').format(date); // "Mon", "Tue"...
+
+      // Check if ANY schedule entry matches this day AND subject
+      // class_times entries usually have 'day' and 'subject'
+      return _studentSchedule.any((s) {
+        if (s is Map) {
+          final sDay = s['day']; // 'Mon'
+          final sSub = s['subject']; // 'SYNTAX'
+          return sDay == dayStr && sSub == widget.subject;
+        }
+        return false;
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Helper: Aggregate assignments from Last Regular Class + Makeups
+  Map<String, dynamic> _aggregatePastAssignments(List<dynamic> historyLogs) {
+    // historyLogs is sorted DESC (newest first)
+    // Find the INDEX of the most recent "Regular Class"
+    int? lastRegularIndex;
+
+    for (int i = 0; i < historyLogs.length; i++) {
+      final log = historyLogs[i];
+      if (_isRegularClass(log['date'])) {
+        lastRegularIndex = i;
+        break;
+      }
+    }
+
+    if (lastRegularIndex == null) return {};
+
+    // Collect logs from 0 to lastRegularIndex (Inclusive)
+    // These are: [Recent Makeup, ..., Recent Makeup, Last Regular]
+    // Since historyLogs is DESC, taking 0..lastRegularIndex gives us the target range.
+    final targetLogs = historyLogs.sublist(0, lastRegularIndex + 1);
+
+    // We want to display assignments from ALL these logs.
+    List<Map<String, dynamic>> allAssignments = [];
+
+    for (final log in targetLogs) {
+      final generated = log['generated_assignments'] as List? ?? [];
+      for (final asm in generated) {
+        if (asm is Map) {
+          allAssignments.add(Map<String, dynamic>.from(asm));
+        }
+      }
+
+      // Also check if legacy 'hw_main_range' exists and convert to simpler display if generated is empty?
+      // But the requirement specifically asked for aggregation.
+      // If legacy log has no generated_assignments, we might miss it.
+      // For now, assume modern logs.
+    }
+
+    if (allAssignments.isEmpty) return {};
+
+    return {
+      'lastRegularDate': historyLogs[lastRegularIndex]['date'],
+      'assignments': allAssignments,
+    };
+  }
+
+  @override // Lines 1675-1680 usually correspond to end of State class or build methods. Assumed end of class.
   Widget build(BuildContext context) {
     final isSyntax = widget.subject == 'SYNTAX';
 
@@ -931,58 +1043,178 @@ class _TeacherClassLogCreateScreenState
 
   Widget _buildInfoSection(bool isSyntax) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('1. 과거 기록 확인',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.grey))),
+        const Text('1. 과거 기록 확인',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+        const SizedBox(height: 12),
+        // 1. My Past Log (Review) - Aggregated Assignments
+        if (_prevMyLog != null)
+          _buildInfoCard(
+            title: '지난 내 과제 (${isSyntax ? '구문' : '독해'})',
+            date: _prevMyLog!['date'],
+            content: '', // Use child instead
+            icon: Icons.history,
+            color: Colors.blue,
+            child: _buildPastAssignmentsList(), // [NEW] Render Aggregated List
+          )
+        else
+          _buildInfoCard(
+            title: '지난 내 과제 (${isSyntax ? '구문' : '독해'})',
+            date: null,
+            content: '기록 없음',
+            icon: Icons.history,
+            color: Colors.blue,
+          ),
         const SizedBox(height: 8),
-        _buildInfoCard(
-          title: '지난 내 과제 (${isSyntax ? '구문' : '독해'})',
-          icon: Icons.history,
-          color: Colors.blue,
-          content: _prevMyLog != null
-              ? '${_prevMyLog!['date']} : ${_prevMyLog!['hw']}'
-              : '기록 없음',
-        ),
-        const SizedBox(height: 8),
-        _buildInfoCard(
-          title: '직전 교차 수업 (${isSyntax ? '독해' : '구문'})',
-          icon: Icons.swap_horiz,
-          color: Colors.purple,
-          content: _prevOtherLog != null
-              ? '${_prevOtherLog!['date']} : ${_prevOtherLog!['content']}'
-              : '기록 없음',
-        ),
+
+        // 2. Cross Log (Preview) - Single Log Summary
+        if (_prevOtherLog != null)
+          _buildInfoCard(
+            title: '직전 교차 수업 (${!isSyntax ? '구문' : '독해'})',
+            date: _prevOtherLog!['date'],
+            content: _prevOtherLog!['content'],
+            icon: Icons.swap_horiz,
+            color: Colors.purple,
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.purple.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.swap_horiz, size: 16, color: Colors.purple),
+                const SizedBox(width: 8),
+                Text('직전 교차 수업 (${!isSyntax ? '구문' : '독해'}): 기록 없음',
+                    style: const TextStyle(color: Colors.grey)),
+              ],
+            ),
+          ),
       ],
+    );
+  }
+
+  // [NEW] Helper to render the aggregated assignment list
+  Widget _buildPastAssignmentsList() {
+    final assignments = _prevMyLog!['assignments'] as List?;
+    if (assignments == null || assignments.isEmpty) {
+      // Fallback to legacy content if available
+      final legacyContent = _prevMyLog!['hw'];
+      if (legacyContent != null && legacyContent.toString().isNotEmpty) {
+        return Text(legacyContent, style: const TextStyle(fontSize: 14));
+      }
+      return const Text('과제 없음', style: TextStyle(color: Colors.grey));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var asm in assignments) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Status Badge
+                _buildSubmissionStatusBadge(asm),
+                const SizedBox(width: 8),
+                // Title
+                Expanded(
+                  child: Text(
+                    asm['title'] ?? '과제',
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]
+      ],
+    );
+  }
+
+  Widget _buildSubmissionStatusBadge(Map<String, dynamic> assignment) {
+    // Check submission & completion status
+    // 'submission' might be null if not submitted
+    // 'is_completed' might be true if teacher verified
+    final isCompleted = assignment['is_completed'] == true;
+    final submission = assignment['submission'];
+    final bool hasSubmission = submission != null;
+
+    // Logic:
+    // 1. Completed (Verified) -> Green "완료"
+    // 2. Submitted (Pending) -> Orange "검토중" (or "제출됨")
+    // 3. Not Submitted -> Red "미완료"
+
+    String label;
+    Color color;
+
+    if (isCompleted) {
+      label = '완료';
+      color = Colors.green;
+    } else if (hasSubmission) {
+      label = '제출됨';
+      color = Colors.orange;
+    } else {
+      label = '미완료';
+      color = Colors.red;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        label,
+        style:
+            TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+      ),
     );
   }
 
   Widget _buildInfoCard(
       {required String title,
+      required String? date,
+      required String content,
+      Widget? child, // [NEW] Support custom child content
       required IconData icon,
-      required Color color,
-      required String content}) {
+      required Color color}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(title,
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: color, fontSize: 13))
-          ]),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+            ],
+          ),
           const SizedBox(height: 6),
-          Text(content, style: const TextStyle(fontSize: 14)),
+          if (date != null)
+            Text('$date :',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+          const SizedBox(height: 4),
+          if (child != null)
+            child
+          else
+            Text(content, style: const TextStyle(fontSize: 14, height: 1.4)),
         ],
       ),
     );
