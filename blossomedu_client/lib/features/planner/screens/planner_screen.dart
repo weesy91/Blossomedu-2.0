@@ -19,6 +19,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   bool _isLoading = true;
   List<dynamic> _assignments = [];
   List<dynamic> _classTimes = []; // [NEW]
+  List<dynamic> _tempSchedules = []; // [NEW]
 
   // Timeline State
   late DateTime _startDate;
@@ -79,9 +80,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
       }
 
       if (mounted) {
+        final tempSchedules = studentDetail?['temp_schedules'];
         setState(() {
           _assignments = assignmentList;
           _classTimes = studentDetail?['class_times'] ?? [];
+          _tempSchedules = tempSchedules is List ? tempSchedules : [];
           _isLoading = false;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -165,7 +168,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
     return date.weekday == targetWeekday;
   }
 
+  String _subjectLabel(String? code) {
+    switch ((code ?? '').toUpperCase()) {
+      case 'SYNTAX':
+        return '\uAD6C\uBB38';
+      case 'READING':
+        return '\uB3C5\uD574';
+      case 'GRAMMAR':
+        return '\uBB38\uBC95';
+      default:
+        return code ?? '';
+    }
+  }
+
   List<dynamic> _getCombinedItemsForDate(DateTime date) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
     // 1. Assignments
     final dailyAssignments = _assignments
         .where((a) {
@@ -180,6 +197,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
         .map((a) => {...a, 'itemType': 'ASSIGNMENT'})
         .toList();
 
+    final rescheduleTargets = _tempSchedules
+        .where((ts) =>
+            ts['original_date']?.toString() == dateStr &&
+            ts['is_extra_class'] == false)
+        .map((ts) => ts['new_date']?.toString() ?? '')
+        .where((d) => d.isNotEmpty)
+        .toList();
+    final rescheduleNote = rescheduleTargets.isNotEmpty
+        ? '${rescheduleTargets.join(', ')}\uB85C \uBCC0\uACBD\uB428'
+        : '';
+
     // 2. Classes
     final dailyClasses = _classTimes
         .where((c) {
@@ -187,11 +215,39 @@ class _PlannerScreenState extends State<PlannerScreen> {
           if (day == null) return false;
           return _isClassDay(day, date);
         })
-        .map((c) => {...c, 'itemType': 'CLASS'})
+        .map((c) => {
+              ...c,
+              'itemType': 'CLASS',
+              if (rescheduleNote.isNotEmpty) 'is_rescheduled': true,
+              if (rescheduleNote.isNotEmpty) 'reschedule_note': rescheduleNote,
+            })
+        .toList();
+
+    final tempClasses = _tempSchedules
+        .where((ts) => ts['new_date']?.toString() == dateStr)
+        .map((ts) {
+          final isExtraClass = ts['is_extra_class'] == true;
+          final label = isExtraClass ? '\uBCF4\uAC15' : '\uC774\uB3D9';
+          final subjectBase = _subjectLabel(ts['subject']?.toString());
+          final subject =
+              subjectBase.isNotEmpty ? '$subjectBase ($label)' : label;
+          final startTime = ts['new_start_time']?.toString() ?? '';
+          final endTime = ts['new_end_time']?.toString() ?? '';
+          return {
+            'itemType': 'CLASS',
+            'subject': subject,
+            'start_time':
+                startTime.length >= 5 ? startTime.substring(0, 5) : startTime,
+            'end_time': endTime.length >= 5 ? endTime.substring(0, 5) : endTime,
+            'teacher_name': ts['teacher_name'],
+            'is_makeup': isExtraClass,
+            'temp_schedule': ts,
+          };
+        })
         .toList();
 
     // 3. Combine & Sort
-    final combined = [...dailyClasses, ...dailyAssignments];
+    final combined = [...dailyClasses, ...tempClasses, ...dailyAssignments];
 
     // [DEBUG] Log filtering results
     if (dailyClasses.isNotEmpty) {
@@ -423,6 +479,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final startTime = item['start_time']?.toString().substring(0, 5) ?? '';
     final endTime = item['end_time']?.toString().substring(0, 5) ?? '';
     final teacher = item['teacher_name'] ?? '선생님';
+    final rescheduleNote = item['reschedule_note']?.toString() ?? '';
 
     return Card(
       elevation: 0,
@@ -471,7 +528,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           style: TextStyle(
                               fontSize: 13, color: Colors.grey.shade700)),
                     ],
-                  )
+                  ),
+                  if (rescheduleNote.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      rescheduleNote,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ],
               ),
             ),

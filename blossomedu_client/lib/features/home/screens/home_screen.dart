@@ -35,7 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // 1. Fetch Assignments
       final assignData = await _academyService.getAssignments();
-      final vocabData = await _vocabService.getStudentTestResults(); // [NEW]
+      final vocabData =
+          await _vocabService.getStudentTestResults(includeDetails: true); // [NEW]
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final todayStr =
@@ -75,8 +76,35 @@ class _HomeScreenState extends State<HomeScreen> {
       final vocabHistory = vocabData.map((r) {
         final score = r['score'] ?? 0;
         final details = r['details'] as List<dynamic>? ?? [];
-        final hasPendingCorrection = details.any((d) =>
-            d['is_correction_requested'] == true && d['is_resolved'] == false);
+        final pendingCount = details
+            .where((d) =>
+                d['is_correction_requested'] == true &&
+                d['is_resolved'] == false)
+            .length;
+
+        bool hasPendingCorrection = pendingCount > 0;
+        if (!hasPendingCorrection) {
+          final pendingCountRaw = r['pending_count'] ?? r['pendingCount'];
+          if (pendingCountRaw is num) {
+            hasPendingCorrection = pendingCountRaw > 0;
+          } else if (pendingCountRaw is String) {
+            final parsed = int.tryParse(pendingCountRaw);
+            if (parsed != null) hasPendingCorrection = parsed > 0;
+          }
+        }
+        if (!hasPendingCorrection) {
+          final pendingRaw = r['pending'] ?? r['is_pending'];
+          if (pendingRaw == true ||
+              pendingRaw?.toString().toLowerCase() == 'true') {
+            hasPendingCorrection = true;
+          }
+        }
+        if (!hasPendingCorrection) {
+          final statusRaw = r['status']?.toString().toUpperCase();
+          if (statusRaw == 'PENDING' || statusRaw == 'REVIEWING') {
+            hasPendingCorrection = true;
+          }
+        }
 
         // Status Logic
         String status = 'COMPLETED'; // Default
@@ -114,14 +142,16 @@ class _HomeScreenState extends State<HomeScreen> {
       }).map((a) {
         final submission = a['submission'];
         String sortDate = a['due_date'] ?? '';
-        if (submission != null && submission['submitted_at'] != null) {
+        if (submission is Map && submission['submitted_at'] != null) {
           sortDate = submission['submitted_at'];
         }
+        final submissionStatus =
+            submission is Map ? (submission['status'] ?? a['status']) : a['status'];
         return {
           ...a,
           'sort_date': sortDate,
           'status': 'ASSIGNMENT', // Marker
-          'submission_status': submission != null ? submission['status'] : null,
+          'submission_status': submissionStatus,
         };
       }).toList();
 
@@ -348,6 +378,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final type = item['assignment_type'] ?? 'MANUAL';
     final isCompleted = item['is_completed'] == true;
     final submissionStatus = item['submission_status'];
+    final normalizedSubmissionStatus =
+        submissionStatus?.toString().toUpperCase();
     final status = item['status']; // [NEW]
 
     Color cardColor = Colors.white;
@@ -373,13 +405,16 @@ class _HomeScreenState extends State<HomeScreen> {
       iconColor = Colors.blueGrey;
     } else {
       // Fallback for Assignments (Manual/Photo)
-      if (isCompleted || submissionStatus == 'ACCEPTED') {
+      if (isCompleted ||
+          normalizedSubmissionStatus == 'APPROVED' ||
+          normalizedSubmissionStatus == 'ACCEPTED') {
         statusText = '인증 완료';
         iconColor = Colors.green;
-      } else if (submissionStatus == 'REJECTED') {
+      } else if (normalizedSubmissionStatus == 'REJECTED') {
         statusText = '반려';
         iconColor = Colors.red;
-      } else if (submissionStatus == 'PENDING') {
+      } else if (normalizedSubmissionStatus == 'PENDING' ||
+          normalizedSubmissionStatus == 'SUBMITTED') {
         statusText = '검토중'; // Updated to '검토중' to be consistent
         iconColor = Colors.orange;
       } else {

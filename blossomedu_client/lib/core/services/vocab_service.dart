@@ -388,9 +388,17 @@ class VocabService {
   }
 
   // [Student] Get own test results
-  Future<List<dynamic>> getStudentTestResults() async {
+  Future<List<dynamic>> getStudentTestResults(
+      {bool includeDetails = true}) async {
     try {
-      final response = await _dio.get('/vocab/api/v1/tests/');
+      final params = <String, dynamic>{};
+      if (includeDetails) {
+        params['include_details'] = 'true';
+      }
+      final response = await _dio.get(
+        '/vocab/api/v1/tests/',
+        queryParameters: params.isEmpty ? null : params,
+      );
       return response.data;
     } catch (e) {
       throw Exception('Failed to load test results: $e');
