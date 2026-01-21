@@ -574,6 +574,67 @@ class _WordTestScreenState extends State<WordTestScreen>
   }
 
   Widget _buildStudyCard(Map<String, dynamic> word) {
+    final meaningWidgets = <Widget>[];
+    final rawGroups = word['meaning_groups'];
+    if (rawGroups is List) {
+      for (final group in rawGroups) {
+        String pos = '';
+        String meaningText = '';
+        if (group is Map) {
+          final meaningsRaw = group['meanings'];
+          final meaningRaw = group['meaning'];
+          pos = group['pos']?.toString() ?? '';
+          if (meaningsRaw is List) {
+            meaningText = meaningsRaw.join(', ');
+          } else if (meaningRaw != null) {
+            meaningText = meaningRaw.toString();
+          } else if (meaningsRaw != null) {
+            meaningText = meaningsRaw.toString();
+          }
+        } else if (group is String) {
+          meaningText = group;
+        }
+        if (meaningText.trim().isEmpty) {
+          continue;
+        }
+        meaningWidgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (pos.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      pos,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue),
+                    ),
+                  ),
+                if (pos.isNotEmpty) const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    meaningText,
+                    style: const TextStyle(fontSize: 18, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+    final hasMeaningGroups = meaningWidgets.isNotEmpty;
+
     return SizedBox(
       height: 350,
       width: double.infinity,
@@ -605,63 +666,8 @@ class _WordTestScreenState extends State<WordTestScreen>
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  if (word['meaning_groups'] != null &&
-                                      (word['meaning_groups'] is List) &&
-                                      (word['meaning_groups'] as List)
-                                          .isNotEmpty)
-                                    ...((word['meaning_groups'] as List)
-                                        .map((group) {
-                                      final meaningsRaw = group['meanings'];
-                                      final meaningRaw = group['meaning'];
-                                      String meaningText = '';
-                                      if (meaningsRaw is List) {
-                                        meaningText = meaningsRaw.join(', ');
-                                      } else if (meaningRaw != null) {
-                                        meaningText = meaningRaw.toString();
-                                      } else if (meaningsRaw != null) {
-                                        meaningText = meaningsRaw.toString();
-                                      }
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 4),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                group['pos'] ?? '',
-                                                style: const TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.blue),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Flexible(
-                                              child: Text(
-                                                meaningText,
-                                                style: const TextStyle(
-                                                    fontSize: 18,
-                                                    color: Colors.black87),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList())
+                                  if (hasMeaningGroups)
+                                    ...meaningWidgets
                                   else
                                     Text(word['meaning'] ?? '',
                                         textAlign: TextAlign.center,
