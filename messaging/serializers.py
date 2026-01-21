@@ -41,8 +41,12 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     def get_other_user_name(self, obj):
         other = self._get_other_user(obj)
+        # Check StudentProfile first
         if hasattr(other, 'profile') and other.profile:
             return other.profile.name or other.first_name or other.username
+        # Check StaffProfile
+        if hasattr(other, 'staff_profile') and other.staff_profile:
+            return other.staff_profile.name or other.first_name or other.username
         return other.first_name or other.username
 
     def get_last_message(self, obj):
