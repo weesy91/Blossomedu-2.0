@@ -778,14 +778,30 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     final isRejected = submissionStatus == 'REJECTED';
     final isReplaced = assignment['is_replaced'] == true;
 
+    final dueDateStr = assignment['due_date'];
+    DateTime? dueDate;
+    if (dueDateStr != null) {
+      dueDate = DateTime.tryParse(dueDateStr);
+    }
+
     String statusLabel = isCompleted ? '완료' : '과제';
     Color statusColor = isCompleted ? Colors.green : Colors.orange;
+
     if (isPending) {
       statusLabel = '검토중';
       statusColor = Colors.orange;
     } else if (isRejected) {
       statusLabel = '반려';
       statusColor = Colors.red;
+    } else if (!isCompleted && dueDate != null) {
+      // Check for Overdue
+      // Compare dates only: if due date is strictly before today, it's overdue.
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (dueDate.isBefore(today)) {
+        statusLabel = '미제출';
+        statusColor = Colors.red;
+      }
     }
 
     return Card(
@@ -793,7 +809,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.orange.shade100)),
+          side: BorderSide(color: statusColor.withOpacity(0.3))),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(

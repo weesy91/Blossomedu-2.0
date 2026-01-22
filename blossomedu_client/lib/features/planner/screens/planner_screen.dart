@@ -90,6 +90,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _scrollToToday();
         });
+        _calculateMakeupCount(); // [NEW]
         // [DEBUG] Log class_times data
         print('=== PLANNER DEBUG ===');
         print('Fetched ${_classTimes.length} class times');
@@ -238,8 +239,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final subjectCode = _normalizeSubjectCode(ts['subject']?.toString());
     if (subjectCode.isEmpty) return '';
     for (final ct in _classTimes) {
-      final ctSubjectCode =
-          _normalizeSubjectCode(ct['subject']?.toString());
+      final ctSubjectCode = _normalizeSubjectCode(ct['subject']?.toString());
       if (ctSubjectCode != subjectCode) continue;
       final teacher = _extractTeacherName(ct['teacher_name'] ?? ct['teacher']);
       if (teacher.isNotEmpty) return teacher;
@@ -255,7 +255,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
           final dueDate = _parseDateOnly(a['due_date']);
           if (dueDate != null && _isSameDay(dueDate, date)) return true;
           final startDate = _parseDateOnly(a['start_date']);
-          if (dueDate == null && startDate != null && _isSameDay(startDate, date)) {
+          if (dueDate == null &&
+              startDate != null &&
+              _isSameDay(startDate, date)) {
             return true;
           }
           return false;
@@ -292,25 +294,23 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final tempClasses = _tempSchedules
         .where((ts) => ts['new_date']?.toString() == dateStr)
         .map((ts) {
-          final isExtraClass = ts['is_extra_class'] == true;
-          final label = isExtraClass ? '\uBCF4\uAC15' : '\uC774\uB3D9';
-          final subjectBase = _subjectLabel(ts['subject']?.toString());
-          final subject =
-              subjectBase.isNotEmpty ? '$subjectBase ($label)' : label;
-          final startTime = ts['new_start_time']?.toString() ?? '';
-          final endTime = ts['new_end_time']?.toString() ?? '';
-          return {
-            'itemType': 'CLASS',
-            'subject': subject,
-            'start_time':
-                startTime.length >= 5 ? startTime.substring(0, 5) : startTime,
-            'end_time': endTime.length >= 5 ? endTime.substring(0, 5) : endTime,
-            'teacher_name': _resolveTeacherNameForTempSchedule(ts),
-            'is_makeup': isExtraClass,
-            'temp_schedule': ts,
-          };
-        })
-        .toList();
+      final isExtraClass = ts['is_extra_class'] == true;
+      final label = isExtraClass ? '\uBCF4\uAC15' : '\uC774\uB3D9';
+      final subjectBase = _subjectLabel(ts['subject']?.toString());
+      final subject = subjectBase.isNotEmpty ? '$subjectBase ($label)' : label;
+      final startTime = ts['new_start_time']?.toString() ?? '';
+      final endTime = ts['new_end_time']?.toString() ?? '';
+      return {
+        'itemType': 'CLASS',
+        'subject': subject,
+        'start_time':
+            startTime.length >= 5 ? startTime.substring(0, 5) : startTime,
+        'end_time': endTime.length >= 5 ? endTime.substring(0, 5) : endTime,
+        'teacher_name': _resolveTeacherNameForTempSchedule(ts),
+        'is_makeup': isExtraClass,
+        'temp_schedule': ts,
+      };
+    }).toList();
 
     // 3. Combine & Sort
     final combined = [...dailyClasses, ...tempClasses, ...dailyAssignments];
@@ -362,38 +362,78 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          : Column(
               children: [
-                // 1. Left Sidebar
-                SizedBox(
-                  width: 90,
-                  child: ListView.builder(
-                    controller: _timelineScrollController,
-                    itemExtent: 90,
-                    itemCount: _weekDates.length,
-                    itemBuilder: (context, index) {
-                      return _buildTimelineTile(
-                          _weekDates[index], index == _weekDates.length - 1);
+                // [NEW] Makeup Task Banner
+                if (_makeupTaskCount > 0)
+                  InkWell(
+                    onTap: () async {
+                      await context.push('/student/makeup-tasks');
+                      _fetchData(); // Refresh on return
                     },
-                  ),
-                ),
-                // Vertical Divider
-                Container(width: 1, color: Colors.grey.shade200),
-
-                // 2. Right Content
-                Expanded(
-                  child: Container(
-                    color: Colors.grey.shade50,
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDateHeader(_selectedDate),
-                        const SizedBox(height: 20),
-                        Expanded(child: _buildAssignmentList()),
-                      ],
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      color: Colors.red.shade50,
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.red.shade700, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              '지난 주차 미완료 과제가 $_makeupTaskCount개 있습니다. (보충 학습)',
+                              style: TextStyle(
+                                  color: Colors.red.shade900,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios,
+                              color: Colors.red.shade300, size: 14),
+                        ],
+                      ),
                     ),
+                  ),
+
+                // Main Planner Content
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Left Sidebar
+                      SizedBox(
+                        width: 90,
+                        child: ListView.builder(
+                          controller: _timelineScrollController,
+                          itemExtent: 90,
+                          itemCount: _weekDates.length,
+                          itemBuilder: (context, index) {
+                            return _buildTimelineTile(_weekDates[index],
+                                index == _weekDates.length - 1);
+                          },
+                        ),
+                      ),
+                      // Vertical Divider
+                      Container(width: 1, color: Colors.grey.shade200),
+
+                      // 2. Right Content
+                      Expanded(
+                        child: Container(
+                          color: Colors.grey.shade50,
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildDateHeader(_selectedDate),
+                              const SizedBox(height: 20),
+                              Expanded(child: _buildAssignmentList()),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -813,5 +853,52 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
     );
   }
-}
 
+  // [NEW] Helper for makeup Logic
+  int _makeupTaskCount = 0;
+
+  bool _isMakeupTask(dynamic assignment) {
+    bool isCompleted = assignment['is_completed'] == true;
+    if (assignment['submission'] != null &&
+        assignment['submission']['status'] == 'APPROVED') {
+      isCompleted = true;
+    }
+
+    // Completed tasks are never "makeup" in the sense of needing action
+    if (isCompleted) return false;
+
+    // Check 7-day rule
+    // origin_log_date is the primary source, fallback to start_date or due_date
+    String? dateStr = assignment['origin_log_date'] ??
+        assignment['start_date'] ??
+        assignment['due_date'];
+    if (dateStr == null) return false;
+
+    DateTime? baseDate;
+    try {
+      baseDate = DateTime.parse(dateStr);
+    } catch (_) {
+      return false;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Cutoff: baseDate + 7 days
+    final cutoff = baseDate.add(const Duration(days: 7));
+    final cutoffDate = DateTime(cutoff.year, cutoff.month, cutoff.day);
+
+    // If today is ON or AFTER the cutoff date (Day 8+), it's a makeup task
+    return today.isAfter(cutoffDate) || today.isAtSameMomentAs(cutoffDate);
+  }
+
+  void _calculateMakeupCount() {
+    int count = 0;
+    for (var a in _assignments) {
+      if (_isMakeupTask(a)) {
+        count++;
+      }
+    }
+    setState(() => _makeupTaskCount = count);
+  }
+}

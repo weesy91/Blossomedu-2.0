@@ -53,11 +53,29 @@ class _HomeScreenState extends State<HomeScreen> {
         if (datePart == todayStr) return true;
 
         // 2. Overdue AND Incomplete
-        // (If submitted, it's not "To-Do" anymore usually, unless rejected?
-        // User asked for "Past submission deadline assignments" to be shown in 'Today's Task' section.
-        // Assuming incomplete ones.)
+        // (If submitted, it's not "To-Do" anymore usually, unless rejected?)
+        // [MODIFIED] Filter out "Makeup Tasks" (older than 7 days)
         final isCompleted = a['is_completed'] == true;
-        if (datePart.compareTo(todayStr) < 0 && !isCompleted) return true;
+        if (datePart.compareTo(todayStr) < 0 && !isCompleted) {
+          // Check if it's a makeup task (Day 8+)
+          String? originDateStr =
+              a['origin_log_date'] ?? a['start_date'] ?? a['due_date'];
+          if (originDateStr != null) {
+            try {
+              final baseDate = DateTime.parse(originDateStr);
+              final cutoff = baseDate.add(const Duration(days: 7));
+              final cutoffDate =
+                  DateTime(cutoff.year, cutoff.month, cutoff.day);
+
+              // If today >= cutoffDate (Day 8+), it's a makeup task -> HIDE from Home
+              if (today.isAfter(cutoffDate) ||
+                  today.isAtSameMomentAs(cutoffDate)) {
+                return false;
+              }
+            } catch (_) {}
+          }
+          return true; // Overdue but recent (Day 2~7)
+        }
 
         return false;
       }).toList();

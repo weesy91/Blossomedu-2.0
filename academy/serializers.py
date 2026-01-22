@@ -39,6 +39,7 @@ class AssignmentTaskSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.name', read_only=True)
     submission = AssignmentSubmissionSerializer(read_only=True)
     origin_log_subject = serializers.CharField(source='origin_log.subject', read_only=True)
+    origin_log_date = serializers.DateField(source='origin_log.date', read_only=True) # [NEW] For 7-day cutoff logic
     lecture_links = serializers.SerializerMethodField()  # NEW: 강의 링크
 
     class Meta:
