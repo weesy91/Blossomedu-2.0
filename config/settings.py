@@ -137,13 +137,15 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 MB
 # 기본 키 필드 타입
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# [HTTPS 프록시 설정] - nginx 뒤에서 HTTPS 감지
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 CSRF_TRUSTED_ORIGINS = [
     'http://3.38.153.166',
     'https://3.38.153.166',
-    # 만약 도메인을 연결했다면 아래처럼 도메인도 추가해야 합니다.
-    # 'https://blossomedu.com', 
-    # 'https://www.blossomedu.com',
-    # 'https://www.blossomedu.com',
+    'https://b-edu.site',
+    'http://b-edu.site',
 ]
 
 # [NEW] CORS Settings

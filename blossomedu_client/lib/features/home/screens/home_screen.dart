@@ -35,8 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // 1. Fetch Assignments
       final assignData = await _academyService.getAssignments();
-      final vocabData =
-          await _vocabService.getStudentTestResults(includeDetails: true); // [NEW]
+      final vocabData = await _vocabService.getStudentTestResults(
+          includeDetails: true); // [NEW]
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final todayStr =
@@ -145,8 +145,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (submission is Map && submission['submitted_at'] != null) {
           sortDate = submission['submitted_at'];
         }
-        final submissionStatus =
-            submission is Map ? (submission['status'] ?? a['status']) : a['status'];
+        final submissionStatus = submission is Map
+            ? (submission['status'] ?? a['status'])
+            : a['status'];
         return {
           ...a,
           'sort_date': sortDate,
@@ -547,9 +548,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final String id = a['id']?.toString() ?? '';
     final String dueStr = a['due_date']?.toString() ?? '';
 
-    // Check Overdue
+    // [NEW] Check submission status
+    final submission = a['submission'];
+    String? submissionStatus;
+    if (submission is Map) {
+      submissionStatus = submission['status']?.toString().toUpperCase();
+    }
+    final bool isPending = submissionStatus == 'PENDING';
+    final bool isRejected = submissionStatus == 'REJECTED';
+    final bool isApproved = submissionStatus == 'APPROVED';
+
+    // Check Overdue (only if no submission yet)
     bool isOverdue = false;
-    if (dueStr.isNotEmpty && !isCompleted) {
+    if (dueStr.isNotEmpty && !isCompleted && !isPending && !isApproved) {
       final dueDate = DateTime.parse(dueStr);
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -559,19 +570,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final typeIcon = type == 'VOCAB_TEST' ? '📝' : '📷';
 
+    // Determine badge
+    String? badgeText;
+    Color badgeColor = Colors.red;
+    if (isPending) {
+      badgeText = '검토중';
+      badgeColor = Colors.orange;
+    } else if (isRejected) {
+      badgeText = '반려';
+      badgeColor = Colors.red;
+    } else if (isOverdue) {
+      badgeText = '미제출';
+      badgeColor = Colors.red;
+    }
+
+    // Determine colors
+    Color bgColor = Colors.grey.shade50;
+    Color borderColor = Colors.grey.shade200;
+    Color textColor = Colors.black87;
+    Color iconColor = Colors.grey;
+
+    if (isPending) {
+      bgColor = Colors.orange.shade50;
+      borderColor = Colors.orange.shade200;
+      textColor = Colors.orange.shade900;
+      iconColor = Colors.orange;
+    } else if (isRejected || isOverdue) {
+      bgColor = Colors.red.shade50;
+      borderColor = Colors.red.shade200;
+      textColor = Colors.red.shade900;
+      iconColor = Colors.red;
+    } else if (isCompleted || isApproved) {
+      iconColor = Colors.green;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-          color: isOverdue ? Colors.red.shade50 : Colors.grey.shade50,
+          color: bgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: isOverdue ? Colors.red.shade200 : Colors.grey.shade200)),
+          border: Border.all(color: borderColor)),
       child: ListTile(
         leading: Icon(
-          isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: isCompleted
-              ? Colors.green
-              : (isOverdue ? Colors.red : Colors.grey),
+          isCompleted || isApproved
+              ? Icons.check_circle
+              : (isPending
+                  ? Icons.hourglass_top
+                  : Icons.radio_button_unchecked),
+          color: iconColor,
         ),
         title: Row(
           children: [
@@ -580,20 +626,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                       decoration:
                           isCompleted ? TextDecoration.lineThrough : null,
-                      color: isCompleted
-                          ? Colors.grey
-                          : (isOverdue ? Colors.red.shade900 : Colors.black87),
-                      fontWeight:
-                          isOverdue ? FontWeight.bold : FontWeight.w500)),
+                      color: isCompleted ? Colors.grey : textColor,
+                      fontWeight: (isOverdue || isRejected)
+                          ? FontWeight.bold
+                          : FontWeight.w500)),
             ),
-            if (isOverdue)
+            if (badgeText != null)
               Container(
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                    color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                child: const Text('미제출',
-                    style: TextStyle(
+                    color: badgeColor, borderRadius: BorderRadius.circular(4)),
+                child: Text(badgeText,
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.bold)),
