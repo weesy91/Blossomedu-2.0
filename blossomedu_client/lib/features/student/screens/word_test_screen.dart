@@ -493,74 +493,90 @@ class _WordTestScreenState extends State<WordTestScreen>
                 backgroundColor: Colors.grey.shade200,
                 color: Colors.grey.shade400),
 
-            // 2. Timer Bar (Test Mode Only)
-            if (!isStudy)
-              AnimatedBuilder(
-                animation: _timerController,
-                builder: (context, child) {
-                  // 0.0 -> 1.0 (Full to Empty)
-                  // We want Bar to shrink: Value = 1.0 - controller.value
-                  final value = 1.0 - _timerController.value;
-                  final Color barColor =
-                      value > 0.3 ? AppColors.primary : Colors.red;
-                  // [NEW] Calculate remaining seconds (7 sec total)
-                  final int remainingSeconds = (value * 7).ceil();
-
-                  return Column(
-                    children: [
-                      // [NEW] Countdown Text
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          '⏱️ $remainingSeconds초',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                value > 0.3 ? Colors.grey.shade700 : Colors.red,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 8,
-                        child: LinearProgressIndicator(
-                          value: value,
-                          backgroundColor: Colors.red.withOpacity(0.1),
-                          color: barColor,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-
             Expanded(
               child: SingleChildScrollView(
-                reverse: true, // [FIX] 모바일 키보드 올라올 때 문제가 보이도록
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    Text('${_currentIndex + 1} / ${_words.length}',
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 16)),
-                    const SizedBox(height: 40),
+                reverse:
+                    !isStudy, // [FIX] Only reverse for Test Mode (Keyboard)
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  // Ensure full height centering for Study Mode
+                  height:
+                      isStudy ? MediaQuery.of(context).size.height * 0.6 : null,
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // [Adjusted] Spacing
+                      SizedBox(height: isStudy ? 0 : 20),
+                      Text('${_currentIndex + 1} / ${_words.length}',
+                          style: const TextStyle(
+                              color: Colors.grey, fontSize: 16)),
+                      const SizedBox(height: 20), // Reduced from 40
 
-                    // Question Card
-                    if (isStudy)
-                      _buildStudyCard(currentWord)
-                    else
-                      _buildTestInput(currentWord),
-                  ],
+                      // Question Card
+                      if (isStudy)
+                        _buildStudyCard(currentWord)
+                      else
+                        _buildTestInput(currentWord),
+                    ],
+                  ),
                 ),
               ),
             ),
 
+            // [NEW POSITION] Timer Bar (Test Mode Only) - Moved to Bottom
+            if (!isStudy)
+              AnimatedBuilder(
+                animation: _timerController,
+                builder: (context, child) {
+                  final value = 1.0 - _timerController.value;
+                  final int remainingSeconds = (value * 7).ceil();
+
+                  // Use a simpler, non-intrusive progress bar at the bottom
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('남은 시간',
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                            Text(
+                              '$remainingSeconds초',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: value > 0.3
+                                    ? AppColors.primary
+                                    : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: value,
+                            minHeight: 6,
+                            backgroundColor: Colors.grey.shade200,
+                            color: value > 0.3 ? AppColors.primary : Colors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
             // Bottom Button
             if (!isStudy)
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(
+                    24, 0, 24, 24), // Removed top padding as timer is above
                 decoration: const BoxDecoration(color: Colors.white),
                 child: SizedBox(
                   width: double.infinity,
