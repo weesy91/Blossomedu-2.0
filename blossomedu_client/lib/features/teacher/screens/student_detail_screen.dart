@@ -382,60 +382,36 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       child: Form(
         key: _formKey,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Account Info Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade200),
+            _buildSectionTitle('계정 정보'),
+            TextFormField(
+              initialValue: _username,
+              decoration: const InputDecoration(
+                labelText: '아이디 (ID)',
+                prefixIcon: Icon(Icons.person_outline),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.account_circle, size: 20, color: Colors.blue),
-                      SizedBox(width: 8),
-                      Text('계정 정보',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    initialValue: _username,
-                    decoration: const InputDecoration(
-                      labelText: '아이디 (로그인 ID)',
-                      hintText: '학생 전화번호 권장',
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    onSaved: (v) => _username = v ?? '',
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _showPasswordResetDialog,
-                      icon: const Icon(Icons.lock_reset, size: 18),
-                      label: const Text('비밀번호 재설정'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange.shade700,
-                        side: BorderSide(color: Colors.orange.shade300),
-                      ),
-                    ),
-                  ),
-                ],
+              onSaved: (v) => _username = v ?? '',
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _showPasswordResetDialog,
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: '비밀번호 변경',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+                child: const Text('변경하지 않으려면 비워두세요',
+                    style: TextStyle(color: Colors.grey)),
               ),
             ),
+            const SizedBox(height: 32),
             // Basic Info
+            _buildSectionTitle('기본 정보'),
             TextFormField(
               initialValue: _name,
-              decoration: const InputDecoration(labelText: '이름 *'),
+              decoration: const InputDecoration(labelText: '이름'),
               validator: (v) => v!.isEmpty ? '이름을 입력하세요' : null,
               onSaved: (v) => _name = v!,
             ),
@@ -1033,6 +1009,20 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo)),
+        const Divider(thickness: 1.5, height: 24),
       ],
     );
   }
