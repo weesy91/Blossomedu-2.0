@@ -708,12 +708,19 @@ class _WordTestScreenState extends State<WordTestScreen>
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(word['word'] ?? '',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary)),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(word['word'] ?? '',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          // [FIX] 텍스트 길이에 따라 폰트 크기 자동 조절
+                                          fontSize:
+                                              (word['word'] ?? '').length > 25
+                                                  ? 24
+                                                  : 32,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary)),
+                                ),
                                 const SizedBox(height: 24),
                                 IconButton(
                                   onPressed: () =>
@@ -814,11 +821,19 @@ class _WordTestScreenState extends State<WordTestScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Flexible(
-              child: Text(questionText,
-                  style: const TextStyle(
-                      fontSize: 36, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(questionText,
+                    style: TextStyle(
+                        // [FIX] 텍스트 길이에 따라 폰트 크기 자동 조절
+                        fontSize: questionText.length > 35
+                            ? 24
+                            : questionText.length > 20
+                                ? 30
+                                : 36,
+                        fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
+              ),
             ),
             if (isWordQuestion) // [TTS] Show Speaker for English Question
               IconButton(
