@@ -54,7 +54,15 @@ def _build_user_data(user):
         'student_id': student_id,
     }
 
+from rest_framework.permissions import IsAuthenticated, AllowAny # [Added AllowAny]
+
+# ...
+
 class CustomAuthToken(ObtainAuthToken):
+    # [FIX] Disable SessionAuth to prevent CSRF errors when browser sends cookies
+    authentication_classes = [] 
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data,
                                            context={'request': request})

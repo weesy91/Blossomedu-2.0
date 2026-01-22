@@ -549,6 +549,9 @@ class _TeacherClassLogCreateScreenState
             'due_date': row['dueDate']?.toIso8601String() ??
                 _defaultDueDate.toIso8601String(),
             'description': row['description'] ?? '',
+            // [FIX] Support Textbook Links
+            'related_textbook': row['bookId'],
+            'textbook_range': row['range'] ?? '',
           });
         }
       }
@@ -577,8 +580,18 @@ class _TeacherClassLogCreateScreenState
         } else {
           // 일반 단어장 과제
           final bookId = assignment['bookId'];
-          final range = assignment['range']?.toString().trim() ?? '';
+          String range =
+              assignment['range']?.toString().trim() ?? ''; // [FIX] Mutable
           if (bookId == null || range.isEmpty) continue;
+
+          // [FIX] Sanitize "Day Day" or "암기 암기"
+          // Case 1: "Day Day" -> "Day"
+          range = range.replaceAll(
+              RegExp(r'(Day\s*){2,}', caseSensitive: false), 'Day ');
+          // Case 2: "암기 암기" -> "암기"
+          range = range.replaceAll(RegExp(r'(암기\s*){2,}'), '암기');
+          // Case 3: Trim spaces
+          range = range.replaceAll(RegExp(r'\s+'), ' ').trim();
 
           int? rangeStart;
           int? rangeEnd;
