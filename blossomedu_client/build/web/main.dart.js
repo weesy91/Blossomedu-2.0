@@ -57406,7 +57406,7 @@ break}i.gR().dP(0)
 m.B(new A.aSY(m))
 p=4
 i=t.N
-l=A.a1(["name",m.y,"phone_number",m.Q,"parent_phone_mom",m.as,"parent_phone_dad",m.at,"branch",m.ax,"school",m.ay,"base_grade",m.ch,"syntax_teacher",m.fx,"reading_teacher",m.fy,"extra_class_teacher",m.go,"syntax_class",m.id,"reading_class",m.k1,"extra_class",m.k2,"extra_class_category",m.p1,"start_date",m.CW,"user",A.a1(["is_active",m.cx,"username",m.z],i,t.K)],i,t.X)
+l=A.a1(["name",m.y,"phone_number",m.Q,"parent_phone_mom",m.as,"parent_phone_dad",m.at,"branch",m.ax,"school",m.ay,"base_grade",m.ch,"syntax_teacher",m.fx,"reading_teacher",m.fy,"extra_class_teacher",m.go,"syntax_class",m.id,"reading_class",m.k1,"extra_class",m.k2,"extra_class_category",m.p1,"start_date",m.CW,"new_username",m.z,"user",A.a1(["is_active",m.cx],i,t.y)],i,t.X)
 s=7
 return A.l(m.e.CZ(m.a.c,l),$async$FO)
 case 7:i=m.c

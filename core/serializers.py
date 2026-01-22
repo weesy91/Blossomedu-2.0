@@ -48,7 +48,8 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         return ret
 
 class StudentProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', required=False)  # [CHANGED] read_only 제거
+    username = serializers.CharField(source='user.username', read_only=True)  # Read-only for display
+    new_username = serializers.CharField(write_only=True, required=False)  # Write-only for updates
     grade_display = serializers.CharField(source='current_grade_display', read_only=True)
     branch_name = serializers.CharField(source='branch.name', read_only=True)
     school_name = serializers.CharField(source='school.name', read_only=True)
@@ -58,7 +59,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
         fields = [
-            'id', 'username', 'name', 'phone_number', 'parent_phone_mom', 'parent_phone_dad',
+            'id', 'username', 'new_username', 'name', 'phone_number', 'parent_phone_mom', 'parent_phone_dad',
             'school_name', 'grade_display', 'branch_name', 'start_date',
             'branch', 'school', 'base_grade',
             'syntax_teacher', 'syntax_class',
@@ -81,8 +82,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         user = instance.user
         user_data = validated_data.pop('user', {})
         
-        # [NEW] Username 변경 처리
-        new_username = user_data.get('username')
+        # Username 변경 처리 (new_username 필드 우선, 그 다음 user dict)
+        new_username = validated_data.pop('new_username', None) or user_data.get('username')
         if new_username and new_username != user.username:
             from django.contrib.auth.models import User
             if User.objects.filter(username=new_username).exclude(id=user.id).exists():

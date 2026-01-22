@@ -168,11 +168,11 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         'reading_class': _readingClassId,
         'extra_class': _extraClassId,
         'extra_class_category': _extraClassCategory,
-        'start_date': _startDateStr, // [NEW]
+        'start_date': _startDateStr,
+        'new_username': _username, // [FIX] 아이디 변경용 필드
         'user': {
           'is_active': _isActive,
-          'username': _username
-        } // [NEW] username 변경 가능
+        }
       };
 
       await _academyService.updateStudent(widget.studentId, payload);
