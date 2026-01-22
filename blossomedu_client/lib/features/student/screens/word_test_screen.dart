@@ -39,6 +39,7 @@ class _WordTestScreenState extends State<WordTestScreen>
   final bool _autoPlay = true; // [TTS] Auto Play Default
   bool _hasFinishedTest = false;
   bool _canPop = false;
+  bool _isProcessing = false; // [NEW] 다음 문제 처리 중 여부 (1초 딜레이)
 
   int _currentIndex = 0;
   final List<String> _userAnswers = [];
@@ -174,8 +175,8 @@ class _WordTestScreenState extends State<WordTestScreen>
     debugPrint(
         '[DEBUG] Last penalty: $lastPenalty, Now: $now, Diff: ${now - lastPenalty}ms');
 
-    // 5 minutes = 300,000 ms
-    if (now - lastPenalty < 300000) {
+    // 3 minutes = 180,000 ms
+    if (now - lastPenalty < 180000) {
       print('[DEBUG] Still in penalty period - BLOCKED');
       return false;
     }
@@ -235,7 +236,10 @@ class _WordTestScreenState extends State<WordTestScreen>
     }
   }
 
-  void _submitAnswer({bool isTimeOver = false}) {
+  void _submitAnswer({bool isTimeOver = false}) async {
+    // [NEW] 딜레이 중에는 입력 무시 (엔터 연타 방지)
+    if (_isProcessing) return;
+
     if (!isTimeOver && _answerController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('답을 입력해주세요! (모르면 7초 기다리세요)')));
@@ -246,6 +250,15 @@ class _WordTestScreenState extends State<WordTestScreen>
     _timerController.stop(); // Stop timer when answer submitted
     _userAnswers.add(_answerController.text.trim());
     _answerController.clear();
+
+    // [NEW] 시험 모드에서 1초 딜레이 추가 (엔터 연타 겹치기 방지)
+    if (widget.testMode == 'test' && _currentIndex < _words.length - 1) {
+      setState(() => _isProcessing = true);
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+    }
+
     _nextCard();
     _focusNode.requestFocus(); // [UX] Keep focus for next card
   }

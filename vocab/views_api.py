@@ -629,8 +629,8 @@ class TestViewSet(viewsets.ModelViewSet):
                  from django.utils import timezone
                  from datetime import timedelta
                  diff = timezone.now() - profile.last_wrong_failed_at
-                 if diff < timedelta(minutes=5):
-                     wait_sec = (timedelta(minutes=5) - diff).seconds
+                 if diff < timedelta(minutes=3):
+                     wait_sec = (timedelta(minutes=3) - diff).seconds
                      minutes = wait_sec // 60
                      seconds = wait_sec % 60
                      return Response(
@@ -648,6 +648,17 @@ class TestViewSet(viewsets.ModelViewSet):
             questions = []
             for w in selected:
                 pos_tag = services.get_primary_pos(w.korean) if w.korean else None
+                # [FIX] Build meaning_groups for POS display
+                meaning_groups = []
+                if w.korean:
+                    grouped, _ = services.split_meanings_by_pos(w.korean)
+                    order = ['v', 'adj', 'adv', 'n', 'pron', 'prep', 'conj', 'interj']
+                    for tag in order:
+                        if tag in grouped:
+                            meaning_groups.append({
+                                'pos': tag,
+                                'meaning': ', '.join(grouped[tag])
+                            })
                 questions.append({
                     'id': w.master_word.id if w.master_word else None,
                     'word_id': w.id,
@@ -655,6 +666,7 @@ class TestViewSet(viewsets.ModelViewSet):
                     'english': w.english,
                     'korean': w.korean,
                     'pos': pos_tag,
+                    'meaning_groups': meaning_groups,  # [NEW] Include for POS display
                     'is_snowball': True
                 })
             return Response({'questions': questions})

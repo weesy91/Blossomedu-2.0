@@ -424,8 +424,9 @@ class AcademyService {
         Uri.parse('${AppConfig.baseUrl}/core/api/v1/management/branches/');
     final headers = await _getHeaders();
     final response = await http.get(url, headers: headers);
-    if (response.statusCode == 200)
+    if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes));
+    }
     throw Exception('Failed to load branches');
   }
 
@@ -464,8 +465,9 @@ class AcademyService {
         Uri.parse('${AppConfig.baseUrl}/core/api/v1/management/schools/');
     final headers = await _getHeaders();
     final response = await http.get(url, headers: headers);
-    if (response.statusCode == 200)
+    if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes));
+    }
     throw Exception('Failed to load schools');
   }
 

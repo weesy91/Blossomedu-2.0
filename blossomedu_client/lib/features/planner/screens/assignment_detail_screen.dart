@@ -248,6 +248,28 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
   }
 
+  /// [NEW] 학습 모드로 진입 (시험 전 단어 복습)
+  void _startStudyMode() {
+    if (_assignmentData == null) return;
+
+    final bookId = _assignmentData!['related_vocab_book'];
+    final start = _assignmentData!['vocab_range_start'];
+    final end = _assignmentData!['vocab_range_end'];
+
+    if (bookId != null && start != null && end != null) {
+      context.push('/student/test/start', extra: {
+        'bookId': bookId,
+        'range': '$start-$end',
+        'assignmentId': '',
+        'testMode': 'study', // 학습 모드
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('단어장 정보가 올바르지 않습니다.')),
+      );
+    }
+  }
+
   /// [NEW] 강의 링크 열기
   void _openLectureLink(String? url) async {
     if (url == null || url.isEmpty) return;
@@ -364,8 +386,8 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.blue.shade200),
           ),
-          child: Row(
-            children: const [
+          child: const Row(
+            children: [
               Icon(Icons.quiz, color: Colors.blue),
               SizedBox(width: 12),
               Expanded(child: Text('앱 내 단어 시험을 통과하면 자동으로 인증됩니다.')),
@@ -373,6 +395,27 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
           ),
         ),
         const SizedBox(height: 32),
+        // [NEW] 학습 먼저 하기 버튼
+        SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _startStudyMode,
+            icon: const Icon(Icons.menu_book),
+            label: const Text(
+              '📚 학습 먼저 하기',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // [기존] 단어 시험 시작하기 버튼
         SizedBox(
           height: 54,
           width: double.infinity,
@@ -474,7 +517,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                       ),
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
@@ -532,9 +575,9 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
               ? InkWell(
                   onTap: canPick ? _showImageSourceActionSheet : null,
                   borderRadius: BorderRadius.circular(12),
-                  child: Column(
+                  child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.add_a_photo, size: 50, color: Colors.grey),
                       SizedBox(height: 12),
                       Text('사진을 선택해 주세요', style: TextStyle(color: Colors.grey)),

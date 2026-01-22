@@ -352,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Container(
+        SizedBox(
           height: 140, // Horizontal List Height
           child: _recentHistory.isEmpty
               ? Container(

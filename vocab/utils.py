@@ -83,6 +83,7 @@ def crawl_daum_dic(query):
     """
     [업그레이드] 구글 번역 API (다의어 지원)
     - dt=['t', 'bd'] 파라미터를 통해 기본 번역 + 사전 정보(여러 뜻)를 함께 요청합니다.
+    - [FIX] 오타 검색 시 올바른 단어 형태로 반환 (data[1][0][0] 사용)
     """
     print(f"--- [DEBUG] 구글 번역 API 요청(다의어): {query} ---")
     try:
@@ -105,11 +106,21 @@ def crawl_daum_dic(query):
         
         data = response.json()
         
+        # [FIX] 기본값은 검색어 그대로, 사전 데이터에서 올바른 단어 추출 시도
         english = query
         korean_candidates = []
         
         # 1. 사전 데이터(data[1])가 있으면 거기서 여러 뜻을 가져옵니다.
         if len(data) > 1 and data[1]:
+            # [FIX] data[1][0][0]에 올바른 base word가 있음 (예: "disappointe" -> "disappoint")
+            try:
+                correct_word = data[1][0][0]
+                if correct_word and isinstance(correct_word, str):
+                    english = correct_word.strip()
+                    print(f"--- [DEBUG] 오타 수정됨: {query} -> {english} ---")
+            except (IndexError, TypeError):
+                pass  # 형식이 다르면 원본 유지
+            
             for part_of_speech in data[1]:
                 meanings = part_of_speech[1]
                 # 각 품사별로 상위 3개 뜻만

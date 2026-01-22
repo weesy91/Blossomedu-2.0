@@ -174,14 +174,14 @@ class _WordTestResultScreenState extends State<WordTestResultScreen> {
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text('5분 쿨타임 중입니다! 잠시 복습하세요.')));
+                                  content: Text('3분 쿨타임 중입니다! 잠시 복습하세요.')));
                           // TODO: Check Cooldown
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey, // Disabled look
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('재시험 (5분 대기)',
+                        child: const Text('재시험 (3분 대기)',
                             style: TextStyle(color: Colors.white)),
                       ),
                     ),

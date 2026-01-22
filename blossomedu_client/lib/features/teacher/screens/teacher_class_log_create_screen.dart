@@ -38,7 +38,7 @@ class _TeacherClassLogCreateScreenState
   final Set<String> _extraVocabPublishers = {};
 
   // Default Due Date used for initialization
-  DateTime _defaultDueDate = () {
+  final DateTime _defaultDueDate = () {
     final now = DateTime.now().add(const Duration(days: 7));
     return DateTime(now.year, now.month, now.day, 22, 0); // Default 10 PM
   }();
@@ -275,8 +275,9 @@ class _TeacherClassLogCreateScreenState
                   // [FIX] Cross-Subject Filtering
                   // If assignment belongs to another subject log, SKIP it.
                   final originSub = asm['origin_log_subject'];
-                  if (originSub != null && originSub != widget.subject)
+                  if (originSub != null && originSub != widget.subject) {
                     return false;
+                  }
 
                   final dStr = asm['due_date'];
                   if (dStr == null) return false;
@@ -322,8 +323,9 @@ class _TeacherClassLogCreateScreenState
               final relevant = extraAndPending.where((asm) {
                 // [FIX] Cross-Subject Filtering
                 final originSub = asm['origin_log_subject'];
-                if (originSub != null && originSub != widget.subject)
+                if (originSub != null && originSub != widget.subject) {
                   return false;
+                }
 
                 final dStr = asm['due_date'];
                 if (dStr == null) return false;
@@ -459,23 +461,26 @@ class _TeacherClassLogCreateScreenState
       setState(() {
         _isLoading = false;
         // Ensure rows exist
-        if (_teachingRows.isEmpty)
+        if (_teachingRows.isEmpty) {
           _teachingRows
               .add({'type': null, 'score': 'B', 'range': '', 'isOt': false});
-        if (_hwVocabRows.isEmpty)
+        }
+        if (_hwVocabRows.isEmpty) {
           _hwVocabRows.add({
             'type': 'VOCAB',
             'range': '',
             'isOt': false,
             'dueDate': _defaultDueDate
           });
-        if (_hwMainRows.isEmpty)
+        }
+        if (_hwMainRows.isEmpty) {
           _hwMainRows.add({
             'type': null,
             'range': '',
             'isOt': false,
             'dueDate': _defaultDueDate
           });
+        }
       });
     }
   }
@@ -569,7 +574,7 @@ class _TeacherClassLogCreateScreenState
           final count = assignment['wrongWordsCount'] ?? 30;
           assignments.add({
             if (assignment['id'] != null) 'id': assignment['id'],
-            'title': '🔥 오답 단어 복습 (${count}개)',
+            'title': '🔥 오답 단어 복습 ($count개)',
             'assignment_type': 'VOCAB_TEST',
             'due_date': dueDate.toIso8601String(),
             'related_vocab_book': null,
@@ -660,9 +665,10 @@ class _TeacherClassLogCreateScreenState
         context.pop();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
       setState(() => _isSaving = false);
     }
@@ -758,8 +764,9 @@ class _TeacherClassLogCreateScreenState
 
   // Helper: Check if a date corresponds to a "Regular Class" day
   bool _isRegularClass(String dateStr) {
-    if (_studentSchedule.isEmpty)
+    if (_studentSchedule.isEmpty) {
       return true; // Default to Regular if unknown? Or Makeup? Let's assume Regular to include everything if no schedule.
+    }
     try {
       final date = DateTime.parse(dateStr);
       // Weekday: 1=Mon, ..., 7=Sun

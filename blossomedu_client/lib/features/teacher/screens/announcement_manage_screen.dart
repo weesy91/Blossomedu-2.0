@@ -296,9 +296,9 @@ class _CreateAnnouncementDialogState extends State<_CreateAnnouncementDialog> {
                             child: Image.file(_imageFile!,
                                 fit: BoxFit.cover, width: double.infinity),
                           )
-                        : Column(
+                        : const Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               Icon(Icons.add_photo_alternate, size: 40),
                               SizedBox(height: 8),
                               Text('배너 이미지 업로드 (선택)',

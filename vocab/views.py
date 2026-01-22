@@ -142,18 +142,18 @@ def exam(request):
         if MonthlyTestResult.objects.filter(student=profile, created_at__year=now.year, created_at__month=now.month).exists():
             return HttpResponse(f"<script>alert('🚫 월말평가는 이번 달에 이미 응시하셨습니다.');window.location.href='/vocab/';</script>")
 
-    # 쿨타임 체크
+    # 쿨타임 체크 (3분)
     if is_challenge:
         if profile.last_failed_at:
             time_passed = timezone.now() - profile.last_failed_at
-            if time_passed < timedelta(minutes=5):
-                remaining = 5 - (time_passed.seconds // 60)
+            if time_passed < timedelta(minutes=3):
+                remaining = 3 - (time_passed.seconds // 60)
                 return HttpResponse(f"<script>alert('🔥 쿨타임 중입니다. ({remaining}분 남음)');window.location.href='/vocab/';</script>")
     elif is_wrong_mode:
         if profile.last_wrong_failed_at:
             time_passed = timezone.now() - profile.last_wrong_failed_at
-            if time_passed < timedelta(minutes=5):
-                remaining = 5 - (time_passed.seconds // 60)
+            if time_passed < timedelta(minutes=3):
+                remaining = 3 - (time_passed.seconds // 60)
                 return HttpResponse(f"<script>alert('🚨 오답모드 쿨타임 중입니다. ({remaining}분 남음)');window.location.href='/vocab/';</script>")
 
     raw_candidates = []

@@ -275,7 +275,7 @@ def update_score_on_change(sender, instance, **kwargs):
 
 
 # ==========================================
-# [4] 기록 제거시 5분 쿨타임 제거
+# [4] 기록 제거시 3분 쿨타임 제거
 # ==========================================
 @receiver(post_delete, sender=TestResult)
 def auto_reset_cooldown(sender, instance, **kwargs):
@@ -286,13 +286,13 @@ def auto_reset_cooldown(sender, instance, **kwargs):
     # if not hasattr(student, 'profile'): return (삭제)
     
     now = timezone.now()
-    five_mins_ago = now - timedelta(minutes=5)
+    three_mins_ago = now - timedelta(minutes=3)
 
     # 쿼리 시 student=profile 로 변경
     recent_challenge_fails = TestResult.objects.filter(
         student=profile,
         score__lt=27,
-        created_at__gte=five_mins_ago
+        created_at__gte=three_mins_ago
     ).exclude(test_range="오답집중")
 
     if not recent_challenge_fails.exists():

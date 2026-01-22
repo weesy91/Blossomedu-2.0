@@ -397,12 +397,12 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             const SizedBox(height: 16),
             InkWell(
               onTap: _showPasswordResetDialog,
-              child: InputDecorator(
-                decoration: const InputDecoration(
+              child: const InputDecorator(
+                decoration: InputDecoration(
                   labelText: '비밀번호 변경',
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
-                child: const Text('변경하지 않으려면 비워두세요',
+                child: Text('변경하지 않으려면 비워두세요',
                     style: TextStyle(color: Colors.grey)),
               ),
             ),
