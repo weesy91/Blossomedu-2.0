@@ -52,26 +52,60 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           assignmentCount++;
         }
       }
+
       // 3. Fetch Today's Classes
       final now = DateTime.now();
-      final dayCode = DateFormat('E').format(now); // Mon, Tue...
+      final dayCode = DateFormat('E').format(now);
       final students =
           await _academyService.getStudents(day: dayCode, scope: 'my');
 
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
       final todayClasses = <Map<String, dynamic>>[];
+
       for (var s in students) {
-        if (s['is_active'] == false) continue; // [NEW] Filter inactive
-        // s['class_times'] is a List of {day, start_time, subject...}
+        if (s['is_active'] == false) continue;
+        final tempSchedules = s['temp_schedules'] as List<dynamic>? ?? [];
+
+        // 1. Regular Classes
         if (s['class_times'] != null) {
           for (var t in s['class_times']) {
             if (t['day'] == dayCode) {
-              todayClasses.add({
-                'name': s['name'],
-                'subject': t['subject'] ?? '수업',
-                'time': t['start_time'] ?? '',
-                'type': t['type'] ?? 'EXTRA'
-              });
+              bool isCancelled = false;
+              for (var ts in tempSchedules) {
+                if (ts['original_date'] == dateStr &&
+                    ts['is_extra_class'] == false) {
+                  isCancelled = true;
+                  break;
+                }
+              }
+              if (!isCancelled) {
+                todayClasses.add({
+                  'name': s['name'],
+                  'subject': t['subject'] ?? '수업',
+                  'time': t['start_time'] ?? '',
+                  'type': t['type'] ?? 'EXTRA'
+                });
+              }
             }
+          }
+        }
+
+        // 2. Add Make-up/Moved Classes
+        for (var ts in tempSchedules) {
+          if (ts['new_date'] == dateStr) {
+            String startTime = ts['new_start_time'] ?? '';
+            if (startTime.length > 5) startTime = startTime.substring(0, 5);
+
+            final subjectCode = ts['subject'] ?? 'EXTRA';
+            final subjectLabel = _getSubjectLabel(subjectCode);
+            final isExtra = ts['is_extra_class'] == true;
+
+            todayClasses.add({
+              'name': s['name'],
+              'subject': '$subjectLabel ${isExtra ? "(보강)" : "(이동)"}',
+              'time': startTime,
+              'type': subjectCode
+            });
           }
         }
       }
@@ -247,6 +281,19 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         ),
       ),
     ); // Scaffold - BottomNav now handled by TeacherMainScaffold
+  }
+
+  String _getSubjectLabel(String code) {
+    switch (code) {
+      case 'SYNTAX':
+        return '구문';
+      case 'READING':
+        return '독해';
+      case 'GRAMMAR':
+        return '어법';
+      default:
+        return code;
+    }
   }
 
   Widget _buildStatCard(BuildContext context,
