@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:url_launcher/url_launcher.dart'; // NEW
 import '../../../core/constants.dart';
 import '../../../core/services/academy_service.dart';
 
@@ -247,6 +248,21 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
   }
 
+  /// [NEW] 강의 링크 열기
+  void _openLectureLink(String? url) async {
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('링크를 열 수 없습니다: $url')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -404,6 +420,65 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // [NEW] 강의 링크 섹션
+        if (_assignmentData!['lecture_links'] != null &&
+            (_assignmentData!['lecture_links'] as List).isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.play_circle_fill, color: Colors.blue.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      '강의 링크',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...(_assignmentData!['lecture_links'] as List).map((link) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () => _openLectureLink(link['link_url']),
+                      child: Row(
+                        children: [
+                          Icon(Icons.videocam,
+                              size: 20, color: Colors.blue.shade600),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${link['title']}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.blue.shade700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.open_in_new,
+                              size: 14, color: Colors.blue.shade400),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+        ],
         const Text(
           '인증샷 제출',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

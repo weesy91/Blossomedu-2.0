@@ -306,6 +306,21 @@ class AssignmentTask(models.Model):
     vocab_range_start = models.IntegerField(default=0, verbose_name="시작 Day")
     vocab_range_end = models.IntegerField(default=0, verbose_name="종료 Day")
 
+    # [NEW] 유형 A (교재 과제) 전용 필드
+    related_textbook = models.ForeignKey(
+        'Textbook',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="대상 교재"
+    )
+    textbook_range = models.CharField(
+        max_length=20, 
+        blank=True, 
+        verbose_name="교재 범위 (예: 1-3)",
+        help_text="시작강-끝강 형태로 입력"
+    )
+
     # 3. 상태 관리
     is_completed = models.BooleanField(default=False, verbose_name="완료 여부")
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name="완료 일시")

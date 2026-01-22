@@ -39,10 +39,41 @@ class AssignmentTaskSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.name', read_only=True)
     submission = AssignmentSubmissionSerializer(read_only=True)
     origin_log_subject = serializers.CharField(source='origin_log.subject', read_only=True)
+    lecture_links = serializers.SerializerMethodField()  # NEW: 강의 링크
 
     class Meta:
         model = AssignmentTask
         fields = '__all__'
+
+    def get_lecture_links(self, obj):
+        """교재 범위에 해당하는 강의 링크 반환"""
+        if not obj.related_textbook or not obj.textbook_range:
+            return []
+        
+        # Parse range (e.g., "1-3" or "5")
+        range_str = obj.textbook_range.strip()
+        try:
+            if '-' in range_str:
+                start, end = map(int, range_str.split('-'))
+            else:
+                start = end = int(range_str)
+        except ValueError:
+            return []
+        
+        # Get units within range
+        units = obj.related_textbook.units.filter(
+            unit_number__gte=start,
+            unit_number__lte=end
+        ).order_by('unit_number')
+        
+        return [
+            {
+                'unit_number': u.unit_number,
+                'link_url': u.link_url,
+                'title': f'{u.unit_number}강'
+            }
+            for u in units if u.link_url
+        ]
 
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
