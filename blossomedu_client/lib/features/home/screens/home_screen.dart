@@ -106,11 +106,16 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
+        // Check status
+        final wrongCount = r['wrong_count'] ?? 0;
+        final totalCount = score + wrongCount;
+        final threshold = totalCount > 0 ? totalCount * 0.9 : 0;
+
         // Status Logic
         String status = 'COMPLETED'; // Default
         if (hasPendingCorrection) {
           status = 'REVIEWING';
-        } else if (score < 90) {
+        } else if (score < threshold) {
           status = 'FAIL';
         } else {
           status = 'PASS';
@@ -650,7 +655,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(color: Colors.red, fontSize: 12))
             : null,
         trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-        onTap: isCompleted ? null : () => context.push('/assignment/$id'),
+        onTap: isCompleted
+            ? null
+            : () async {
+                await context.push('/assignment/$id');
+                _fetchData();
+              },
       ),
     );
   }

@@ -158,12 +158,17 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         if not hasattr(obj, 'temp_schedules'):
             return []
         qs = obj.temp_schedules.all()
-        if self._should_filter_by_teacher():
-            user = self.context.get('request').user
-            allowed_subjects = self._allowed_subjects_for_teacher(obj, user)
-            if not allowed_subjects:
-                return []
-            qs = qs.filter(subject__in=allowed_subjects)
+        
+        # [FIX] Relax filtering: Return ALL temp schedules for the student.
+        # Previously, if a teacher scheduled a make-up class for a subject they
+        # aren't the main teacher for (e.g. subbing), it wouldn't show up.
+        # if self._should_filter_by_teacher():
+        #     user = self.context.get('request').user
+        #     allowed_subjects = self._allowed_subjects_for_teacher(obj, user)
+        #     if not allowed_subjects:
+        #          return []
+        #     qs = qs.filter(subject__in=allowed_subjects)
+            
         # Return specific fields needed for planner
         return list(qs.values(
             'id', 'subject', 'is_extra_class', 'original_date', 

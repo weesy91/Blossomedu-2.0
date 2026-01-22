@@ -110,7 +110,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     }
     final target = _getTodayOffset();
     final maxOffset = position.maxScrollExtent;
-    final clamped = target.clamp(0.0, maxOffset) as double;
+    final clamped = target.clamp(0.0, maxOffset);
     if ((position.pixels - clamped).abs() < 0.5) {
       return;
     }
@@ -701,8 +701,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
               ),
             ),
             // Actions
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 _buildActionButton(Icons.edit_note, '일지', Colors.green,
                     () async {
@@ -734,18 +735,16 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                     _fetchData();
                   }
                 }),
-                const SizedBox(width: 8),
                 // [NEW] Make-up Class Button
                 _buildActionButton(Icons.access_time_filled,
                     canEditSchedule ? '이동' : '보강', Colors.orange, () {
                   if (canEditSchedule) {
-                    _showMakeUpEditDialog(student, tempSchedule!);
+                    _showMakeUpEditDialog(student, tempSchedule);
                   } else {
                     // Pass current date as potentially the "Original Date" for rescheduling
                     _showMakeUpDialog(student, _selectedDate);
                   }
                 }),
-                const SizedBox(width: 8),
                 // [NEW] Student Planner Button
                 _buildActionButton(Icons.calendar_month, '학생', Colors.indigo,
                     () async {
