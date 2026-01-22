@@ -364,6 +364,21 @@ class AcademyService {
     notifyDataChanged(); // [NEW]
   }
 
+  /// [NEW] 학생 비밀번호 재설정
+  Future<void> resetStudentPassword(int studentId, String newPassword) async {
+    final url = Uri.parse(
+        '${AppConfig.baseUrl}/core/api/v1/management/students/$studentId/reset_password/');
+    final headers = await _getHeaders();
+    final response = await http.post(
+      url,
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({'password': newPassword}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('비밀번호 재설정 실패: ${response.body}');
+    }
+  }
+
   // [NEW] Get Staff Detail
   Future<Map<String, dynamic>> getStaff(int id) async {
     final url =

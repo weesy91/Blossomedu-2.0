@@ -350,9 +350,27 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
         # Profile 삭제 시 User도 함께 삭제 (Cascade로 Profile도 자동 삭제됨)
         instance.user.delete()
 
+    @action(detail=True, methods=['post'])
+    def reset_password(self, request, pk=None):
+        """학생 비밀번호 재설정"""
+        student = self.get_object()
+        new_password = request.data.get('password')
+        
+        if not new_password:
+            return Response({'error': '비밀번호를 입력하세요'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(new_password) < 4:
+            return Response({'error': '비밀번호는 4자 이상이어야 합니다'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        student.user.set_password(new_password)
+        student.user.save()
+        
+        return Response({'message': '비밀번호가 재설정되었습니다'})
+
 class StaffManagementViewSet(viewsets.ModelViewSet):
     """
     강사 관리 API (전체 목록, 검색)
+
     """
     serializer_class = StaffProfileSerializer
     permission_classes = [permissions.IsAuthenticated]

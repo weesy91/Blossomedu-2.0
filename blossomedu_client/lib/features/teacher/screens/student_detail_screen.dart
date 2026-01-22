@@ -25,6 +25,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
   // Form Fields
   String _name = '';
+  String _username = ''; // [NEW]
   String _phone = '';
   String _momPhone = '';
   String _dadPhone = '';
@@ -92,6 +93,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
           // Init Form
           _name = studentData['name'] ?? '';
+          _username = studentData['username'] ?? ''; // [NEW]
           _phone = studentData['phone_number'] ?? '';
           _momPhone = studentData['parent_phone_mom'] ?? '';
           _dadPhone = studentData['parent_phone_dad'] ?? '';
@@ -228,6 +230,97 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
 
   // ... (existing methods: _findDayForClass, _save, _deleteStudent) - Removed placeholder
 
+  /// [NEW] 비밀번호 재설정 다이얼로그
+  void _showPasswordResetDialog() {
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('비밀번호 재설정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('학생: $_name',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('아이디: $_username',
+                style: TextStyle(color: Colors.grey.shade600)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '새 비밀번호',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '비밀번호 확인',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final password = passwordController.text;
+              final confirm = confirmController.text;
+
+              if (password.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('비밀번호를 입력하세요')),
+                );
+                return;
+              }
+              if (password != confirm) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('비밀번호가 일치하지 않습니다')),
+                );
+                return;
+              }
+              if (password.length < 4) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('비밀번호는 4자 이상이어야 합니다')),
+                );
+                return;
+              }
+
+              Navigator.pop(ctx);
+
+              // Call API
+              try {
+                await _academyService.resetStudentPassword(
+                    widget.studentId, password);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('비밀번호가 재설정되었습니다 ✅')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('비밀번호 재설정 실패: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -287,6 +380,52 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         key: _formKey,
         child: Column(
           children: [
+            // Account Info Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.account_circle, size: 20, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('계정 정보',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('아이디: ',
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                      Text(_username.isNotEmpty ? _username : '(없음)',
+                          style: const TextStyle(fontSize: 15)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _showPasswordResetDialog,
+                      icon: const Icon(Icons.lock_reset, size: 18),
+                      label: const Text('비밀번호 재설정'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange.shade700,
+                        side: BorderSide(color: Colors.orange.shade300),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             // Basic Info
             TextFormField(
               initialValue: _name,
