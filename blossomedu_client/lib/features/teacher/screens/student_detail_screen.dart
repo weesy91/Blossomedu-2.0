@@ -169,7 +169,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
         'extra_class': _extraClassId,
         'extra_class_category': _extraClassCategory,
         'start_date': _startDateStr, // [NEW]
-        'user': {'is_active': _isActive}
+        'user': {
+          'is_active': _isActive,
+          'username': _username
+        } // [NEW] username 변경 가능
       };
 
       await _academyService.updateStudent(widget.studentId, payload);
@@ -402,13 +405,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Text('아이디: ',
-                          style: TextStyle(fontWeight: FontWeight.w500)),
-                      Text(_username.isNotEmpty ? _username : '(없음)',
-                          style: const TextStyle(fontSize: 15)),
-                    ],
+                  TextFormField(
+                    initialValue: _username,
+                    decoration: const InputDecoration(
+                      labelText: '아이디 (로그인 ID)',
+                      hintText: '학생 전화번호 권장',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    onSaved: (v) => _username = v ?? '',
                   ),
                   const SizedBox(height: 12),
                   SizedBox(

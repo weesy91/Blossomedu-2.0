@@ -48,7 +48,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         return ret
 
 class StudentProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
+    username = serializers.CharField(source='user.username', required=False)  # [CHANGED] read_only 제거
     grade_display = serializers.CharField(source='current_grade_display', read_only=True)
     branch_name = serializers.CharField(source='branch.name', read_only=True)
     school_name = serializers.CharField(source='school.name', read_only=True)
@@ -77,14 +77,25 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(source='user.is_active', required=False) # [NEW]
 
     def update(self, instance, validated_data):
-        # Handle User update (is_active)
+        # Handle User update (is_active, username)
         user = instance.user
         user_data = validated_data.pop('user', {})
+        
+        # [NEW] Username 변경 처리
+        new_username = user_data.get('username')
+        if new_username and new_username != user.username:
+            from django.contrib.auth.models import User
+            if User.objects.filter(username=new_username).exclude(id=user.id).exists():
+                raise serializers.ValidationError({'username': '이미 사용 중인 아이디입니다.'})
+            user.username = new_username
+        
         if 'is_active' in user_data:
             user.is_active = user_data['is_active']
-            user.save()
+        
+        user.save()
             
         return super().update(instance, validated_data)
+
 
     def _should_filter_by_teacher(self):
         request = self.context.get('request')
