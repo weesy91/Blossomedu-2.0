@@ -274,13 +274,20 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
   void _openLectureLink(String? url) async {
     if (url == null || url.isEmpty) return;
     final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('링크를 열 수 없습니다: $url')),
-        );
+    if (uri != null) {
+      if (kIsWeb) {
+        // [FIX] Web often fails canLaunchUrl check, try launch directly
+        await launchUrl(uri);
+      } else {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('링크를 열 수 없습니다: $url')),
+            );
+          }
+        }
       }
     }
   }
@@ -351,9 +358,10 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          _assignmentData!['description'] ?? '',
-          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+          _assignmentData!['title'] ?? '제목 없음',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
+        // [FIX] Removed duplicate description (shown in bottom yellow box)
         const SizedBox(height: 24),
         const Divider(),
         const SizedBox(height: 24),
@@ -493,6 +501,17 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                 ),
                 const SizedBox(height: 12),
                 ...(_assignmentData!['lecture_links'] as List).map((link) {
+                  // [FIX] Prepend Book Title if available (e.g., from Task Title [Book])
+                  String displayTitle = link['title'] ?? '강의';
+                  final taskTitle = _assignmentData!['title'] ?? '';
+                  final bookMatch = RegExp(r'^\[(.*?)\]').firstMatch(taskTitle);
+                  if (bookMatch != null) {
+                    final bookName = bookMatch.group(1);
+                    if (bookName != null && bookName.isNotEmpty) {
+                      displayTitle = '[$bookName] $displayTitle';
+                    }
+                  }
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: InkWell(
@@ -502,12 +521,14 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
                           Icon(Icons.videocam,
                               size: 20, color: Colors.blue.shade600),
                           const SizedBox(width: 8),
-                          Text(
-                            '${link['title']}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.blue.shade700,
-                              decoration: TextDecoration.underline,
+                          Expanded(
+                            child: Text(
+                              displayTitle,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.blue.shade700,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 4),
