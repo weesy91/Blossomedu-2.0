@@ -251,6 +251,9 @@ class _WordTestScreenState extends State<WordTestScreen>
     _userAnswers.add(_answerController.text.trim());
     _answerController.clear();
 
+    // [FIX] Keep keyboard up immediately
+    _focusNode.requestFocus();
+
     // [NEW] 시험 모드에서 1초 딜레이 추가 (엔터 연타 겹치기 방지)
     if (widget.testMode == 'test' && _currentIndex < _words.length - 1) {
       setState(() => _isProcessing = true);
@@ -260,7 +263,7 @@ class _WordTestScreenState extends State<WordTestScreen>
     }
 
     _nextCard();
-    _focusNode.requestFocus(); // [UX] Keep focus for next card
+    _focusNode.requestFocus(); // Ensure focus for next card
   }
 
   void _nextCard() {
@@ -862,6 +865,7 @@ class _WordTestScreenState extends State<WordTestScreen>
         ),
         const SizedBox(height: 40),
         TextField(
+          key: const ValueKey('test_input_field'), // [FIX] Stable Key
           controller: _answerController,
           focusNode: _focusNode,
           // autofocus removed to prevent Flutter Web focus conflict
