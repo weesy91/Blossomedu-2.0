@@ -21,6 +21,7 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
   late TextEditingController _publisherController;
   late TextEditingController _levelController;
   late TextEditingController _totalUnitsController; // [NEW]
+  late TextEditingController _otLinkController; // [NEW] OT Link
   late String _selectedCategory;
   bool _hasOt = false; // [NEW]
 
@@ -41,8 +42,19 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
     _selectedCategory = data?['category'] ?? widget.initialCategory ?? 'SYNTAX';
     _hasOt = data?['has_ot'] ?? false; // [NEW]
 
+    _otLinkController = TextEditingController(); // Top-level init
+
     if (data != null && data['units'] != null) {
-      _units = List<Map<String, dynamic>>.from(data['units']);
+      final uList = List<Map<String, dynamic>>.from(data['units']);
+      // [NEW] Extract OT (Unit 0)
+      final otIndex = uList.indexWhere((u) => u['unit_number'] == 0);
+      if (otIndex != -1) {
+        _otLinkController.text = uList[otIndex]['link_url'] ?? '';
+        uList.removeAt(otIndex);
+        // Force sync has_ot if unit exists
+        if (!_hasOt) _hasOt = true;
+      }
+      _units = uList;
     } else {
       // Initialize with 0 units or maybe 1?
     }
@@ -54,6 +66,7 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
     _publisherController.dispose();
     _levelController.dispose();
     _totalUnitsController.dispose(); // [NEW]
+    _otLinkController.dispose(); // [NEW]
     super.dispose();
   }
 
@@ -91,7 +104,10 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
         'total_units': int.tryParse(_totalUnitsController.text) ??
             _units.length, // [NEW] Prefer explicit input
         'has_ot': _hasOt, // [NEW]
-        'units': _units,
+        'units': [
+          if (_hasOt) {'unit_number': 0, 'link_url': _otLinkController.text},
+          ..._units
+        ],
       };
 
       if (widget.initialData != null) {
@@ -243,6 +259,19 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
                     value: _hasOt,
                     onChanged: (val) => setState(() => _hasOt = val),
                   ),
+                  if (_hasOt)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
+                      child: TextFormField(
+                        controller: _otLinkController,
+                        decoration: const InputDecoration(
+                          labelText: 'OT 강의 링크 (URL)',
+                          prefixIcon: Icon(Icons.link),
+                          helperText: 'OT는 0강으로 저장됩니다.',
+                        ),
+                      ),
+                    ),
                   const Divider(height: 32),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
