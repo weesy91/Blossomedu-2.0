@@ -35,6 +35,7 @@ import '../features/academy/screens/textbook_create_screen.dart';
 import '../features/student/screens/student_book_selection_screen.dart';
 import '../features/student/screens/study_record_screen.dart';
 import '../features/student/screens/student_assignment_history_screen.dart'; // [NEW]
+import '../features/student/screens/makeup_task_screen.dart'; // [NEW]
 import '../features/messaging/screens/chat_list_screen.dart'; // [NEW]
 import '../features/messaging/screens/chat_room_screen.dart'; // [NEW]
 
@@ -316,6 +317,10 @@ final router = GoRouter(
     GoRoute(
       path: '/student/assignments/history',
       builder: (context, state) => const StudentAssignmentHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/student/makeup-tasks', // [NEW] Makeup Tasks
+      builder: (context, state) => const MakeupTaskScreen(),
     ),
     // [NEW] Messaging Routes
     GoRoute(
