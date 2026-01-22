@@ -349,12 +349,7 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
           _assignmentData!['title'] ?? '제목 없음',
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
-        Text(
-          _assignmentData!['title'] ?? '제목 없음',
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        // [FIX] Removed duplicate description (shown in bottom yellow box)
+        // [FIX] Removed duplicate description/title
         const SizedBox(height: 24),
         const Divider(),
         const SizedBox(height: 24),
