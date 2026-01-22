@@ -556,7 +556,11 @@ class _TeacherClassLogCreateScreenState
             'description': row['description'] ?? '',
             // [FIX] Support Textbook Links
             'related_textbook': row['bookId'],
-            'textbook_range': row['range'] ?? '',
+            // [FIX] Save startUnit/endUnit as textbook_range if available
+            'textbook_range':
+                (row['startUnit'] != null && row['endUnit'] != null)
+                    ? '${row['startUnit']}-${row['endUnit']}'
+                    : (row['range'] ?? ''),
           });
         }
       }
@@ -2122,7 +2126,19 @@ class _TeacherClassLogCreateScreenState
         'publisher': publisher,
         'bookId': bookId,
         'description': asm['description'] ?? '',
+        // [FIX] Parse startUnit/endUnit from textbook_range (e.g., '5-10' or title)
+        'startUnit': null,
+        'endUnit': null,
       };
+
+      // [FIX] Parse unit range from title or textbook_range
+      final textbookRange = asm['textbook_range']?.toString() ?? '';
+      final unitMatch = RegExp(r'(\d+)\s*[-~]\s*(\d+)')
+          .firstMatch(textbookRange.isNotEmpty ? textbookRange : range);
+      if (unitMatch != null) {
+        rowData['startUnit'] = int.tryParse(unitMatch.group(1) ?? '');
+        rowData['endUnit'] = int.tryParse(unitMatch.group(2) ?? '');
+      }
 
       if (rowData['type'] == null && bookId != null) {
         final book = _findBook(bookId);
