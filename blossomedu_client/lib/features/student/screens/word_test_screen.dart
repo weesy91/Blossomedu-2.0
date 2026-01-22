@@ -575,31 +575,8 @@ class _WordTestScreenState extends State<WordTestScreen>
                 },
               ),
 
-            // Bottom Button
-            if (!isStudy)
-              Container(
-                padding: const EdgeInsets.fromLTRB(
-                    24, 0, 24, 24), // Removed top padding as timer is above
-                decoration: const BoxDecoration(color: Colors.white),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _submitAnswer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: Text(
-                        _currentIndex == _words.length - 1 ? '완료' : '다음',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.white)),
-                  ),
-                ),
-              )
+            // Bottom Button (Removed as per request - using keyboard action instead)
+            // if (!isStudy) ...
           ],
         ),
       ),
@@ -869,11 +846,18 @@ class _WordTestScreenState extends State<WordTestScreen>
           controller: _answerController,
           focusNode: _focusNode,
           // autofocus removed to prevent Flutter Web focus conflict
+          textInputAction:
+              TextInputAction.go, // [UX] Show "Go" button on keyboard
           onSubmitted: (_) => _submitAnswer(),
           decoration: InputDecoration(
             hintText: isWordQuestion ? '뜻을 입력하세요' : '영어 단어를 입력하세요',
             filled: true,
             fillColor: Colors.white,
+            // [UX] Add suffix icon as a replacement for the "Next" button
+            suffixIcon: IconButton(
+              onPressed: _submitAnswer,
+              icon: const Icon(Icons.send_rounded, color: AppColors.primary),
+            ),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(color: Colors.grey.shade300)),
