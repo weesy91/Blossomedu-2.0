@@ -202,7 +202,7 @@ class _WordTestScreenState extends State<WordTestScreen>
         builder: (_) => AlertDialog(
               title: const Text('🚫 응시 제한 (Penalty)'),
               content: const Text(
-                  '이전 시험 불합격으로 인해 5분간 재시험이 불가능합니다.\n오답 노트를 복습하고 오세요!'),
+                  '이전 시험 불합격으로 인해 3분간 재시험이 불가능합니다.\n오답 노트를 복습하고 오세요!'),
               actions: [
                 TextButton(
                     onPressed: () {
@@ -536,6 +536,7 @@ class _WordTestScreenState extends State<WordTestScreen>
 
             Expanded(
               child: SingleChildScrollView(
+                reverse: true, // [FIX] 모바일 키보드 올라올 때 문제가 보이도록
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
