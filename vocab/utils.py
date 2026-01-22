@@ -110,16 +110,28 @@ def crawl_daum_dic(query):
         english = query
         korean_candidates = []
         
+        # [FIX] data[0][0][1]에 오타 수정된 원문이 있을 수 있음
+        try:
+            if data and data[0] and data[0][0] and len(data[0][0]) > 1:
+                corrected_source = data[0][0][1]
+                if corrected_source and isinstance(corrected_source, str) and corrected_source.lower() != query.lower():
+                    english = corrected_source.strip()
+                    print(f"--- [DEBUG] 오타 수정됨(Source): {query} -> {english} ---")
+        except Exception:
+            pass
+
         # 1. 사전 데이터(data[1])가 있으면 거기서 여러 뜻을 가져옵니다.
         if len(data) > 1 and data[1]:
             # [FIX] data[1][0][0]에 올바른 base word가 있음 (예: "disappointe" -> "disappoint")
-            try:
-                correct_word = data[1][0][0]
-                if correct_word and isinstance(correct_word, str):
-                    english = correct_word.strip()
-                    print(f"--- [DEBUG] 오타 수정됨: {query} -> {english} ---")
-            except (IndexError, TypeError):
-                pass  # 형식이 다르면 원본 유지
+            # 위에서 이미 찾았으면 패스, 못 찾았으면 여기서 시도
+            if english == query:
+                try:
+                    correct_word = data[1][0][0]
+                    if correct_word and isinstance(correct_word, str):
+                        english = correct_word.strip()
+                        print(f"--- [DEBUG] 오타 수정됨(Dict): {query} -> {english} ---")
+                except (IndexError, TypeError):
+                    pass
             
             for part_of_speech in data[1]:
                 meanings = part_of_speech[1]

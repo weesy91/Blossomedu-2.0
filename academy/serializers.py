@@ -380,6 +380,9 @@ class ClassLogSerializer(serializers.ModelSerializer):
                     related_vocab_book_id=related_vocab_book_id,
                     vocab_range_start=vocab_range_start or 0,
                     vocab_range_end=vocab_range_end or 0,
+                    # [FIX] Support Textbook Links in update (same as create)
+                    related_textbook_id=item.get('related_textbook'),
+                    textbook_range=item.get('textbook_range', ''),
                     is_cumulative=item.get('is_cumulative', False),
                 )
 

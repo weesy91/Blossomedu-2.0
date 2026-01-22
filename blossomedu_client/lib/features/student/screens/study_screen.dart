@@ -1715,7 +1715,7 @@ class _StudyScreenState extends State<StudyScreen>
                               'questionType': isWordToMeaning
                                   ? 'word_to_meaning'
                                   : 'meaning_to_word',
-                            });
+                            }).then((_) => _loadData());
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: testMode == 'test'
