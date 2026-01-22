@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:url_launcher/url_launcher.dart'; // NEW
+// [FIX] Use custom safe launcher for web/mobile compatibility
+import '../../../core/utils/launcher/launcher.dart';
 import '../../../core/constants.dart';
 import '../../../core/services/academy_service.dart';
 
@@ -270,24 +271,16 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
   }
 
-  /// [NEW] 강의 링크 열기
-  void _openLectureLink(String? url) async {
+  /// [NEW] 강의 링크 열기 (Safe Launcher 사용)
+  void _openLectureLink(String? url) {
     if (url == null || url.isEmpty) return;
-    final uri = Uri.tryParse(url);
-    if (uri != null) {
-      if (kIsWeb) {
-        // [FIX] Web often fails canLaunchUrl check, try launch directly
-        await launchUrl(uri);
-      } else {
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('링크를 열 수 없습니다: $url')),
-            );
-          }
-        }
+    try {
+      safeLaunch(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('링크를 열 수 없습니다: $url\\n$e')),
+        );
       }
     }
   }
