@@ -1,6 +1,12 @@
 """
 중복 과제 정리 명령어
 
+중복 기준:
+- 같은 학생 (student)
+- 같은 마감일 (due_date)
+- 같은/유사한 과제명 (title)
+- 하나는 제출됨, 다른 하나는 미제출
+
 사용법:
   python manage.py cleanup_duplicate_assignments          # Dry-run (삭제 없이 확인만)
   python manage.py cleanup_duplicate_assignments --apply  # 실제 삭제 실행
@@ -8,6 +14,7 @@
 
 from django.core.management.base import BaseCommand
 from django.db.models import Count
+from django.db.models.functions import TruncDate
 from academy.models import AssignmentTask, AssignmentSubmission
 
 
@@ -35,16 +42,18 @@ class Command(BaseCommand):
                 '⚠️  DRY-RUN 모드입니다. 실제 삭제하려면 --apply 옵션을 추가하세요.\n'
             ))
 
-        # 1. 같은 origin_log와 title을 가진 과제 그룹 찾기
-        queryset = AssignmentTask.objects.exclude(origin_log__isnull=True)
+        # 1. 같은 student + due_date(날짜만) + title을 가진 과제 그룹 찾기
+        queryset = AssignmentTask.objects.annotate(
+            due_date_only=TruncDate('due_date')
+        )
         
         if student_id:
             queryset = queryset.filter(student_id=student_id)
 
-        # origin_log + title 기준으로 그룹화하여 2개 이상인 경우 찾기
+        # student + due_date + title 기준으로 그룹화하여 2개 이상인 경우 찾기
         duplicates = (
             queryset
-            .values('origin_log_id', 'title')
+            .values('student_id', 'due_date_only', 'title')
             .annotate(count=Count('id'))
             .filter(count__gt=1)
         )
@@ -54,17 +63,32 @@ class Command(BaseCommand):
         deleted_ids = []
 
         for dup in duplicates:
-            origin_log_id = dup['origin_log_id']
+            student_id_dup = dup['student_id']
+            due_date_only = dup['due_date_only']
             title = dup['title']
             count = dup['count']
 
             # 같은 그룹의 과제들 조회
-            tasks = AssignmentTask.objects.filter(
-                origin_log_id=origin_log_id,
+            tasks = AssignmentTask.objects.annotate(
+                due_date_only=TruncDate('due_date')
+            ).filter(
+                student_id=student_id_dup,
+                due_date_only=due_date_only,
                 title=title
             ).order_by('id')
 
-            self.stdout.write(f"\n📋 중복 그룹 발견: origin_log={origin_log_id}, title=\"{title[:50]}\" ({count}개)")
+            # 제출된 과제가 있는지 확인
+            submitted_exists = any(
+                AssignmentSubmission.objects.filter(task=t).exists() for t in tasks
+            )
+            
+            # 제출된 과제가 없으면 이 그룹은 "진짜 중복"이 아닐 수 있음 (둘 다 미제출)
+            # 하지만 사용자가 원하는 건 제출된 것과 미제출된 것이 공존하는 경우
+            if not submitted_exists:
+                continue  # 둘 다 미제출이면 스킵 (의도적으로 만든 과제일 수 있음)
+
+            student_name = tasks.first().student.name if tasks.exists() else "Unknown"
+            self.stdout.write(f"\n📋 중복 그룹 발견: {student_name}, {due_date_only}, \"{title[:40]}...\" ({count}개)")
 
             submitted_task = None
             completed_task = None
@@ -75,7 +99,7 @@ class Command(BaseCommand):
                 is_completed = task.is_completed
 
                 status_str = "✅ 제출됨" if has_submission else ("🟢 완료" if is_completed else "❌ 미제출")
-                self.stdout.write(f"   - ID {task.id}: {status_str} (due: {task.due_date.date()})")
+                self.stdout.write(f"   - ID {task.id}: {status_str}")
 
                 if has_submission:
                     submitted_task = task
@@ -84,40 +108,26 @@ class Command(BaseCommand):
                 else:
                     tasks_to_delete.append(task)
 
-            # 삭제 대상 결정
-            # 제출된 과제가 있으면: 나머지 미제출 모두 삭제
-            # 완료된 과제만 있으면: 미제출 삭제
-            # 모두 미제출이면: 가장 오래된 것만 유지
-            keep_task = submitted_task or completed_task
-
-            if keep_task:
-                # 제출/완료된 과제가 있으니 미제출만 삭제 대상
-                pass
-            else:
-                # 모두 미제출인 경우, 가장 오래된 것만 유지
+            # 제출된 과제가 있으면, 미제출 중복만 삭제
+            if submitted_task or completed_task:
                 if tasks_to_delete:
-                    keep_task = tasks_to_delete[0]  # ID가 가장 작은 것
-                    tasks_to_delete = tasks_to_delete[1:]
+                    self.stdout.write(self.style.WARNING(
+                        f"   🗑️  삭제 대상: {[t.id for t in tasks_to_delete]}"
+                    ))
+                    total_to_delete += len(tasks_to_delete)
+                    deleted_ids.extend([t.id for t in tasks_to_delete])
 
-            if tasks_to_delete:
-                self.stdout.write(self.style.WARNING(
-                    f"   🗑️  삭제 대상: {[t.id for t in tasks_to_delete]}"
-                ))
-                total_to_delete += len(tasks_to_delete)
-                deleted_ids.extend([t.id for t in tasks_to_delete])
-
-                if apply_changes:
-                    for task in tasks_to_delete:
-                        task.delete()
-                        self.stdout.write(self.style.SUCCESS(f"   ✅ ID {task.id} 삭제됨"))
+                    if apply_changes:
+                        for task in tasks_to_delete:
+                            task.delete()
+                            self.stdout.write(self.style.SUCCESS(f"   ✅ ID {task.id} 삭제됨"))
 
             total_duplicates += count
 
         # 결과 요약
         self.stdout.write('\n' + '=' * 50)
         self.stdout.write(f'📊 결과 요약:')
-        self.stdout.write(f'   중복 그룹 수: {len(duplicates)}')
-        self.stdout.write(f'   총 중복 과제 수: {total_duplicates}')
+        self.stdout.write(f'   중복 그룹 수: {len([d for d in duplicates])}')
         self.stdout.write(f'   삭제 대상 수: {total_to_delete}')
 
         if apply_changes:
