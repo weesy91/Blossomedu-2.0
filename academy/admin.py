@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 # core 모델들도 import 해야 합니다!
 from core.models import StudentProfile, ClassTime 
-from .models import TemporarySchedule, Attendance, Textbook, TextbookUnit, ClassLog, ClassLogEntry
+from .models import TemporarySchedule, Attendance, Textbook, TextbookUnit, ClassLog, ClassLogEntry, AssignmentTask, AssignmentSubmission
 
 User = get_user_model()
 
@@ -162,3 +162,48 @@ class ClassLogAdmin(admin.ModelAdmin):
     def response_add(self, request, obj, post_url_continue=None):
         return force_close_popup(request, obj, post_url_continue) or \
                super().response_add(request, obj, post_url_continue)
+
+# ==========================================
+# [5] 과제 관리 (AssignmentTask)
+# ==========================================
+@admin.register(AssignmentTask)
+class AssignmentTaskAdmin(admin.ModelAdmin):
+    list_display = ('id', 'get_student_name', 'title', 'due_date', 'assignment_type', 'get_submission_status', 'is_completed')
+    list_filter = ('assignment_type', 'is_completed', 'student__branch', 'due_date')
+    search_fields = ('student__name', 'title', 'description')
+    ordering = ('-due_date', '-id')
+    date_hierarchy = 'due_date'
+    
+    raw_id_fields = ('student', 'origin_log')
+    
+    def get_student_name(self, obj):
+        return obj.student.name
+    get_student_name.short_description = "학생"
+    
+    def get_submission_status(self, obj):
+        """제출 상태 표시"""
+        try:
+            submission = obj.submission
+            if submission.status == 'APPROVED':
+                return "✅ 승인됨"
+            elif submission.status == 'REJECTED':
+                return "❌ 반려"
+            else:
+                return "🟡 검토중"
+        except AssignmentSubmission.DoesNotExist:
+            return "⬜ 미제출"
+    get_submission_status.short_description = "제출 상태"
+    
+    actions = ['delete_unsubmitted_duplicates']
+    
+    def delete_unsubmitted_duplicates(self, request, queryset):
+        """미제출 과제 삭제 (중복 정리용)"""
+        deleted = 0
+        for task in queryset:
+            # 제출이 없고 완료되지 않은 과제만 삭제
+            has_submission = AssignmentSubmission.objects.filter(task=task).exists()
+            if not has_submission and not task.is_completed:
+                task.delete()
+                deleted += 1
+        self.message_user(request, f"{deleted}개의 미제출 과제가 삭제되었습니다.")
+    delete_unsubmitted_duplicates.short_description = "🗑️ 선택한 미제출 과제 삭제"

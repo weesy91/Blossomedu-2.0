@@ -61,6 +61,7 @@ class Command(BaseCommand):
         total_duplicates = 0
         total_to_delete = 0
         deleted_ids = []
+        skipped_groups = 0
 
         for dup in duplicates:
             student_id_dup = dup['student_id']
@@ -78,16 +79,27 @@ class Command(BaseCommand):
             ).order_by('id')
 
             # 제출된 과제가 있는지 확인
-            submitted_exists = any(
-                AssignmentSubmission.objects.filter(task=t).exists() for t in tasks
-            )
+            submitted_count = 0
+            unsubmitted_count = 0
+            for t in tasks:
+                if AssignmentSubmission.objects.filter(task=t).exists():
+                    submitted_count += 1
+                else:
+                    unsubmitted_count += 1
             
-            # 제출된 과제가 없으면 이 그룹은 "진짜 중복"이 아닐 수 있음 (둘 다 미제출)
-            # 하지만 사용자가 원하는 건 제출된 것과 미제출된 것이 공존하는 경우
-            if not submitted_exists:
-                continue  # 둘 다 미제출이면 스킵 (의도적으로 만든 과제일 수 있음)
-
             student_name = tasks.first().student.name if tasks.exists() else "Unknown"
+            
+            # 둘 다 미제출이면 스킵 (의도적으로 만든 과제일 수 있음)
+            if submitted_count == 0:
+                skipped_groups += 1
+                self.stdout.write(self.style.NOTICE(
+                    f"\n⏭️  스킵: {student_name}, {due_date_only}, \"{title[:40]}...\" "
+                    f"({count}개 모두 미제출 - 수동 확인 필요)"
+                ))
+                for task in tasks:
+                    self.stdout.write(f"   - ID {task.id}: ❌ 미제출")
+                continue
+
             self.stdout.write(f"\n📋 중복 그룹 발견: {student_name}, {due_date_only}, \"{title[:40]}...\" ({count}개)")
 
             submitted_task = None
