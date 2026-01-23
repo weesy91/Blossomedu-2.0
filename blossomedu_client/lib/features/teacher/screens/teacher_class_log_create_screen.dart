@@ -1764,7 +1764,7 @@ class _TeacherClassLogCreateScreenState
           children: [
             // Book Dropdown
             Expanded(
-              flex: hasUnits ? 4 : 6,
+              flex: hasUnits ? 4 : 4,
               child: DropdownButtonFormField<int>(
                 isExpanded: true,
                 isDense: true,
@@ -1885,7 +1885,7 @@ class _TeacherClassLogCreateScreenState
             ] else if (!isOtSelected) ...[
               // Text Input
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: TextField(
                   style: const TextStyle(fontSize: 13),
                   decoration: decoration.copyWith(
