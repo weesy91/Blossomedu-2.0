@@ -26,7 +26,9 @@ class WordTestResultScreen extends StatefulWidget {
 class _WordTestResultScreenState extends State<WordTestResultScreen> {
   final Set<int> _requestedIndices = {};
 
-  bool get isPassed => widget.score >= 27; // 27/30 (90%) Cut-line
+  // [FIX] Dynamic 90% threshold based on total questions
+  bool get isPassed =>
+      widget.total > 0 ? (widget.score / widget.total) >= 0.9 : false;
 
   bool _isServerCorrect(Map<String, String> item) {
     final raw = item['is_correct'];
