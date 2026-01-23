@@ -106,59 +106,59 @@ def crawl_daum_dic(query):
         
         data = response.json()
         
+        # [DEBUG] 전체 응답 구조 로깅
+        print(f"--- [DEBUG] Full API Response Length: {len(data)} ---")
+        for i, item in enumerate(data):
+            if item is not None:
+                print(f"--- [DEBUG] data[{i}]: {str(item)[:200]} ---")
+        
         # [FIX] 기본값은 검색어 그대로, 사전 데이터에서 올바른 단어 추출 시도
         english = query
         korean_candidates = []
         
-        # [FIX] data[0][0][1]에 오타 수정된 원문이 있을 수 있음
+        # [PRIORITY 1] data[7]에 오타 수정 제안이 있을 수 있음 ("Did you mean...")
+        # 이걸 먼저 체크해야 함!
         try:
-            if data and data[0] and data[0][0] and len(data[0][0]) > 1:
-                corrected_source = data[0][0][1]
-                if corrected_source and isinstance(corrected_source, str) and corrected_source.lower() != query.lower():
-                    english = corrected_source.strip()
-                    print(f"--- [DEBUG] 오타 수정됨(Source): {query} -> {english} ---")
-        except Exception:
-            pass
+            if len(data) > 7 and data[7] and len(data[7]) > 0:
+                spell_corrected = data[7][0]
+                if spell_corrected and isinstance(spell_corrected, str):
+                    # HTML 태그 제거
+                    spell_corrected = spell_corrected.replace('<b>', '').replace('</b>', '').replace('<i>', '').replace('</i>', '')
+                    if spell_corrected.strip().lower() != query.lower():
+                        english = spell_corrected.strip()
+                        print(f"--- [DEBUG] 오타 수정됨(SpellCheck data[7]): {query} -> {english} ---")
+        except Exception as e:
+            print(f"--- [DEBUG] data[7] 체크 실패: {e} ---")
+        
+        # [PRIORITY 2] data[0][0][1]에 오타 수정된 원문이 있을 수 있음
+        if english == query:
+            try:
+                if data and data[0] and data[0][0] and len(data[0][0]) > 1:
+                    corrected_source = data[0][0][1]
+                    if corrected_source and isinstance(corrected_source, str) and corrected_source.lower() != query.lower():
+                        english = corrected_source.strip()
+                        print(f"--- [DEBUG] 오타 수정됨(Source data[0][0][1]): {query} -> {english} ---")
+            except Exception:
+                pass
 
         # 1. 사전 데이터(data[1])가 있으면 거기서 여러 뜻을 가져옵니다.
         if len(data) > 1 and data[1]:
-            # [FIX] data[1][0][0]에 올바른 base word가 있음 (예: "disappointe" -> "disappoint")
-            if english == query:
-                try:
-                    correct_word = data[1][0][0]
-                    if correct_word and isinstance(correct_word, str):
-                        english = correct_word.strip()
-                        print(f"--- [DEBUG] 오타 수정됨(Dict): {query} -> {english} ---")
-                except (IndexError, TypeError):
-                    pass
-            
             for part_of_speech in data[1]:
-                meanings = part_of_speech[1]
-                # 각 품사별로 상위 3개 뜻만
-                for m in meanings[:3]:
-                    if m not in korean_candidates:
-                        korean_candidates.append(m)
+                if isinstance(part_of_speech, list) and len(part_of_speech) > 1:
+                    meanings = part_of_speech[1]
+                    if isinstance(meanings, list):
+                        # 각 품사별로 상위 3개 뜻만
+                        for m in meanings[:3]:
+                            if m and m not in korean_candidates:
+                                korean_candidates.append(m)
             
             # 리스트를 콤마로 연결 (최대 5~6개 정도만 표시 추천)
             korean = ", ".join(korean_candidates[:6])
             
         # 2. 사전 데이터가 없으면 기본 번역(data[0])을 사용
         else:
-            # [FIX] data[7]에 오타 수정 제안이 있을 수 있음 ("Did you mean...")
-            try:
-                if len(data) > 7 and data[7] and data[7][0]:
-                    spell_corrected = data[7][0] # e.g. "disappoint"
-                    if spell_corrected and isinstance(spell_corrected, str):
-                         # HTML 태그 제거 (가끔 <b>...</b> 포함될 수 있음)
-                        spell_corrected = spell_corrected.replace('<b>', '').replace('</b>', '').replace('<i>', '').replace('</i>', '')
-                        english = spell_corrected.strip()
-                        print(f"--- [DEBUG] 오타 수정됨(SpellCheck): {query} -> {english} ---")
-            except Exception:
-                pass
-
             if data and data[0] and data[0][0]:
                 korean = data[0][0][0]
-
             else:
                 return None
 
