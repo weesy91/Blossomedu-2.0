@@ -39,8 +39,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
   List<dynamic> _teachers = [];
   List<dynamic> _classes = [];
   List<dynamic> _bookedSyntaxSlots = [];
-  List<dynamic> _assignments = [];
-  List<dynamic> _classLogs = []; // [NEW]
 
   int? _syntaxTeacherId;
   int? _readingTeacherId;
@@ -66,30 +64,19 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
     try {
       final studentFuture = _academyService.getStudent(widget.studentId);
       final metadataFuture = _academyService.getRegistrationMetadata();
-      final assignmentFuture =
-          _academyService.getAssignments(studentId: widget.studentId);
-      final logFuture =
-          _academyService.getClassLogs(studentId: widget.studentId); // [NEW]
 
-      final results = await Future.wait(
-          [studentFuture, metadataFuture, assignmentFuture, logFuture]);
+      final results = await Future.wait([studentFuture, metadataFuture]);
 
       final studentData = results[0] as Map<String, dynamic>;
       final metadata = results[1] as Map<String, dynamic>;
-      final assignments = results[2] as List<dynamic>;
-      final logs = results[3] as List<dynamic>;
 
       if (mounted) {
         setState(() {
-          // _student = studentData; // Removed unused field
-
           _branches = metadata['branches'] ?? [];
           _schools = metadata['schools'] ?? [];
           _teachers = metadata['teachers'] ?? [];
           _classes = metadata['classes'] ?? [];
           _bookedSyntaxSlots = metadata['booked_syntax_slots'] ?? [];
-          _assignments = assignments;
-          _classLogs = logs; // [NEW]
 
           // Init Form
           _name = studentData['name'] ?? '';
@@ -333,45 +320,21 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
       );
     }
 
-    return DefaultTabController(
-      length: 5,
-      initialIndex: widget.initialTabIndex,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(_name.isNotEmpty ? _name : '학생 정보'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: _isLoading ? null : _deleteStudent,
-            ),
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _isSaving ? null : _save,
-            ),
-          ],
-          bottom: const TabBar(
-            isScrollable: true,
-            labelColor: Colors.indigo,
-            unselectedLabelColor: Colors.grey,
-            tabs: [
-              Tab(text: '기본 정보'),
-              Tab(text: '수업일지'),
-              Tab(text: '과제'),
-              Tab(text: '단어'),
-              Tab(text: '성적'),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_name.isNotEmpty ? _name : '학생 정보'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _isLoading ? null : _deleteStudent,
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildInfoTab(),
-            _buildClassLogTab(),
-            _buildAssignmentTab(),
-            _buildVocabTab(),
-            _buildGradeTab(),
-          ],
-        ),
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _isSaving ? null : _save,
+          ),
+        ],
       ),
+      body: _buildInfoTab(),
     );
   }
 
@@ -565,158 +528,6 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Tab 2: 수업일지 목록
-  Widget _buildClassLogTab() {
-    if (_classLogs.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.edit_off, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text('작성된 수업일지가 없습니다',
-                style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('새 수업일지 작성'),
-              onPressed: () {
-                // [FIX] Auto-detect subject based on today's day
-                String subjectParam = 'SYNTAX';
-                final todayCode =
-                    DateFormat('E', 'en_US').format(DateTime.now());
-                if (_selectedReadingDay == todayCode) {
-                  subjectParam = 'READING';
-                }
-                // If matched Syntax day, prioritize Syntax (or overwrite)
-                if (_selectedSyntaxDay == todayCode) {
-                  subjectParam = 'SYNTAX';
-                }
-
-                context.push(
-                    '/teacher/class_log/create?studentId=${widget.studentId}&studentName=$_name&subject=$subjectParam');
-              },
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _classLogs.length,
-      itemBuilder: (context, index) {
-        final log = _classLogs[index];
-        final date = log['date'] ?? '날짜 미상';
-        final teacherName = log['teacher_name'] ?? '선생님';
-        final subject = log['subject'] ?? '과목';
-        final note = log['note'] ?? '';
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ExpansionTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.indigo.shade50,
-              child: Text(subject.isNotEmpty ? subject[0] : '?',
-                  style: TextStyle(
-                      color: Colors.indigo.shade700,
-                      fontWeight: FontWeight.bold)),
-            ),
-            title: Text('$date - $subject ($teacherName)'),
-            subtitle: Text(note, maxLines: 1, overflow: TextOverflow.ellipsis),
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('수업 내용',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(note.isEmpty ? '내용 없음' : note),
-                    const SizedBox(height: 12),
-                    if (log['assignment_title'] != null) ...[
-                      const Text('배정된 과제',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text(
-                          '${log['assignment_title']} (~${log['hw_due_date'] ?? ''})'),
-                    ]
-                  ],
-                ),
-              )
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// Tab 3: 과제 현황
-  Widget _buildAssignmentTab() {
-    if (_assignments.isEmpty) {
-      return Center(
-        child:
-            Text('등록된 과제가 없습니다', style: TextStyle(color: Colors.grey.shade600)),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _assignments.length,
-      itemBuilder: (context, index) {
-        final item = _assignments[index];
-        final title = item['title'] ?? '과제';
-        final dueDate = item['due_date'] ?? '';
-        final isCompleted = item['is_completed'] == true;
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: Icon(
-              isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: isCompleted ? Colors.green : Colors.grey,
-            ),
-            title: Text(title,
-                style: TextStyle(
-                    decoration:
-                        isCompleted ? TextDecoration.lineThrough : null)),
-            subtitle: Text('마감일: $dueDate'),
-            trailing:
-                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Tab 4: 단어 학습 기록
-  Widget _buildVocabTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.text_fields, size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text('단어 학습 기록 기능 준비 중',
-              style: TextStyle(color: Colors.grey.shade600)),
-        ],
-      ),
-    );
-  }
-
-  /// Tab 5: 성적 및 모의고사
-  Widget _buildGradeTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.bar_chart, size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text('성적 기록 기능 준비 중', style: TextStyle(color: Colors.grey.shade600)),
-        ],
       ),
     );
   }
