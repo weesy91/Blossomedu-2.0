@@ -43,9 +43,12 @@ class VocabViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = WordBook.objects.all().order_by('-created_at')
+        # [FIX] Exclude internal publishers (SYSTEM, 개인단어장) for all users
+        qs = WordBook.objects.exclude(
+            publisher__name__in=['SYSTEM', '개인단어장']
+        ).order_by('-created_at')
         
-        # 1. 선생님/관리자: 전체 조회
+        # 1. 선생님/관리자: 전체 조회 (시스템/개인 단어장 제외)
         if user.is_staff or user.is_superuser:
             return qs
         
