@@ -1090,7 +1090,7 @@ class _TeacherClassLogCreateScreenState
                     color: Colors.green,
                     rows: _teachingRows,
                     allowedTypes: null,
-                    rangeHint: '진도 입력',
+                    rangeHint: '진도 입력 (예: 1-3)',
                     hasScore: true,
                     onAdd: () => setState(() => _teachingRows.add({
                           'type': null,
@@ -1891,7 +1891,7 @@ class _TeacherClassLogCreateScreenState
                   decoration: decoration.copyWith(
                       hintText: rangeHint,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 13)),
+                          horizontal: 10, vertical: 17)),
                   controller: TextEditingController(text: row['range'])
                     ..selection = TextSelection.fromPosition(
                         TextPosition(offset: row['range'].length)),
