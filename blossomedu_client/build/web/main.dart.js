@@ -9958,7 +9958,7 @@ _.d=d
 _.e=e},
 afc:function afc(){},
 by2(){var s=t.c,r=A.a([],s),q=t.N,p=new A.aXS().$0()
-return new A.O_(new A.e6(),r,A.b1(q),p,new A.cn(B.b4,$.ac()),A.a([],s),A.a([],s),A.a([],s),A.b1(t.S),A.a([],s),A.a1(["VOCAB","\ub2e8\uc5b4","SYNTAX","\uad6c\ubb38","READING","\ub3c5\ud574","GRAMMAR","\uc5b4\ubc95","SCHOOL_EXAM","\ub0b4\uc2e0"],q,q),[])},
+return new A.O_(new A.e6(),r,A.b1(q),p,new A.cn(B.b4,$.ac()),A.a([],s),A.a([],s),A.a([],s),A.b1(t.S),A.a([],s),A.a1(["VOCAB","\ub2e8\uc5b4","SYNTAX","\uad6c\ubb38","READING","\ub3c5\ud574","GRAMMAR","\uc5b4\ubc95","LISTENING","\ub4e3\uae30","SCHOOL_EXAM","\ub0b4\uc2e0"],q,q),[])},
 vM:function vM(a,b,c,d,e){var _=this
 _.c=a
 _.d=b
@@ -57300,10 +57300,10 @@ $0(){return this.a.ayO(this.b)},
 $S:0}
 A.vZ.prototype={
 U(){var s=t.s
-return new A.add(A.a(["SYNTAX","READING","GRAMMAR","SCHOOL_EXAM"],s),A.a(["\uad6c\ubb38","\ub3c5\ud574","\uc5b4\ubc95","\ub0b4\uc2e0"],s),null,null)}}
+return new A.add(A.a(["SYNTAX","READING","GRAMMAR","LISTENING","SCHOOL_EXAM"],s),A.a(["\uad6c\ubb38","\ub3c5\ud574","\uc5b4\ubc95","\ub4e3\uae30","\ub0b4\uc2e0"],s),null,null)}}
 A.add.prototype={
 ab(){this.al()
-this.d=A.aBO(null,0,4,this)},
+this.d=A.aBO(null,0,5,this)},
 m(){var s=this.d
 s===$&&A.b()
 s.m()
@@ -63775,7 +63775,7 @@ case 6:case 1:return A.t(q,r)
 case 2:return A.r(o,r)}})
 return A.u($async$w1,r)},
 aoZ(a){if(a!=null)return a
-return A.a(["VOCAB","SYNTAX","READING","GRAMMAR","SCHOOL_EXAM"],t.s)},
+return A.a(["VOCAB","SYNTAX","READING","GRAMMAR","LISTENING","SCHOOL_EXAM"],t.s)},
 NP(a){var s,r,q,p,o,n=this,m=n.r,l=A.a3(m).i("b7<1>"),k=A.V(new A.b7(m,new A.aY8(a),l),!0,l.i("x.E"))
 l=t.N
 s=A.H(l,l)

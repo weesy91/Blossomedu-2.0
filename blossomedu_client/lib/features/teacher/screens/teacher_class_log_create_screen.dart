@@ -72,6 +72,7 @@ class _TeacherClassLogCreateScreenState
     'SYNTAX': '구문',
     'READING': '독해',
     'GRAMMAR': '어법',
+    'LISTENING': '듣기',
     'SCHOOL_EXAM': '내신',
   };
 
@@ -696,7 +697,14 @@ class _TeacherClassLogCreateScreenState
 
   List<String> _getAvailableTypes({List<String>? allowedTypes}) {
     if (allowedTypes != null) return allowedTypes;
-    return ['VOCAB', 'SYNTAX', 'READING', 'GRAMMAR', 'SCHOOL_EXAM'];
+    return [
+      'VOCAB',
+      'SYNTAX',
+      'READING',
+      'GRAMMAR',
+      'LISTENING',
+      'SCHOOL_EXAM'
+    ];
   }
 
   List<String> _getPublishersForType(String type) {

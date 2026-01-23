@@ -118,6 +118,7 @@ class Textbook(models.Model):
         ('SYNTAX',  '📘 구문 교재'),
         ('READING', '📙 독해 교재'),
         ('GRAMMAR', '📗 어법 교재'),
+        ('LISTENING', '🎧 듣기 교재'),
         ('SCHOOL_EXAM', '🏫 내신 대비'),
     ]
 
