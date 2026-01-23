@@ -242,10 +242,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         onTap: () {
                           // Navigate to class log creation with student info
                           final studentId = cls['studentId'];
-                          final studentName = cls['name'];
                           final subjectType = cls['type'] ?? 'SYNTAX';
+                          // [FIX] Match planner format - include date
+                          final dateStr =
+                              DateFormat('yyyy-MM-dd').format(DateTime.now());
                           context.push(
-                            '/teacher/class_log/create?studentId=$studentId&studentName=$studentName&subject=$subjectType',
+                            '/teacher/class_log/create?studentId=$studentId&date=$dateStr&subject=$subjectType',
                           );
                         },
                       );
