@@ -534,6 +534,13 @@ class _TeacherClassLogCreateScreenState
 
       // Process Main Rows
       for (var row in _hwMainRows) {
+        // [FIX] Skip completed/submitted assignments - they are preserved by backend
+        final hasSubmission = row['submissionStatus'] != null;
+        final isCompleted = row['isCompleted'] == true;
+        if (hasSubmission || isCompleted) {
+          continue; // Don't re-add, backend keeps these
+        }
+
         if (row['bookId'] != null) {
           String title = '';
           if (row['startUnit'] != null && row['endUnit'] != null) {
@@ -570,6 +577,13 @@ class _TeacherClassLogCreateScreenState
 
       // [REDESIGNED] 과제 목록 방식으로 처리
       for (var assignment in _vocabAssignments) {
+        // [FIX] Skip completed/submitted assignments - they are preserved by backend
+        final hasSubmission = assignment['submissionStatus'] != null;
+        final isCompleted = assignment['isCompleted'] == true;
+        if (hasSubmission || isCompleted) {
+          continue; // Don't re-add, backend keeps these
+        }
+
         final isWrongWords = assignment['isWrongWords'] ?? false;
         final dueDate = assignment['dueDate'] as DateTime? ?? _defaultDueDate;
 
@@ -846,6 +860,182 @@ class _TeacherClassLogCreateScreenState
     };
   }
 
+  /// [NEW] Parse numeric range from various formats
+  /// Supports: "1-10", "1~10", "Day 1-10", "1강-3강", "1", etc.
+  (int?, int?) _parseRange(String? rangeStr) {
+    if (rangeStr == null || rangeStr.isEmpty) return (null, null);
+
+    // Extract all numbers from the string
+    final numbers = RegExp(r'\d+')
+        .allMatches(rangeStr)
+        .map((m) => int.parse(m.group(0)!))
+        .toList();
+
+    if (numbers.isEmpty) return (null, null);
+    if (numbers.length == 1) return (numbers[0], numbers[0]);
+
+    // Take first and last numbers as range
+    return (numbers.first, numbers.last);
+  }
+
+  /// [NEW] Merge assignment ranges by book for convenient auto-fill
+  /// Groups assignments by bookId/title and merges ranges to min~max
+  Map<String, Map<String, dynamic>> _mergeAssignmentRanges(
+      List<dynamic> assignments) {
+    // Structure: { 'bookKey': { 'bookId': id, 'title': title, 'type': type, 'minRange': min, 'maxRange': max } }
+    final Map<String, Map<String, dynamic>> merged = {};
+
+    for (final asm in assignments) {
+      if (asm is! Map) continue;
+
+      // Try to identify book by related_textbook, related_vocab_book, or title
+      final textbookId = asm['related_textbook'];
+      final vocabBookId = asm['related_vocab_book'];
+      final title = asm['title']?.toString() ?? '';
+
+      String bookKey;
+      String bookType;
+      int? bookId;
+      String displayTitle = title;
+
+      if (vocabBookId != null) {
+        bookKey = 'VOCAB_$vocabBookId';
+        bookType = 'VOCAB';
+        bookId = vocabBookId;
+        // Extract book title from assignment title (e.g., "[단어장명] Day 1-10" → "단어장명")
+        final match = RegExp(r'\[(.+?)\]').firstMatch(title);
+        if (match != null) displayTitle = match.group(1) ?? title;
+      } else if (textbookId != null) {
+        bookKey = 'TEXTBOOK_$textbookId';
+        bookType = 'TEXTBOOK';
+        bookId = textbookId;
+        final match = RegExp(r'\[(.+?)\]').firstMatch(title);
+        if (match != null) displayTitle = match.group(1) ?? title;
+      } else {
+        // Fallback: use title as key
+        bookKey = 'TITLE_$title';
+        bookType = 'UNKNOWN';
+        displayTitle = title;
+      }
+
+      // Parse the range from title or dedicated fields
+      int? rangeStart, rangeEnd;
+
+      // First try vocab_range fields
+      if (asm['vocab_range_start'] != null && asm['vocab_range_end'] != null) {
+        rangeStart = asm['vocab_range_start'];
+        rangeEnd = asm['vocab_range_end'];
+      } else if (asm['textbook_range'] != null) {
+        final parsed = _parseRange(asm['textbook_range'].toString());
+        rangeStart = parsed.$1;
+        rangeEnd = parsed.$2;
+      } else {
+        // Parse from title
+        final parsed = _parseRange(title);
+        rangeStart = parsed.$1;
+        rangeEnd = parsed.$2;
+      }
+
+      if (rangeStart == null || rangeEnd == null) continue;
+
+      // Merge into existing or create new entry
+      if (merged.containsKey(bookKey)) {
+        final existing = merged[bookKey]!;
+        final existingMin = existing['minRange'] as int? ?? rangeStart;
+        final existingMax = existing['maxRange'] as int? ?? rangeEnd;
+        existing['minRange'] =
+            rangeStart < existingMin ? rangeStart : existingMin;
+        existing['maxRange'] = rangeEnd > existingMax ? rangeEnd : existingMax;
+      } else {
+        merged[bookKey] = {
+          'bookId': bookId,
+          'title': displayTitle,
+          'type': bookType,
+          'minRange': rangeStart,
+          'maxRange': rangeEnd,
+        };
+      }
+    }
+
+    return merged;
+  }
+
+  /// [NEW] Load merged past assignments into form fields
+  void _loadMergedAssignmentsToForm() {
+    if (_prevMyLog == null) return;
+
+    final assignments = _prevMyLog!['assignments'] as List?;
+    if (assignments == null || assignments.isEmpty) return;
+
+    final merged = _mergeAssignmentRanges(assignments);
+    if (merged.isEmpty) return;
+
+    // Separate by type: VOCAB → _vocabAssignments, TEXTBOOK → _hwMainRows
+    for (final entry in merged.entries) {
+      final data = entry.value;
+      final bookId = data['bookId'];
+      final minR = data['minRange'];
+      final maxR = data['maxRange'];
+      final type = data['type'];
+      final rangeStr = minR == maxR ? '$minR' : '$minR-$maxR';
+
+      if (type == 'VOCAB' && bookId != null) {
+        // Add to vocab assignments
+        _vocabAssignments.add({
+          'isWrongWords': false,
+          'dueDate': _defaultDueDate,
+          'publisher': null,
+          'bookId': bookId,
+          'range': rangeStr,
+        });
+      } else if (bookId != null) {
+        // Add to main homework rows
+        // Find the book to get its type
+        final book = _findBook(bookId);
+        _hwMainRows.add({
+          'type': book?['type'],
+          'publisher': book?['publisher'],
+          'bookId': bookId,
+          'range': rangeStr,
+          'startUnit': minR,
+          'endUnit': maxR,
+          'dueDate': _defaultDueDate,
+          'isOt': false,
+        });
+      }
+    }
+
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📋 ${merged.length}개 과제 범위를 불러왔습니다'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  /// [NEW] Build summary text of merged ranges for display
+  String _buildMergedRangesSummary() {
+    if (_prevMyLog == null) return '';
+
+    final assignments = _prevMyLog!['assignments'] as List?;
+    if (assignments == null || assignments.isEmpty) return '';
+
+    final merged = _mergeAssignmentRanges(assignments);
+    if (merged.isEmpty) return '';
+
+    final parts = merged.values.map((data) {
+      final title = data['title'] ?? '과제';
+      final minR = data['minRange'];
+      final maxR = data['maxRange'];
+      final rangeStr = minR == maxR ? '$minR' : '$minR-$maxR';
+      return '$title $rangeStr';
+    }).toList();
+
+    return parts.join(', ');
+  }
+
   @override // Lines 1675-1680 usually correspond to end of State class or build methods. Assumed end of class.
   Widget build(BuildContext context) {
     final isSyntax = widget.subject == 'SYNTAX';
@@ -1101,7 +1291,56 @@ class _TeacherClassLogCreateScreenState
             content: '', // Use child instead
             icon: Icons.history,
             color: Colors.blue,
-            child: _buildPastAssignmentsList(), // [NEW] Render Aggregated List
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPastAssignmentsList(), // [NEW] Render Aggregated List
+                // [NEW] Merged Range Summary
+                if (_buildMergedRangesSummary().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.summarize,
+                            size: 16, color: Colors.amber),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '📋 합산 범위: ${_buildMergedRangesSummary()}',
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // [NEW] Load Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _loadMergedAssignmentsToForm,
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('범위 불러오기'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           )
         else
           _buildInfoCard(
