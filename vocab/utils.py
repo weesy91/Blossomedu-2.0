@@ -123,7 +123,6 @@ def crawl_daum_dic(query):
         # 1. 사전 데이터(data[1])가 있으면 거기서 여러 뜻을 가져옵니다.
         if len(data) > 1 and data[1]:
             # [FIX] data[1][0][0]에 올바른 base word가 있음 (예: "disappointe" -> "disappoint")
-            # 위에서 이미 찾았으면 패스, 못 찾았으면 여기서 시도
             if english == query:
                 try:
                     correct_word = data[1][0][0]
@@ -145,8 +144,21 @@ def crawl_daum_dic(query):
             
         # 2. 사전 데이터가 없으면 기본 번역(data[0])을 사용
         else:
+            # [FIX] data[7]에 오타 수정 제안이 있을 수 있음 ("Did you mean...")
+            try:
+                if len(data) > 7 and data[7] and data[7][0]:
+                    spell_corrected = data[7][0] # e.g. "disappoint"
+                    if spell_corrected and isinstance(spell_corrected, str):
+                         # HTML 태그 제거 (가끔 <b>...</b> 포함될 수 있음)
+                        spell_corrected = spell_corrected.replace('<b>', '').replace('</b>', '').replace('<i>', '').replace('</i>', '')
+                        english = spell_corrected.strip()
+                        print(f"--- [DEBUG] 오타 수정됨(SpellCheck): {query} -> {english} ---")
+            except Exception:
+                pass
+
             if data and data[0] and data[0][0]:
                 korean = data[0][0][0]
+
             else:
                 return None
 

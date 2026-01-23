@@ -101,6 +101,8 @@ class VocabViewSet(viewsets.ModelViewSet):
              branch_filter & school_filter & grade_filter
         ).exclude(
             subscribers__student=profile # 이미 추가한 것 제외
+        ).exclude(
+            publisher__name__in=['SYSTEM', '개인단어장'] # [NEW] 시스템/개인 단어장 제외
         ).order_by('-created_at')
         
         serializer = self.get_serializer(qs, many=True)
