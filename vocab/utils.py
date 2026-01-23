@@ -83,9 +83,25 @@ def crawl_daum_dic(query):
     """
     [업그레이드] 구글 번역 API (다의어 지원)
     - dt=['t', 'bd'] 파라미터를 통해 기본 번역 + 사전 정보(여러 뜻)를 함께 요청합니다.
-    - [FIX] 오타 검색 시 올바른 단어 형태로 반환 (data[1][0][0] 사용)
+    - [FIX] 오타 검색 시 spellchecker로 먼저 교정 후 API 호출
     """
     print(f"--- [DEBUG] 구글 번역 API 요청(다의어): {query} ---")
+    
+    # [NEW] 스펠체크로 오타 교정 시도
+    corrected_query = query
+    try:
+        from spellchecker import SpellChecker
+        spell = SpellChecker()
+        # 단어가 사전에 없으면 가장 가까운 단어로 교정
+        if query.lower() not in spell:
+            correction = spell.correction(query.lower())
+            if correction and correction != query.lower():
+                corrected_query = correction
+                print(f"--- [DEBUG] 스펠체크 교정: {query} -> {corrected_query} ---")
+    except ImportError:
+        print("--- [DEBUG] spellchecker 라이브러리 없음, 오타 교정 건너뜀 ---")
+    except Exception as e:
+        print(f"--- [DEBUG] 스펠체크 실패: {e} ---")
     try:
         url = "https://translate.googleapis.com/translate_a/single"
         
@@ -95,7 +111,7 @@ def crawl_daum_dic(query):
             "sl": "en",
             "tl": "ko",
             "dt": ["t", "bd"], 
-            "q": query
+            "q": corrected_query  # [FIX] 교정된 쿼리로 API 호출
         }
         
         response = requests.get(url, params=params, timeout=5)
@@ -106,14 +122,8 @@ def crawl_daum_dic(query):
         
         data = response.json()
         
-        # [DEBUG] 전체 응답 구조 로깅
-        print(f"--- [DEBUG] Full API Response Length: {len(data)} ---")
-        for i, item in enumerate(data):
-            if item is not None:
-                print(f"--- [DEBUG] data[{i}]: {str(item)[:200]} ---")
-        
-        # [FIX] 기본값은 검색어 그대로, 사전 데이터에서 올바른 단어 추출 시도
-        english = query
+        # [FIX] 기본값은 교정된 검색어, 사전 데이터에서 올바른 단어 추출 시도
+        english = corrected_query
         korean_candidates = []
         
         # [PRIORITY 1] data[7]에 오타 수정 제안이 있을 수 있음 ("Did you mean...")
