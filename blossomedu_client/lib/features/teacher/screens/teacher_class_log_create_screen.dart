@@ -1891,7 +1891,7 @@ class _TeacherClassLogCreateScreenState
                   decoration: decoration.copyWith(
                       hintText: rangeHint,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 15.5)),
+                          horizontal: 10, vertical: 15.2)),
                   controller: TextEditingController(text: row['range'])
                     ..selection = TextSelection.fromPosition(
                         TextPosition(offset: row['range'].length)),
