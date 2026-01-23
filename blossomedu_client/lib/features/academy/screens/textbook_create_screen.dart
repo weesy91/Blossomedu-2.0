@@ -189,6 +189,7 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
       'SYNTAX': '구문',
       'READING': '독해',
       'GRAMMAR': '어법',
+      'LISTENING': '듣기',
       'SCHOOL_EXAM': '내신'
     };
 

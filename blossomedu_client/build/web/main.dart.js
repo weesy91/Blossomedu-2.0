@@ -57198,7 +57198,7 @@ break
 case 7:case 1:return A.t(q,r)
 case 2:return A.r(o,r)}})
 return A.u($async$zz,r)},
-E(a){var s,r,q=this,p=null,o=t.N,n=A.a1(["SYNTAX","\uad6c\ubb38","READING","\ub3c5\ud574","GRAMMAR","\uc5b4\ubc95","SCHOOL_EXAM","\ub0b4\uc2e0"],o,o),m=A.o(q.a.c==null?"\uad50\uc7ac \ub4f1\ub85d":"\uad50\uc7ac \uc218\uc815",p,p,p,p,p,p,p,p),l=t.p,k=A.a([],l)
+E(a){var s,r,q=this,p=null,o=t.N,n=A.a1(["SYNTAX","\uad6c\ubb38","READING","\ub3c5\ud574","GRAMMAR","\uc5b4\ubc95","LISTENING","\ub4e3\uae30","SCHOOL_EXAM","\ub0b4\uc2e0"],o,o),m=A.o(q.a.c==null?"\uad50\uc7ac \ub4f1\ub85d":"\uad50\uc7ac \uc218\uc815",p,p,p,p,p,p,p,p),l=t.p,k=A.a([],l)
 if(q.a.c!=null)k.push(A.cE(p,p,p,B.a6E,p,p,q.gamX(q),p,p,p,p))
 m=A.di(k,!0,p,p,p,p,p,m)
 if(q.at)o=B.aQ
