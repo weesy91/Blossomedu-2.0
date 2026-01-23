@@ -80,6 +80,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               }
               if (!isCancelled) {
                 todayClasses.add({
+                  'studentId': s['id'], // [NEW] for navigation
                   'name': s['name'],
                   'subject': t['subject'] ?? '수업',
                   'time': t['start_time'] ?? '',
@@ -101,6 +102,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             final isExtra = ts['is_extra_class'] == true;
 
             todayClasses.add({
+              'studentId': s['id'], // [NEW] for navigation
               'name': s['name'],
               'subject': '$subjectLabel ${isExtra ? "(보강)" : "(이동)"}',
               'time': startTime,
@@ -233,7 +235,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                           color = Colors.green;
                       }
                       return _buildClassCard(
-                          cls['name'], cls['subject'], cls['time'], color);
+                        name: cls['name'],
+                        subject: cls['subject'],
+                        time: cls['time'],
+                        color: color,
+                        onTap: () {
+                          // Navigate to class log creation with student info
+                          final studentId = cls['studentId'];
+                          final studentName = cls['name'];
+                          final subjectType = cls['type'] ?? 'SYNTAX';
+                          context.push(
+                            '/teacher/class_log/create?studentId=$studentId&studentName=$studentName&subject=$subjectType',
+                          );
+                        },
+                      );
                     }),
                   // Placeholder for 'add class' removed as it's auto-synced
                 ],
@@ -351,52 +366,65 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     );
   }
 
-  Widget _buildClassCard(
-      String name, String subject, String time, Color color) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 12,
-                backgroundColor: color.withOpacity(0.2),
-                child: Text(name[0],
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: color,
-                        fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 8),
-              Text(name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14)),
-            ],
-          ),
-          const Spacer(),
-          Text(subject,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.access_time, size: 14, color: Colors.grey.shade700),
-              const SizedBox(width: 4),
-              Text(time,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-            ],
-          ),
-        ],
+  Widget _buildClassCard({
+    required String name,
+    required String subject,
+    required String time,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: color.withOpacity(0.2),
+                  child: Text(name[0],
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: color,
+                          fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(subject,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: Colors.grey.shade700),
+                const SizedBox(width: 4),
+                Text(time,
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
