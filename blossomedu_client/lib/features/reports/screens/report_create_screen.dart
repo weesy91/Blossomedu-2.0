@@ -6,6 +6,23 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants.dart';
+import 'package:fl_chart/fl_chart.dart';
+
+// Helper Function for Subject Name
+String _getSubjectName(String code) {
+  switch (code) {
+    case 'SYNTAX':
+      return '1:1 구문수업';
+    case 'READING':
+      return '독해수업';
+    case 'GRAMMAR':
+      return '어법수업';
+    case 'LISTENING':
+      return '듣기수업';
+    default:
+      return code;
+  }
+}
 
 class ReportCreateScreen extends StatefulWidget {
   final Map<String, dynamic> student;
@@ -233,20 +250,12 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 2. Summary Cards
-        Row(
-          children: [
-            _buildSummaryCard(
-                '출석률', '${stats['attendance_rate'].round()}%', Colors.blue),
-            const SizedBox(width: 8),
-            _buildSummaryCard(
-                '과제 수행',
-                '${stats['assignment_completed']}/${stats['assignment_count']}',
-                Colors.green),
-            const SizedBox(width: 8),
-            _buildSummaryCard('단어 평균', '${stats['vocab_avg']}', Colors.orange),
-          ],
-        ),
+        // 2. Summary (Pie Chart & Stats)
+        _buildSummarySection(stats),
+        const SizedBox(height: 24),
+
+        // 2.5 Vocab Chart
+        if (vocab.isNotEmpty) _buildVocabChart(vocab),
         const SizedBox(height: 24),
 
         // 3. Comment Input
@@ -255,7 +264,7 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: _commentController,
-          maxLines: 3,
+          maxLines: 4,
           decoration: const InputDecoration(
             hintText: '이번 달 학습 태도나 성취도에 대해 작성해주세요.',
             border: OutlineInputBorder(),
@@ -263,52 +272,124 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
         ),
         const SizedBox(height: 24),
 
-        // 4. Details (Scrollable List)
-        _buildSectionHeader('단어 시험 (${vocab.length}회)'),
-        ...vocab.map((v) => ListTile(
+        // 4. Details
+        _buildSectionHeader('단어 시험 (${vocab.length}회) - 클릭하여 상세 확인'),
+        ...vocab.map((v) => ExpansionTile(
               title: Text(v['book__title'] ?? '단어장'),
-              trailing: Text('${v['score']} / ${v['total_count'] ?? 0}'),
-              visualDensity: VisualDensity.compact,
+              trailing: Text('${v['score']} / ${v['total_count'] ?? 0}점',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              children: [
+                ListTile(
+                  title: Text('시험 범위: ${v['test_range'] ?? '전체'}'),
+                  subtitle: Text('틀린 개수: ${v['wrong_count']}개'),
+                )
+              ],
             )),
 
         _buildSectionHeader('과제 내역 (${assignments.length}건)'),
-        ...assignments.map((a) => ListTile(
-              title: Text(a['title']),
-              trailing: Icon(
+        ...assignments.map((a) => ExpansionTile(
+              leading: Icon(
                 a['is_completed'] ? Icons.check_circle : Icons.cancel,
                 color: a['is_completed'] ? Colors.green : Colors.red,
-                size: 20,
               ),
-              visualDensity: VisualDensity.compact,
+              title: Text(a['title']),
+              subtitle: Text(a['status'] ?? '-'),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (a['feedback'] != null &&
+                          a['feedback'].toString().isNotEmpty)
+                        Text('👨‍🏫 피드백: ${a['feedback']}',
+                            style: TextStyle(color: Colors.blue.shade800)),
+                      if (a['due_date'] != null)
+                        Text(
+                            '마감일: ${a['due_date'].toString().substring(0, 10)}',
+                            style: const TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                )
+              ],
             )),
 
         _buildSectionHeader('수업 일지 (${logs.length}건)'),
         ...logs.map((l) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 6)
+                ],
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${l['date']} ${l['subject']}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 6),
-                  Text(l['comment'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 14, height: 1.4)), // [FIX] Full text
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                            color: Colors.indigo.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4)),
+                        child: Text(
+                            _getSubjectName(l['subject_code'] ?? l['subject']),
+                            style: const TextStyle(
+                                color: Colors.indigo,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('${l['date']}',
+                          style: const TextStyle(
+                              color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 진도
+                  if (l['details'] != null &&
+                      (l['details'] as List).isNotEmpty) ...[
+                    const Text('📚 진도 및 학습 내용',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                    ...(l['details'] as List).map((d) => Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 4),
+                          child: Text('• $d'),
+                        )),
+                    const SizedBox(height: 8),
+                  ],
+                  // 과제
+                  if (l['homeworks'] != null &&
+                      (l['homeworks'] as List).isNotEmpty) ...[
+                    const Text('📝 배부된 과제',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                    ...(l['homeworks'] as List).map((h) => Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 4),
+                          child: Text('• $h'),
+                        )),
+                    const SizedBox(height: 8),
+                  ],
+                  // 코멘트
                   if (l['teacher_comment'] != null &&
                       l['teacher_comment'].toString().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text('👨‍🏫 ${l['teacher_comment']}',
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.blue.shade700)),
-                    ),
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Text(l['teacher_comment'],
+                          style: const TextStyle(fontSize: 14)),
+                    )
+                  else if (l['comment'] != null)
+                    Text(l['comment'], style: const TextStyle(fontSize: 14)),
                 ],
               ),
             )),
@@ -316,24 +397,97 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, Color color) {
+  Widget _buildSummarySection(Map<String, dynamic> stats) {
+    return Row(
+      children: [
+        _buildStatCard('출석률', '${stats['attendance_rate'].round()}%',
+            Icons.calendar_today, Colors.blue),
+        const SizedBox(width: 12),
+        _buildStatCard(
+            '과제 수행',
+            '${stats['assignment_completed']}/${stats['assignment_count']}',
+            Icons.assignment_turned_in,
+            Colors.green),
+        const SizedBox(width: 12),
+        _buildStatCard(
+            '단어 평균', '${stats['vocab_avg']}', Icons.translate, Colors.orange),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4))
+          ],
+          border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Column(
           children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
             Text(value,
                 style: TextStyle(
                     fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-            const SizedBox(height: 4),
             Text(title,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVocabChart(List vocab) {
+    List<FlSpot> spots = [];
+    for (int i = 0; i < vocab.length; i++) {
+      spots.add(FlSpot(i.toDouble(), (vocab[i]['score'] ?? 0).toDouble()));
+    }
+
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('📈 단어 점수 추이',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 16),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: Colors.grey.shade200)),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: Colors.orange,
+                    barWidth: 3,
+                    dotData: const FlDotData(show: true),
+                    belowBarData: BarAreaData(
+                        show: true, color: Colors.orange.withOpacity(0.1)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

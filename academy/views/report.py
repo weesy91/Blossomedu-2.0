@@ -91,26 +91,70 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             date__range=[start, end]
         ).values('date', 'status', 'check_in_time')
         
-        # (2) 단어 시험 (점수만)
-        # Note: TestResult is in vocab app, import needed or string ref?
-        # Imported 'from academy.models import TestResult'? No, TestResult is in vocab.models.
+        # (2) 단어 시험 (상세 정보 추가)
         from vocab.models import TestResult
         vocab_tests = TestResult.objects.filter(
             student_id=student_id,
             created_at__date__range=[start, end]
-        ).select_related('book').values('created_at', 'score', 'total_count', 'book__title')
+        ).select_related('book').values(
+            'created_at', 'score', 'total_count', 'wrong_count', 
+            'book__title', 'test_range'
+        )
 
-        # (3) 과제
-        assignments = AssignmentTask.objects.filter(
+        # (3) 과제 (피드백 포함)
+        # AssignmentTask -> Submission (OneToOne)
+        assignments_qs = AssignmentTask.objects.filter(
             student_id=student_id,
             due_date__date__range=[start, end]
-        ).values('title', 'due_date', 'is_completed', 'assignment_type')
+        ).select_related('submission', 'related_textbook', 'related_vocab_book')
+        
+        assignments = []
+        for a in assignments_qs:
+            feedback = ''
+            status = '미제출'
+            if hasattr(a, 'submission'):
+                feedback = a.submission.teacher_comment
+                status = a.submission.get_status_display()
+            elif a.is_completed:
+                status = '완료'
+            
+            assignments.append({
+                'title': a.title,
+                'due_date': a.due_date,
+                'is_completed': a.is_completed,
+                'assignment_type': a.get_assignment_type_display(),
+                'status': status,
+                'feedback': feedback,
+            })
 
-        # (4) 수업 일지 (코멘트)
-        logs = ClassLog.objects.filter(
+        # (4) 수업 일지 (진도 및 숙제 포함)
+        logs_qs = ClassLog.objects.filter(
             student_id=student_id,
             date__range=[start, end]
-        ).values('date', 'subject', 'comment', 'teacher_comment')
+        ).prefetch_related('entries', 'entries__textbook', 'entries__wordbook', 'generated_assignments')
+        
+        logs = []
+        for l in logs_qs:
+            # Entries (진도)
+            details = []
+            for e in l.entries.all():
+                book_name = e.textbook.title if e.textbook else (e.wordbook.title if e.wordbook else '기타')
+                details.append(f"{book_name} ({e.progress_range}) - {e.score or '-'}")
+            
+            # Homeworks
+            homeworks = [t.title for t in l.generated_assignments.all()]
+            
+            logs.append({
+                'date': l.date,
+                'subject': l.get_subject_display(), # '구문' -> '1:1 구문수업' logic needed? frontend or here? 
+                # Let's override here if easy, but get_subject_display comes from choices.
+                # Use raw 'subject' code and map in frontend is safer for i18n/consistency.
+                'subject_code': l.subject, 
+                'comment': l.comment,
+                'teacher_comment': l.teacher_comment,
+                'details': details,
+                'homeworks': homeworks,
+            })
 
         # 통계 계산
         total_days = len(attendances)
@@ -122,11 +166,15 @@ class StudentReportViewSet(viewsets.ModelViewSet):
 
         # [FIX] JSON Serialization: Convert datetime/date objects to string
         def serialize_list(data_list):
+            new_list = []
             for item in data_list:
-                for key, value in item.items():
-                    if hasattr(value, 'isoformat'):
-                        item[key] = value.isoformat()
-            return list(data_list)
+                new_item = item.copy() if isinstance(item, dict) else item
+                if isinstance(new_item, dict):
+                    for key, value in new_item.items():
+                        if hasattr(value, 'isoformat'):
+                            new_item[key] = value.isoformat()
+                new_list.append(new_item)
+            return new_list
 
         return {
             'stats': {
@@ -135,8 +183,8 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 'assignment_count': len(assignments),
                 'assignment_completed': sum(1 for a in assignments if a['is_completed']),
             },
-            'attendance': serialize_list(attendances),
-            'vocab': serialize_list(vocab_tests),
+            'attendance': serialize_list(list(attendances)),
+            'vocab': serialize_list(list(vocab_tests)),
             'assignments': serialize_list(assignments),
             'logs': serialize_list(logs),
         }
