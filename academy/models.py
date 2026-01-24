@@ -388,7 +388,7 @@ class StudentReport(models.Model):
     - 특정 기간 동안의 학습 데이터를 JSON으로 저장하여 박제합니다.
     - 학부모에게 공유되는 UUID 링크를 가집니다.
     """
-    student = models.ForeignKey('core.StudentProfile', on_delete=models.CASCADE, related_name='reports', verbose_name="학생")
+    student = models.ForeignKey('core.StudentProfile', on_delete=models.CASCADE, related_name='academy_reports', verbose_name="학생")
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="발행 선생님")
     
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
