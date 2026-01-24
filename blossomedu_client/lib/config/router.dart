@@ -41,6 +41,7 @@ import '../features/messaging/screens/chat_room_screen.dart'; // [NEW]
 import '../features/teacher/screens/offline_test_projection_screen.dart'; // [NEW]
 import '../features/teacher/screens/offline_test_grading_screen.dart'; // [NEW]
 import '../features/teacher/screens/student_log_search_screen.dart'; // [NEW]
+import '../features/teacher/screens/teacher_daily_status_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -378,10 +379,14 @@ final router = GoRouter(
         );
       },
     ),
-    // [NEW] Student Log Search
     GoRoute(
       path: '/teacher/management/log-search',
       builder: (context, state) => const StudentLogSearchScreen(),
+    ),
+    // [NEW] Daily Status Dashboard
+    GoRoute(
+      path: '/teacher/daily-status',
+      builder: (context, state) => const TeacherDailyStatusScreen(),
     ),
   ],
 );

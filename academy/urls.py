@@ -10,8 +10,10 @@ router.register(r'schedules', TemporaryScheduleViewSet, basename='schedules')
 router.register(r'textbooks', TextbookViewSet, basename='textbook')
 
 from .views.log_search import StudentLogSearchView
+from .views.management import DailyStudentStatusView
 
 urlpatterns = [
     path('api/v1/', include(router.urls)),
     path('api/v1/logs/search/', StudentLogSearchView.as_view(), name='log-search'),
+    path('api/v1/daily-status/', DailyStudentStatusView.as_view(), name='daily-status'),
 ]

@@ -97,6 +97,11 @@ class TeacherMoreScreen extends StatelessWidget {
                     onTap: () => context.push('/teacher/staff/register'),
                   ),
                   _MenuItem(
+                    icon: Icons.dashboard_customize,
+                    title: '담당 강사 관리 (일일 현황)', // [NEW]
+                    onTap: () => context.push('/teacher/daily-status'),
+                  ),
+                  _MenuItem(
                     icon: Icons.supervisor_account,
                     title: '강사 계정 관리',
                     subtitle: '전체 강사 검색 및 조회',
