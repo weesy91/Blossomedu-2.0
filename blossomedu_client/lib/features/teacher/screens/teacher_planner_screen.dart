@@ -270,24 +270,11 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
 
     // Classes
     if (_filter == 'all' || _filter == 'class') {
-      final dateStr =
-          DateFormat('yyyy-MM-dd').format(date); // [FIX] Add dateStr
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
       for (final student in _getStudentsForDate(date)) {
         final classTimes = student['class_times'] as List<dynamic>? ?? [];
         final dayCode = _getDayCode(date);
-        // [NEW] Check for rescheduling (Cancellation of regular class)
-        bool isRescheduled = false;
-        String rescheduleNote = '';
         final tempSchedules = student['temp_schedules'] as List<dynamic>? ?? [];
-
-        for (final ts in tempSchedules) {
-          // Check if this regular class date is marked as 'original_date' of a change
-          if (ts['original_date'] == dateStr && ts['is_extra_class'] == false) {
-            isRescheduled = true;
-            rescheduleNote = '${ts['new_date']}로 변경됨';
-            break;
-          }
-        }
 
         // [NEW] Check Attendance Status
         String attendanceStatus = 'UNKNOWN';
@@ -298,25 +285,46 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
           if (att != null) attendanceStatus = att['status'];
         }
 
+        // 1. Regular Classes
         for (final ct in classTimes) {
           if (ct['day'] == dayCode) {
+            bool isRescheduled = false;
+            String rescheduleNote = '';
+
+            // Check if this specific class subject is moved
+            for (final ts in tempSchedules) {
+              if (ts['original_date'] == dateStr &&
+                  ts['is_extra_class'] == false) {
+                // [FIX] Check subject match (SYNTAX vs READING)
+                // ts['subject'] is uppercase (SYNTAX/READING/GRAMMAR)
+                // ct['type'] is also uppercase (inferred from backend serializer)
+                if (ts['subject'] == ct['type']) {
+                  isRescheduled = true;
+                  rescheduleNote = '${ts['new_date']}로 변경됨';
+                  break;
+                }
+              }
+            }
+
             items.add({
               'type': 'class',
               'student': student,
               'classTime': ct,
               'isRescheduled': isRescheduled,
               'rescheduleNote': rescheduleNote,
-              'attendanceStatus': attendanceStatus, // [NEW]
+              'attendanceStatus': attendanceStatus,
             });
           }
         }
 
-        // [NEW] Temp Schedules
+        // 2. Temporary Schedules (Moved/Extra classes on this day)
         for (final ts in tempSchedules) {
           if (ts['new_date'] == dateStr) {
             final startTime = ts['new_start_time']?.toString() ?? '';
             final isExtraClass = ts['is_extra_class'] == true;
             final label = isExtraClass ? '보강' : '이동';
+
+            // Construct pseudo ClassTime object for moved class
             items.add({
               'type': 'class',
               'student': student,
@@ -329,7 +337,9 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                 'schedule_id': ts['id'],
                 'type': ts['subject'],
               },
-              'tempSchedule': ts,
+              'tempSchedule': ts, // Allow editing this temp schedule
+              'isRescheduled': false, // This IS the rescheduled class
+              'attendanceStatus': attendanceStatus,
             });
           }
         }
@@ -340,6 +350,7 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     if (_filter == 'all' || _filter == 'assignment') {
       for (final assignment in _getAssignmentsForDate(date)) {
         items.add({
+          'type': 'assignment', // [FIX] Add type field for assignments
           'assignment': assignment,
         });
       }

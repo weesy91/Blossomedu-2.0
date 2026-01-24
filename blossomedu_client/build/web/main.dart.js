@@ -61878,39 +61878,39 @@ aoT(a){var s=B.j3[A.jT(a)-1],r=A.cv("yyyy-MM-dd",null).cv(a),q=J.di(this.f,new A
 return A.S(q,!0,q.$ti.i("w.E"))},
 YD(a){var s=J.di(this.r,new A.b_3(this,a))
 return A.S(s,!0,s.$ti.i("w.E"))},
-aB3(a9){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4=this,a5="is_extra_class",a6="new_date",a7=A.a([],t.c),a8=a4.ay
-if(a8==="all"||a8==="class"){s=A.cv("yyyy-MM-dd",null).cv(a9)
-for(a8=a4.aoT(a9),r=a8.length,q=t.N,p=t.z,o=t.O,n=0;n<a8.length;a8.length===r||(0,A.V)(a8),++n){m=a8[n]
+aB3(b2){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5=this,a6="is_extra_class",a7="subject",a8="new_date",a9="attendanceStatus",b0=A.a([],t.c),b1=a5.ay
+if(b1==="all"||b1==="class"){s=A.cv("yyyy-MM-dd",null).cv(b2)
+for(b1=a5.aoT(b2),r=b1.length,q=t.N,p=t.z,o=t.O,n=0;n<b1.length;b1.length===r||(0,A.V)(b1),++n){m=b1[n]
 l=J.M(m)
 k=o.a(l.h(m,"class_times"))
 if(k==null)k=[]
-j=B.j3[A.jT(a9)-1]
+j=B.j3[A.jT(b2)-1]
 i=o.a(l.h(m,"temp_schedules"))
 if(i==null)i=[]
-l=J.cH(i)
-f=l.gaD(i)
-while(!0){if(!f.v()){h=!1
-g=""
-break}e=f.gM(f)
+if(J.cP(a5.y)){h=J.agn(a5.y,new A.b_8(m),new A.b_9())
+g=h!=null?J.i(h,"status"):"UNKNOWN"}else g="UNKNOWN"
+for(l=J.at(k),f=J.cH(i);l.v();){e=l.gM(l)
 d=J.M(e)
-if(J.c(d.h(e,"original_date"),s)&&J.c(d.h(e,a5),!1)){g=A.f(d.h(e,a6))+"\ub85c \ubcc0\uacbd\ub428"
-h=!0
-break}}if(J.cP(a4.y)){c=J.agn(a4.y,new A.b_8(m),new A.b_9())
-b=c!=null?J.i(c,"status"):"UNKNOWN"}else b="UNKNOWN"
-for(f=J.at(k);f.v();){a=f.gM(f)
-if(J.c(J.i(a,"day"),j))a7.push(A.a1(["type","class","student",m,"classTime",a,"isRescheduled",h,"rescheduleNote",g,"attendanceStatus",b],q,p))}for(l=l.gaD(i);l.v();){e=l.gM(l)
-f=J.M(e)
-if(J.c(f.h(e,a6),s)){d=f.h(e,"new_start_time")
-a0=d==null?null:J.a5(d)
-if(a0==null)a0=""
-a1=J.c(f.h(e,a5),!0)
-a2=a1?"\ubcf4\uac15":"\uc774\ub3d9"
-d=a4.aB5(f.h(e,"subject"))
-a3=a0.length>=5?B.d.a0(a0,0,5):a0
-a7.push(A.a1(["type","class","student",m,"classTime",A.a1(["subject",d+" ("+a2+")","start_time",a3,"is_makeup",a1,"schedule_id",f.h(e,"id"),"type",f.h(e,"subject")],q,p),"tempSchedule",e],q,p))}}}}a8=a4.ay
-if(a8==="all"||a8==="assignment")for(a8=a4.YD(a9),r=a8.length,q=t.N,p=t.z,n=0;n<a8.length;a8.length===r||(0,A.V)(a8),++n)a7.push(A.a1(["assignment",a8[n]],q,p))
-B.b.ex(a7,new A.b_a())
-return a7},
+if(J.c(d.h(e,"day"),j)){a=f.gaD(i)
+while(!0){if(!a.v()){c=!1
+b=""
+break}a0=a.gM(a)
+a1=J.M(a0)
+if(J.c(a1.h(a0,"original_date"),s)&&J.c(a1.h(a0,a6),!1))if(J.c(a1.h(a0,a7),d.h(e,"type"))){b=A.f(a1.h(a0,a8))+"\ub85c \ubcc0\uacbd\ub428"
+c=!0
+break}}b0.push(A.a1(["type","class","student",m,"classTime",e,"isRescheduled",c,"rescheduleNote",b,a9,g],q,p))}}for(l=f.gaD(i);l.v();){a0=l.gM(l)
+f=J.M(a0)
+if(J.c(f.h(a0,a8),s)){d=f.h(a0,"new_start_time")
+a2=d==null?null:J.a5(d)
+if(a2==null)a2=""
+a3=J.c(f.h(a0,a6),!0)
+a4=a3?"\ubcf4\uac15":"\uc774\ub3d9"
+d=a5.aB5(f.h(a0,a7))
+a=a2.length>=5?B.d.a0(a2,0,5):a2
+b0.push(A.a1(["type","class","student",m,"classTime",A.a1(["subject",d+" ("+a4+")","start_time",a,"is_makeup",a3,"schedule_id",f.h(a0,"id"),"type",f.h(a0,a7)],q,p),"tempSchedule",a0,"isRescheduled",!1,a9,g],q,p))}}}}b1=a5.ay
+if(b1==="all"||b1==="assignment")for(b1=a5.YD(b2),r=b1.length,q=t.N,p=t.z,n=0;n<b1.length;b1.length===r||(0,A.V)(b1),++n)b0.push(A.a1(["type","assignment","assignment",b1[n]],q,p))
+B.b.ex(b0,new A.b_a())
+return b0},
 E(a){var s,r,q,p,o,n=this,m=null,l=n.ay
 if(l==="all")l="\uc804\uccb4"
 else l=l==="class"?"\uc218\uc5c5":"\uacfc\uc81c"
