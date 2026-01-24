@@ -62,7 +62,7 @@ class TeacherMoreScreen extends StatelessWidget {
                     icon: Icons.history,
                     title: '학생 로그 검색',
                     subtitle: '수업, 과제, 시험 통합 히스토리',
-                    onTap: () => context.push('/teacher/student/log-search'),
+                    onTap: () => context.push('/teacher/management/log-search'),
                   ),
                 ]),
 

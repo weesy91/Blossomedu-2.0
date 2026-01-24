@@ -380,7 +380,7 @@ final router = GoRouter(
     ),
     // [NEW] Student Log Search
     GoRoute(
-      path: '/teacher/student/log-search',
+      path: '/teacher/management/log-search',
       builder: (context, state) => const StudentLogSearchScreen(),
     ),
   ],
