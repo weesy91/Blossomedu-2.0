@@ -61,19 +61,19 @@ class _ReportListScreenState extends State<ReportListScreen>
       });
 
       if (response.statusCode == 200) {
-        final List<dynamic> data =
-            jsonDecode(utf8.decode(response.bodyBytes))['results'] ??
-                []; // Pagination handling? usually results
-        setState(() {
-          _reports = data;
-        });
-      } else if (response.statusCode == 200) {
-        // DRF Default list format might be just list
-        final dynamic data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (data is List) {
-          setState(() => _reports = data);
-        } else if (data is Map && data.containsKey('results')) {
-          setState(() => _reports = data['results']);
+        final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        List<dynamic> data = [];
+
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map && decoded.containsKey('results')) {
+          data = decoded['results'] ?? [];
+        }
+
+        if (mounted) {
+          setState(() {
+            _reports = data;
+          });
         }
       }
     } catch (e) {
