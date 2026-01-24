@@ -497,44 +497,59 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
                     }),
                     const SizedBox(height: 12),
                   ],
-                  // 과제
+                  // 과제 (Updated with Status Check)
                   if (l['homeworks'] != null &&
                       (l['homeworks'] as List).isNotEmpty) ...[
                     const Text('📝 배부된 과제',
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 4),
-                    ...(l['homeworks'] as List).map((h) => Padding(
-                          padding: const EdgeInsets.only(left: 4, top: 4),
-                          child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('• ',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                                Expanded(
-                                    child: Text('${h['title']}',
-                                        style: const TextStyle(
-                                            fontSize: 13, height: 1.3))),
-                                if (h['due_date'] != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(4)),
-                                    child: Text(
-                                        '~${h['due_date'].toString().substring(5, 10)}',
-                                        style: const TextStyle(
-                                            fontSize: 11, color: Colors.red)),
-                                  ),
-                              ]),
-                        )),
+                    ...(l['homeworks'] as List).map((h) {
+                      final isCompleted = h['is_completed'] == true;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 0, top: 4),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(top: 2, right: 6),
+                                child: Icon(
+                                    isCompleted
+                                        ? Icons.check_circle
+                                        : Icons.circle_outlined,
+                                    size: 14,
+                                    color: isCompleted
+                                        ? Colors.green
+                                        : Colors.red),
+                              ),
+                              Expanded(
+                                  child: Text('${h['title']}',
+                                      style: const TextStyle(
+                                          fontSize: 13, height: 1.3))),
+                              if (h['due_date'] != null)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(4)),
+                                  child: Text(
+                                      '~${h['due_date'].toString().substring(5, 10)}',
+                                      style: const TextStyle(
+                                          fontSize: 11, color: Colors.red)),
+                                ),
+                            ]),
+                      );
+                    }),
                     const SizedBox(height: 12),
                   ],
-                  // 코멘트
-                  if (l['teacher_comment'] != null &&
-                      l['teacher_comment'].toString().isNotEmpty)
+                  // 코멘트 (Unified Header)
+                  if ((l['teacher_comment'] != null &&
+                          l['teacher_comment'].toString().isNotEmpty) ||
+                      (l['comment'] != null &&
+                          l['comment'].toString().isNotEmpty))
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
@@ -551,13 +566,18 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
                                     fontSize: 13,
                                     color: Colors.black87)),
                             const SizedBox(height: 4),
-                            Text(l['teacher_comment'],
+                            Text(
+                                (l['teacher_comment'] != null &&
+                                        l['teacher_comment']
+                                            .toString()
+                                            .isNotEmpty)
+                                    ? l['teacher_comment']
+                                    : l[
+                                        'comment'], // Use general comment if teacher_comment is empty
                                 style:
                                     const TextStyle(fontSize: 13, height: 1.4)),
                           ]),
                     )
-                  else if (l['comment'] != null)
-                    Text(l['comment'], style: const TextStyle(fontSize: 14)),
                 ],
               ),
             )),

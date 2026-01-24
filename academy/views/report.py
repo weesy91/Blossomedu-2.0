@@ -175,12 +175,13 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                     'score': score_str,
                 })
             
-            # Homeworks with Due Date
+            # Homeworks with Due Date and Status
             homeworks = []
             for t in l.generated_assignments.all():
                 homeworks.append({
                     'title': t.title,
                     'due_date': t.due_date,
+                    'is_completed': t.is_completed, # [NEW]
                 })
             
             logs.append({
