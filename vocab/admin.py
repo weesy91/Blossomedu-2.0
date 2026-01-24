@@ -52,6 +52,22 @@ class WordAdmin(admin.ModelAdmin):
     list_filter = ('book',)
     search_fields = ('english', 'korean')
     list_per_page = 50 
+    actions = ['cleanup_vocab_ko']
+
+    @admin.action(description='선택한 단어의 뜻을 새 파싱 규칙으로 정제')
+    def cleanup_vocab_ko(self, request, queryset):
+        from .services import clean_text, sync_master_meanings
+        updated_count = 0
+        for word in queryset:
+            original = word.korean
+            cleaned = clean_text(original)
+            if original != cleaned:
+                word.korean = cleaned
+                word.save(update_fields=['korean'])
+                if word.master_word:
+                    sync_master_meanings(word.master_word, cleaned)
+                updated_count += 1
+        self.message_user(request, f"{updated_count}개의 단어 뜻을 정제했습니다.") 
 
 # ==========================================
 # 3. 출판사 (Publisher) 관리
