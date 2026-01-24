@@ -42,6 +42,9 @@ import '../features/teacher/screens/offline_test_projection_screen.dart'; // [NE
 import '../features/teacher/screens/offline_test_grading_screen.dart'; // [NEW]
 import '../features/teacher/screens/student_log_search_screen.dart'; // [NEW]
 import '../features/teacher/screens/teacher_daily_status_screen.dart'; // [NEW]
+import '../features/reports/screens/report_list_screen.dart'; // [NEW]
+import '../features/reports/screens/report_create_screen.dart'; // [NEW]
+import '../features/reports/screens/report_web_view_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -387,6 +390,25 @@ final router = GoRouter(
     GoRoute(
       path: '/teacher/daily-status',
       builder: (context, state) => const TeacherDailyStatusScreen(),
+    ),
+    // [NEW] Report System
+    GoRoute(
+      path: '/teacher/management/reports',
+      builder: (context, state) => const ReportListScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/report/create',
+      builder: (context, state) {
+        final student = state.extra as Map<String, dynamic>;
+        return ReportCreateScreen(student: student);
+      },
+    ),
+    GoRoute(
+      path: '/report/:uuid',
+      builder: (context, state) {
+        final uuid = state.pathParameters['uuid']!;
+        return ReportWebViewScreen(uuid: uuid);
+      },
     ),
   ],
 );

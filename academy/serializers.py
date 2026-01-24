@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AssignmentTask, AssignmentSubmission, AssignmentSubmissionImage, ClassLog, ClassLogEntry, TemporarySchedule, Attendance, Textbook, TextbookUnit
+from .models import AssignmentTask, AssignmentSubmission, AssignmentSubmissionImage, ClassLog, ClassLogEntry, TemporarySchedule, Attendance, Textbook, TextbookUnit, StudentReport # [NEW]
 from core.models import StudentProfile
 
 class AssignmentSubmissionImageSerializer(serializers.ModelSerializer):
@@ -445,3 +445,21 @@ class TextbookSerializer(serializers.ModelSerializer):
                 TextbookUnit.objects.create(textbook=instance, **unit_data)
         
         return instance
+
+class StudentReportSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    generated_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudentReport
+        fields = [
+            'id', 'student', 'student_name', 'uuid', 'title', 
+            'start_date', 'end_date', 'data_snapshot', 
+            'teacher_comment', 'created_at', 'generated_url'
+        ]
+        read_only_fields = ['uuid', 'data_snapshot', 'created_at']
+
+    def get_generated_url(self, obj):
+        # Frontend URL prefix
+        base_url = "https://b-edu.site/#" # Hash router
+        return f"{base_url}/report/{obj.uuid}"

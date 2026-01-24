@@ -59,6 +59,12 @@ class TeacherMoreScreen extends StatelessWidget {
                     onTap: () => context.push('/teacher/management/students'),
                   ),
                   _MenuItem(
+                    icon: Icons.assignment_turned_in, // Good icon for reports
+                    title: '성적표 발송 및 관리',
+                    subtitle: '월간 성적표 생성 및 공유',
+                    onTap: () => context.push('/teacher/management/reports'),
+                  ),
+                  _MenuItem(
                     icon: Icons.history,
                     title: '학생 로그 검색',
                     subtitle: '수업, 과제, 시험 통합 히스토리',

@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+import uuid # [NEW]
 from django.core.exceptions import ValidationError
 
 # ==========================================
@@ -377,3 +378,43 @@ class AssignmentSubmissionImage(models.Model):
         ordering = ['created_at']
         verbose_name = "과제 인증 이미지"
         verbose_name_plural = "과제 인증 이미지"
+
+# ==========================================
+# [4] 성적표 (Web Report Card)
+# ==========================================
+class StudentReport(models.Model):
+    """
+    웹 성적표 (Snapshot)
+    - 특정 기간 동안의 학습 데이터를 JSON으로 저장하여 박제합니다.
+    - 학부모에게 공유되는 UUID 링크를 가집니다.
+    """
+    student = models.ForeignKey('core.StudentProfile', on_delete=models.CASCADE, related_name='reports', verbose_name="학생")
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name="발행 선생님")
+    
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    
+    title = models.CharField(max_length=100, verbose_name="성적표 제목") # 예: 2024년 1월 학습 리포트
+    start_date = models.DateField(verbose_name="조회 시작일")
+    end_date = models.DateField(verbose_name="조회 종료일")
+    
+    # Snapshot Data
+    data_snapshot = models.JSONField(verbose_name="데이터 스냅샷", default=dict)
+    # {
+    #   'attendance': {...},
+    #   'vocab': {...},
+    #   'assignments': [...],
+    #   'mock_exams': [...]
+    # }
+    
+    teacher_comment = models.TextField(blank=True, verbose_name="선생님 총평")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"[{self.student.name}] {self.title}"
+
+    class Meta:
+        verbose_name = "성적표"
+        verbose_name_plural = "성적표 관리"
+        ordering = ['-created_at']
