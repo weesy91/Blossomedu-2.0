@@ -63,7 +63,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('학생 계정 관리')),
+      appBar: AppBar(
+        title: const Text('학생 계정 관리'),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/teacher/student/log-search'),
+            icon: const Icon(Icons.manage_search),
+            tooltip: '학생 로그 검색',
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           context.push('/teacher/student/register'); // Existing Registration

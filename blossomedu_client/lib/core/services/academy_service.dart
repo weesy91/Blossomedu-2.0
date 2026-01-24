@@ -809,4 +809,34 @@ class AcademyService {
     }
     return 0;
   }
+
+  // [NEW] Search Student Logs (Combined Timeline)
+  Future<List<dynamic>> searchStudentLogs({
+    required int studentId,
+    String? startDate,
+    String? endDate,
+    List<String>? types, // ['LOG', 'ASM', 'TEST']
+  }) async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/academy/api/v1/logs/search/');
+    final queryParams = <String, String>{'student_id': studentId.toString()};
+    if (startDate != null) queryParams['start_date'] = startDate;
+    if (endDate != null) queryParams['end_date'] = endDate;
+    if (types != null && types.isNotEmpty) {
+      queryParams['types'] = types.join(',');
+    }
+
+    final url = uri.replace(queryParameters: queryParams);
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        throw Exception('Failed to search logs: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error searching logs: $e');
+    }
+  }
 }

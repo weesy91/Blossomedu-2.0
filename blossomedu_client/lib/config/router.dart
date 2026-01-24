@@ -40,6 +40,7 @@ import '../features/messaging/screens/chat_list_screen.dart'; // [NEW]
 import '../features/messaging/screens/chat_room_screen.dart'; // [NEW]
 import '../features/teacher/screens/offline_test_projection_screen.dart'; // [NEW]
 import '../features/teacher/screens/offline_test_grading_screen.dart'; // [NEW]
+import '../features/teacher/screens/student_log_search_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -376,6 +377,11 @@ final router = GoRouter(
           studentId: extra['studentId']?.toString() ?? '',
         );
       },
+    ),
+    // [NEW] Student Log Search
+    GoRoute(
+      path: '/teacher/student/log-search',
+      builder: (context, state) => const StudentLogSearchScreen(),
     ),
   ],
 );
