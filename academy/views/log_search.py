@@ -49,23 +49,49 @@ class StudentLogSearchView(APIView):
                 logs = logs.filter(date__lte=end_date_str)
                 
             for log in logs:
-                # 진도 요약 (첫 번째 엔트리 기준)
-                first_entry = log.entries.first()
-                progress_summary = "내용 없음"
-                if first_entry:
-                    book_name = first_entry.textbook.title if first_entry.textbook else (first_entry.wordbook.title if first_entry.wordbook else "")
-                    progress_summary = f"{book_name} {first_entry.progress_range}"
+                # 진도 상세 및 평가
+                entries_data = []
+                summary_parts = []
+                for entry in log.entries.all():
+                    book_name = entry.textbook.title if entry.textbook else (entry.wordbook.title if entry.wordbook else "미지정")
+                    entries_data.append({
+                        'book': book_name,
+                        'range': entry.progress_range,
+                        'score': entry.score or '-'
+                    })
+                    summary_parts.append(f"{book_name} {entry.progress_range}")
+                
+                progress_summary = ", ".join(summary_parts) if summary_parts else "진도 없음"
+
+                # 연결된 과제
+                linked_assignments = []
+                for asm in log.generated_assignments.all():
+                    linked_assignments.append({
+                        'title': asm.title,
+                        'id': asm.id,
+                        'is_completed': asm.is_completed
+                    })
 
                 timeline.append({
                     'type': 'LOG',
                     'date': log.date, # Date Object (for sorting)
                     'timestamp': datetime.combine(log.date, datetime.min.time()),
                     'title': f"{log.get_subject_display()} 수업",
-                    'content': progress_summary,
+                    'content': progress_summary,  # 요약 (리스트뷰용)
                     'sub_info': log.teacher.staff_profile.name if log.teacher and hasattr(log.teacher, 'staff_profile') else (log.teacher.username if log.teacher else "미지정"),
                     'status': 'COMPLETED',
                     'id': log.id,
-                    'raw_date': log.date.strftime('%Y-%m-%d')
+                    'raw_date': log.date.strftime('%Y-%m-%d'),
+                    # [NEW] 상세 정보
+                    'details': {
+                        'comment': log.comment,
+                        'entries': entries_data,
+                        'assignments': linked_assignments,
+                        'test_info': { # 독해 등 테스트 정보
+                            'type': log.reading_test_type,
+                            'score': log.reading_test_score
+                        } if log.subject == 'READING' else None
+                    }
                 })
 
         # ---------------------------------------------------------

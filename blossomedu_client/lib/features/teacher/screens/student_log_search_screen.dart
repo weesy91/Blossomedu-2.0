@@ -105,26 +105,119 @@ class _StudentLogSearchScreenState extends State<StudentLogSearchScreen> {
   }
 
   void _showClassLogDetail(Map<String, dynamic> item) {
+    final details = item['details'] as Map<String, dynamic>? ?? {};
+    final entries =
+        (details['entries'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final assignments =
+        (details['assignments'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final comment = details['comment'] as String? ?? '';
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(item['title'] ?? '수업일지'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: [
-                Text('날짜: ${item['raw_date']}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 10),
-                const Text('[진도 내용]',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(item['content'] ?? '내용 없음'),
-                const SizedBox(height: 10),
-                const Text('[선생님/담당자]',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(item['sub_info'] ?? '미지정'),
-              ],
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('날짜: ${item['raw_date']}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 16),
+
+                  // 1. 진도 및 평가
+                  const Text('📘 진도 및 평가',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  if (entries.isEmpty)
+                    const Text('기록 없음', style: TextStyle(color: Colors.grey))
+                  else
+                    ...entries.map((e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
+                              Expanded(
+                                  child: Text('${e['book']} ${e['range']}')),
+                              if (e['score'] != null && e['score'] != '-')
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(4)),
+                                  child: Text(e['score'],
+                                      style: TextStyle(
+                                          color: Colors.blue.shade800,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                            ],
+                          ),
+                        )),
+
+                  const SizedBox(height: 16),
+
+                  // 2. 선생님 코멘트
+                  const Text('💬 선생님 코멘트',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Text(comment.isNotEmpty ? comment : '코멘트가 없습니다.',
+                        style: const TextStyle(height: 1.4)),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 3. 관련 과제
+                  const Text('📝 출제된 과제',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  if (assignments.isEmpty)
+                    const Text('출제된 과제가 없습니다.',
+                        style: TextStyle(color: Colors.grey))
+                  else
+                    ...assignments.map((asm) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(
+                              asm['is_completed'] == true
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: asm['is_completed'] == true
+                                  ? Colors.green
+                                  : Colors.grey,
+                              size: 20),
+                          title: Text(asm['title'] ?? '과제'),
+                          trailing: const Icon(Icons.chevron_right, size: 16),
+                          onTap: () {
+                            Navigator.pop(context); // 닫고 이동
+                            context.push(
+                                '/teacher/assignment/review/${asm['id']}');
+                          },
+                        )),
+
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  Text('담당 선생님: ${item['sub_info'] ?? '미지정'}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
             ),
           ),
           actions: [
