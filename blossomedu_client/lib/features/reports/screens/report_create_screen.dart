@@ -263,18 +263,16 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
         ),
         const SizedBox(height: 24),
 
-        // 4. Details (Simple Preview)
+        // 4. Details (Scrollable List)
         _buildSectionHeader('단어 시험 (${vocab.length}회)'),
-        ...vocab.take(3).map((v) => ListTile(
+        ...vocab.map((v) => ListTile(
               title: Text(v['book__title'] ?? '단어장'),
               trailing: Text('${v['score']} / ${v['total_count'] ?? 0}'),
               visualDensity: VisualDensity.compact,
             )),
-        if (vocab.length > 3)
-          const Padding(padding: EdgeInsets.all(8), child: Text('...외 다수')),
 
         _buildSectionHeader('과제 내역 (${assignments.length}건)'),
-        ...assignments.take(3).map((a) => ListTile(
+        ...assignments.map((a) => ListTile(
               title: Text(a['title']),
               trailing: Icon(
                 a['is_completed'] ? Icons.check_circle : Icons.cancel,
@@ -285,11 +283,34 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
             )),
 
         _buildSectionHeader('수업 일지 (${logs.length}건)'),
-        ...logs.take(3).map((l) => ListTile(
-              title: Text('${l['date']} ${l['subject']}'),
-              subtitle: Text(l['comment'] ?? '',
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              visualDensity: VisualDensity.compact,
+        ...logs.map((l) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${l['date']} ${l['subject']}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Text(l['comment'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 14, height: 1.4)), // [FIX] Full text
+                  if (l['teacher_comment'] != null &&
+                      l['teacher_comment'].toString().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text('👨‍🏫 ${l['teacher_comment']}',
+                          style: TextStyle(
+                              fontSize: 13, color: Colors.blue.shade700)),
+                    ),
+                ],
+              ),
             )),
       ],
     );

@@ -120,6 +120,14 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         if vocab_tests:
             vocab_avg = sum(t['score'] for t in vocab_tests) / len(vocab_tests)
 
+        # [FIX] JSON Serialization: Convert datetime/date objects to string
+        def serialize_list(data_list):
+            for item in data_list:
+                for key, value in item.items():
+                    if hasattr(value, 'isoformat'):
+                        item[key] = value.isoformat()
+            return list(data_list)
+
         return {
             'stats': {
                 'attendance_rate': (present_days / total_days * 100) if total_days > 0 else 0,
@@ -127,8 +135,8 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 'assignment_count': len(assignments),
                 'assignment_completed': sum(1 for a in assignments if a['is_completed']),
             },
-            'attendance': list(attendances),
-            'vocab': list(vocab_tests),
-            'assignments': list(assignments),
-            'logs': list(logs),
+            'attendance': serialize_list(attendances),
+            'vocab': serialize_list(vocab_tests),
+            'assignments': serialize_list(assignments),
+            'logs': serialize_list(logs),
         }
