@@ -38,6 +38,8 @@ import '../features/student/screens/student_assignment_history_screen.dart'; // 
 import '../features/student/screens/makeup_task_screen.dart'; // [NEW]
 import '../features/messaging/screens/chat_list_screen.dart'; // [NEW]
 import '../features/messaging/screens/chat_room_screen.dart'; // [NEW]
+import '../features/teacher/screens/offline_test_projection_screen.dart'; // [NEW]
+import '../features/teacher/screens/offline_test_grading_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -335,6 +337,43 @@ final router = GoRouter(
         return ChatRoomScreen(
           conversationId: id,
           otherUserName: extra['otherUserName'] ?? '채팅',
+        );
+      },
+    ),
+    // [NEW] Offline Test Routes
+    GoRoute(
+      path: '/teacher/offline-test/projection',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        // Cast dynamic list to List<Map<String, dynamic>>
+        final rawWords = extra['words'] as List<dynamic>? ?? [];
+        final words =
+            rawWords.map((e) => Map<String, dynamic>.from(e)).toList();
+
+        return OfflineTestProjectionScreen(
+          words: words,
+          durationPerWord:
+              int.tryParse(extra['duration']?.toString() ?? '3') ?? 3,
+          bookId: int.tryParse(extra['bookId'].toString()) ?? 0,
+          range: extra['range']?.toString() ?? '',
+          studentId: extra['studentId']?.toString() ?? '',
+          mode: extra['mode']?.toString() ?? 'eng_kor',
+        );
+      },
+    ),
+    GoRoute(
+      path: '/teacher/offline-test/grading',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final rawWords = extra['words'] as List<dynamic>? ?? [];
+        final words =
+            rawWords.map((e) => Map<String, dynamic>.from(e)).toList();
+
+        return OfflineTestGradingScreen(
+          words: words,
+          bookId: int.tryParse(extra['bookId'].toString()) ?? 0,
+          range: extra['range']?.toString() ?? '',
+          studentId: extra['studentId']?.toString() ?? '',
         );
       },
     ),

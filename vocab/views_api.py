@@ -704,10 +704,23 @@ class TestViewSet(viewsets.ModelViewSet):
                 "assignment_id": data.get("assignment_id"),
             },
         )
-        if not hasattr(request.user, 'profile'):
+        if not hasattr(request.user, 'profile') and not (request.user.is_staff or request.user.is_superuser):
             return Response({'error': 'No profile'}, status=status.HTTP_400_BAD_REQUEST)
             
-        profile = request.user.profile
+        profile = None
+        # [NEW] 선생님이 학생 대신 제출 (Offline Test)
+        if (request.user.is_staff or request.user.is_superuser) and 'student_id' in data:
+            from core.models import StudentProfile
+            try:
+                profile = StudentProfile.objects.get(id=data['student_id'])
+            except StudentProfile.DoesNotExist:
+                return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+        elif hasattr(request.user, 'profile'):
+            profile = request.user.profile
+            
+        if not profile:
+             return Response({'error': 'Profile required'}, status=status.HTTP_400_BAD_REQUEST)
+
         book_id = data.get('book_id')
         raw_details = data.get('details', []) # [{'english': 'apple', 'user_input': '사과'}, ...]
         test_range = data.get('range', '전체')

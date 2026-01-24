@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/academy_service.dart';
+import '../../../core/services/vocab_service.dart';
 
 class TeacherClassLogCreateScreen extends StatefulWidget {
   final String studentId;
@@ -1902,6 +1903,32 @@ class _TeacherClassLogCreateScreenState
 
             if (hasScore) ...[
               const SizedBox(width: 8),
+              // [NEW] Offline Test Launcher
+              if (row['bookId'] != null)
+                InkWell(
+                  onTap: () => _showOfflineTestDialog(row),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.withOpacity(0.1),
+                      border: Border.all(color: Colors.indigo.withOpacity(0.5)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('🎯 시험',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.indigo)),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
               SizedBox(
                 width: 60,
                 child: DropdownButtonFormField<String>(
@@ -2396,5 +2423,148 @@ class _TeacherClassLogCreateScreenState
 
       _hwMainRows.add(rowData);
     }
+  }
+
+  // [NEW] Offline Test Setup Dialog
+  void _showOfflineTestDialog(Map<String, dynamic> row) {
+    if (row['bookId'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('먼저 교재를 선택해주세요.')),
+      );
+      return;
+    }
+
+    int duration = 3;
+    String mode = 'eng_kor'; // eng_kor, kor_eng
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.slideshow, color: Colors.indigo),
+              SizedBox(width: 8),
+              Text('오프라인 단어시험 설정'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('교재: ${_findBook(row['bookId'])?['title'] ?? '알 수 없음'}'),
+              const SizedBox(height: 8),
+              Text('범위: ${row['range']}'),
+              const Divider(height: 24),
+              const Text('단어 노출 시간 (초)',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Slider(
+                value: duration.toDouble(),
+                min: 1,
+                max: 10,
+                divisions: 9,
+                label: '$duration초',
+                activeColor: Colors.indigo,
+                onChanged: (val) {
+                  setState(() => duration = val.toInt());
+                },
+              ),
+              Center(
+                  child: Text('$duration초',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo))),
+              const SizedBox(height: 16),
+              const Text('시험 모드',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title:
+                          const Text('영 → 한', style: TextStyle(fontSize: 14)),
+                      value: 'eng_kor',
+                      groupValue: mode,
+                      activeColor: Colors.indigo,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setState(() => mode = val!),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title:
+                          const Text('한 → 영', style: TextStyle(fontSize: 14)),
+                      value: 'kor_eng',
+                      groupValue: mode,
+                      activeColor: Colors.indigo,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) => setState(() => mode = val!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog first
+
+                try {
+                  // Using VocabService locally
+                  final vocabService = VocabService();
+                  final result = await vocabService.getWords(
+                    row['bookId'],
+                    dayRange: row['range'],
+                    shuffle: true,
+                  );
+
+                  // Take 30 random if more
+                  var testWords = result.cast<Map<String, dynamic>>();
+                  if (testWords.length > 30) {
+                    testWords = testWords.sublist(0, 30);
+                  }
+
+                  if (context.mounted) {
+                    final grade = await context
+                        .push('/teacher/offline-test/projection', extra: {
+                      'words': testWords,
+                      'duration': duration, // int
+                      'mode': mode,
+                      'bookId': row['bookId'], // int
+                      'range': row['range'],
+                      'studentId': widget.studentId, // String
+                    });
+
+                    // If grade returned, update row
+                    if (grade != null && grade is String) {
+                      setState(() {
+                        row['score'] = grade; // Auto-fill grade (A/B/C/F)
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('시험 완료! 등급: $grade')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('시험 준비 실패: $e')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+              child: const Text('시험 시작', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

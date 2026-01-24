@@ -414,4 +414,24 @@ class VocabService {
       throw Exception('Failed to load mock exams: $e');
     }
   }
+
+  // [NEW] Submit Offline Test Result (Teacher grading)
+  Future<Map<String, dynamic>> submitOfflineTestResult({
+    required int studentId,
+    required int bookId,
+    required String range,
+    required int score,
+    required List<Map<String, dynamic>> details, // [{english, is_correct, ...}]
+  }) async {
+    final response = await _dio.post('/vocab/api/v1/tests/submit/', data: {
+      'student_id': studentId, // Force student ID for teacher submission
+      'book_id': bookId,
+      'range': range,
+      'score':
+          score, // Optional override if backend supports it, otherwise calculated from details
+      'details': details,
+      'mode': 'challenge', // Treat as challenge to record score
+    });
+    return response.data;
+  }
 }
