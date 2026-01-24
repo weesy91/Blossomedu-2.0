@@ -1,7 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from academy.models import StudentReport, Attendance, ClassLog, AssignmentTask, TestResult
+from academy.models import StudentReport, Attendance, ClassLog, AssignmentTask
+from vocab.models import TestResult # [FIX] Import from correct app
 from academy.serializers import StudentReportSerializer
 from django.utils import timezone
 from datetime import timedelta
