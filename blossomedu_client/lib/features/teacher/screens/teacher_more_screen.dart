@@ -89,7 +89,7 @@ class TeacherMoreScreen extends StatelessWidget {
                 ]),
 
               if (hasAdminAccess())
-                _buildMenuSection('강사 계정 관리', [
+                _buildMenuSection('강사 관리', [
                   _MenuItem(
                     icon: Icons.person_add_alt_1,
                     title: '강사 계정 등록',

@@ -108,10 +108,12 @@ class _WordTestScreenState extends State<WordTestScreen>
             _speakCurrentWord(); // [TTS] Speak First Word
           }
         } else {
+          // [FIX] Study Mode should show all wrong words (limit 300)
+          final int requestCount = widget.testMode == 'study' ? 300 : 30;
           final rawQuestions = await _vocabService.generateTestQuestions(
             bookId: widget.bookId,
             range: widget.testRange, // Use the passed range
-            count: 30,
+            count: requestCount,
           );
 
           // Map backend data to frontend format
