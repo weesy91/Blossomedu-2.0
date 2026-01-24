@@ -58,6 +58,12 @@ class TeacherMoreScreen extends StatelessWidget {
                     subtitle: '전체 학생 검색 및 조회',
                     onTap: () => context.push('/teacher/management/students'),
                   ),
+                  _MenuItem(
+                    icon: Icons.history,
+                    title: '학생 로그 검색',
+                    subtitle: '수업, 과제, 시험 통합 히스토리',
+                    onTap: () => context.push('/teacher/student/log-search'),
+                  ),
                 ]),
 
               if (hasStudentAccess())
