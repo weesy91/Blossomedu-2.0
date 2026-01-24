@@ -91,30 +91,59 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             date__range=[start, end]
         ).values('date', 'status', 'check_in_time')
         
-        # (2) 단어 시험 (상세 정보 추가)
+        # (2) 단어 시험 (상세 정보: 오답, 누적 통과 단어)
         from vocab.models import TestResult
-        vocab_tests = TestResult.objects.filter(
+        vocab_qs = TestResult.objects.filter(
             student_id=student_id,
             created_at__date__range=[start, end]
-        ).select_related('book').values(
-            'created_at', 'score', 'total_count', 'wrong_count', 
-            'book__title', 'test_range'
-        )
+        ).select_related('book').prefetch_related('details').order_by('created_at')
+        
+        vocab_tests = []
+        cumulative_passed = 0
+        
+        for v in vocab_qs:
+            # Wrong answers
+            wrong_words = []
+            for d in v.details.all():
+                if not d.is_correct:
+                    wrong_words.append({
+                        'word': d.word_question,
+                        'student': d.student_answer,
+                        'answer': d.correct_answer
+                    })
+            
+            # Cumulative passed count (assuming score is count of correct answers)
+            cumulative_passed += v.score
+            
+            vocab_tests.append({
+                'created_at': v.created_at,
+                'score': v.score,
+                'total_count': v.total_count,
+                'wrong_count': v.wrong_count,
+                'book__title': v.book.title,
+                'test_range': v.test_range,
+                'wrong_words': wrong_words,
+                'cumulative_passed': cumulative_passed, # For chart
+            })
 
-        # (3) 과제 (피드백 포함)
-        # AssignmentTask -> Submission (OneToOne)
+        # (3) 과제 (피드백, 이미지 포함)
         assignments_qs = AssignmentTask.objects.filter(
             student_id=student_id,
             due_date__date__range=[start, end]
-        ).select_related('submission', 'related_textbook', 'related_vocab_book')
+        ).select_related('submission', 'related_textbook', 'related_vocab_book').order_by('due_date')
         
         assignments = []
         for a in assignments_qs:
             feedback = ''
             status = '미제출'
+            submission_image = None
+            
             if hasattr(a, 'submission'):
                 feedback = a.submission.teacher_comment
                 status = a.submission.get_status_display()
+                if a.submission.image:
+                    submission_image = a.submission.image.url
+                    
             elif a.is_completed:
                 status = '완료'
             
@@ -125,30 +154,38 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 'assignment_type': a.get_assignment_type_display(),
                 'status': status,
                 'feedback': feedback,
+                'submission_image': submission_image,
             })
 
-        # (4) 수업 일지 (진도 및 숙제 포함)
+        # (4) 수업 일지 (진도 성취도, 숙제 마감일 포함)
         logs_qs = ClassLog.objects.filter(
             student_id=student_id,
             date__range=[start, end]
-        ).prefetch_related('entries', 'entries__textbook', 'entries__wordbook', 'generated_assignments')
+        ).prefetch_related('entries', 'entries__textbook', 'entries__wordbook', 'generated_assignments').order_by('-date')
         
         logs = []
         for l in logs_qs:
-            # Entries (진도)
+            # Entries (진도 + 성취도)
             details = []
             for e in l.entries.all():
                 book_name = e.textbook.title if e.textbook else (e.wordbook.title if e.wordbook else '기타')
-                details.append(f"{book_name} ({e.progress_range}) - {e.score or '-'}")
+                score_str = e.score or '-'
+                details.append({
+                    'text': f"{book_name} ({e.progress_range})",
+                    'score': score_str,
+                })
             
-            # Homeworks
-            homeworks = [t.title for t in l.generated_assignments.all()]
+            # Homeworks with Due Date
+            homeworks = []
+            for t in l.generated_assignments.all():
+                homeworks.append({
+                    'title': t.title,
+                    'due_date': t.due_date,
+                })
             
             logs.append({
                 'date': l.date,
-                'subject': l.get_subject_display(), # '구문' -> '1:1 구문수업' logic needed? frontend or here? 
-                # Let's override here if easy, but get_subject_display comes from choices.
-                # Use raw 'subject' code and map in frontend is safer for i18n/consistency.
+                'subject': l.get_subject_display(),
                 'subject_code': l.subject, 
                 'comment': l.comment,
                 'teacher_comment': l.teacher_comment,
@@ -164,7 +201,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         if vocab_tests:
             vocab_avg = sum(t['score'] for t in vocab_tests) / len(vocab_tests)
 
-        # [FIX] JSON Serialization: Convert datetime/date objects to string
+        # [FIX] JSON Serialization
         def serialize_list(data_list):
             new_list = []
             for item in data_list:
@@ -173,6 +210,8 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                     for key, value in new_item.items():
                         if hasattr(value, 'isoformat'):
                             new_item[key] = value.isoformat()
+                        elif hasattr(value, 'url'): # Handle ImageFieldFile
+                             new_item[key] = value.url
                 new_list.append(new_item)
             return new_list
 
@@ -182,9 +221,10 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 'vocab_avg': round(vocab_avg, 1),
                 'assignment_count': len(assignments),
                 'assignment_completed': sum(1 for a in assignments if a['is_completed']),
+                'total_passed_words': cumulative_passed, # Total stats
             },
             'attendance': serialize_list(list(attendances)),
-            'vocab': serialize_list(list(vocab_tests)),
-            'assignments': serialize_list(assignments),
-            'logs': serialize_list(logs),
+            'vocab': serialize_list(vocab_tests), # Already list of dict
+            'assignments': serialize_list(assignments), # Already list of dict
+            'logs': serialize_list(logs), # Already list of dict
         }

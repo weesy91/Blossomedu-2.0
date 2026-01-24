@@ -126,7 +126,6 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
     final logs = data['logs'] as List;
     final assignments = data['assignments'] as List;
     final vocab = data['vocab'] as List;
-    // attendances logic handled in summary or separate
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,13 +134,13 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
         _buildSummarySection(stats),
         const SizedBox(height: 24),
 
-        // 2.5 Vocab Chart
+        // 2.5 Vocab Chart (Cumulative)
         if (vocab.isNotEmpty) _buildVocabChart(vocab),
         const SizedBox(height: 24),
 
         // 3. Teacher Comment
-        if (_report!['teacher_comment'] != null &&
-            _report!['teacher_comment'].toString().isNotEmpty)
+        if (data['teacher_comment'] != null &&
+            data['teacher_comment'].toString().isNotEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -166,7 +165,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(_report!['teacher_comment'],
+                Text(data['teacher_comment'],
                     style: const TextStyle(height: 1.6, fontSize: 15)),
               ],
             ),
@@ -239,9 +238,13 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   }
 
   Widget _buildVocabChart(List vocab) {
+    if (vocab.isEmpty) return const SizedBox();
     List<FlSpot> spots = [];
+
+    // Cumulative Passed Words Chart
     for (int i = 0; i < vocab.length; i++) {
-      spots.add(FlSpot(i.toDouble(), (vocab[i]['score'] ?? 0).toDouble()));
+      double val = (vocab[i]['cumulative_passed'] ?? 0).toDouble();
+      spots.add(FlSpot(i.toDouble(), val));
     }
 
     return Container(
@@ -254,26 +257,32 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('📈 단어 점수 추이',
+          const Text('📈 누적 통과 단어 수',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 16),
           Expanded(
             child: LineChart(
               LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(
-                    show: true,
-                    border: Border.all(color: Colors.grey.shade200)),
+                gridData: const FlGridData(show: true, drawVerticalLine: false),
+                titlesData: const FlTitlesData(
+                  show: true,
+                  rightTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    color: Colors.orange,
+                    color: Colors.blue,
                     barWidth: 3,
                     dotData: const FlDotData(show: true),
                     belowBarData: BarAreaData(
-                        show: true, color: Colors.orange.withOpacity(0.1)),
+                        show: true, color: Colors.blue.withOpacity(0.1)),
                   ),
                 ],
               ),
@@ -315,13 +324,69 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   Widget _buildVocabList(List list) {
     return Column(
       children: list
-          .map((v) => ListTile(
+          .map((v) => ExpansionTile(
                 title: Text(v['book__title'] ?? '단어장'),
                 trailing: Text('${v['score']} / ${v['total_count'] ?? 0}점',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
                     '범위: ${v['test_range'] ?? '전체'} | 오답: ${v['wrong_count']}'),
-                visualDensity: VisualDensity.compact,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (v['wrong_words'] != null &&
+                            (v['wrong_words'] as List).isNotEmpty) ...[
+                          const Text('오답 노트',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red)),
+                          const SizedBox(height: 8),
+                          Table(
+                            border:
+                                TableBorder.all(color: Colors.grey.shade200),
+                            columnWidths: const {
+                              0: FlexColumnWidth(1),
+                              1: FlexColumnWidth(1)
+                            },
+                            children: [
+                              TableRow(
+                                  decoration: BoxDecoration(
+                                      color: Colors.grey.shade100),
+                                  children: const [
+                                    Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: Text('문제',
+                                            style: TextStyle(fontSize: 12))),
+                                    Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: Text('정답',
+                                            style: TextStyle(fontSize: 12))),
+                                  ]),
+                              ...(v['wrong_words'] as List).map((w) =>
+                                  TableRow(children: [
+                                    Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Text(w['word'] ?? '',
+                                            style:
+                                                const TextStyle(fontSize: 12))),
+                                    Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Text(w['answer'] ?? '',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold))),
+                                  ])),
+                            ],
+                          )
+                        ] else
+                          const Text('틀린 단어가 없습니다! 🎉',
+                              style: TextStyle(color: Colors.blue)),
+                      ],
+                    ),
+                  )
+                ],
               ))
           .toList(),
     );
@@ -330,7 +395,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   Widget _buildAssignmentList(List list) {
     return Column(
       children: list
-          .map((a) => ListTile(
+          .map((a) => ExpansionTile(
                 leading: Icon(
                     a['is_completed']
                         ? Icons.check_circle_outline
@@ -338,12 +403,76 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                     color: a['is_completed'] ? Colors.green : Colors.red,
                     size: 24),
                 title: Text(a['title']),
-                subtitle:
-                    a['feedback'] != null && a['feedback'].toString().isNotEmpty
-                        ? Text('Feedback: ${a['feedback']}',
-                            style: TextStyle(color: Colors.blue.shade700))
-                        : null,
-                visualDensity: VisualDensity.compact,
+                subtitle: a['status'] != null ? Text(a['status']) : null,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (a['submission_image'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: GestureDetector(
+                              onTap: () => showDialog(
+                                  context: context,
+                                  builder: (_) => Dialog(
+                                      child: Image.network(
+                                          '${AppConfig.baseUrl}${a['submission_image']}'))),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('📷 인증 사진 (탭하여 확대)',
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                        '${AppConfig.baseUrl}${a['submission_image']}',
+                                        height: 120,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const SizedBox()),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (a['feedback'] != null &&
+                            a['feedback'].toString().isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8)),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('👨‍🏫 선생님 피드백',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: Colors.blue)),
+                                  const SizedBox(height: 4),
+                                  Text(a['feedback'],
+                                      style: TextStyle(
+                                          color: Colors.blue.shade900)),
+                                ]),
+                          ),
+                        if (a['due_date'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                                '마감일: ${a['due_date'].toString().substring(0, 10)}',
+                                style: const TextStyle(color: Colors.grey)),
+                          ),
+                      ],
+                    ),
+                  )
+                ],
               ))
           .toList(),
     );
@@ -354,7 +483,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
         children: list.map((l) {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
             color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8)),
         child: Column(
@@ -377,30 +506,103 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 13)),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             // 진도
             if (l['details'] != null && (l['details'] as List).isNotEmpty) ...[
-              ...(l['details'] as List).map(
-                  (d) => Text('• $d', style: const TextStyle(fontSize: 13))),
-              const SizedBox(height: 4),
+              const Text('📚 진도 및 학습 내용',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 8),
+              ...(l['details'] as List).map((d) {
+                final score = d['score'];
+                Color badgeColor = Colors.grey;
+                if (score == 'A') badgeColor = Colors.blue;
+                if (score == 'B') badgeColor = Colors.green;
+                if (score == 'C') badgeColor = Colors.orange;
+                if (score == 'F') badgeColor = Colors.red;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                              color: badgeColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: badgeColor)),
+                          child: Text(score,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: badgeColor,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                        Expanded(
+                            child: Text(d['text'] ?? '',
+                                style: const TextStyle(
+                                    fontSize: 13, height: 1.3))),
+                      ]),
+                );
+              }),
+              const SizedBox(height: 12),
             ],
             // 과제
             if (l['homeworks'] != null &&
                 (l['homeworks'] as List).isNotEmpty) ...[
-              const Text(' 숙제:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              ...(l['homeworks'] as List).map(
-                  (h) => Text('  - $h', style: const TextStyle(fontSize: 13))),
+              const Text('📝 배부된 과제',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 4),
+              ...(l['homeworks'] as List).map((h) => Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 4),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          Expanded(
+                              child: Text('${h['title']}',
+                                  style: const TextStyle(
+                                      fontSize: 13, height: 1.3))),
+                          if (h['due_date'] != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(4)),
+                              child: Text(
+                                  '~${h['due_date'].toString().substring(5, 10)}',
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.red)),
+                            ),
+                        ]),
+                  )),
+              const SizedBox(height: 12),
             ],
             if (l['teacher_comment'] != null &&
                 l['teacher_comment'].toString().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text('Note: ${l['teacher_comment']}',
-                    style:
-                        TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200)),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('👨‍🏫 선생님 피드백',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Colors.black87)),
+                      const SizedBox(height: 4),
+                      Text(l['teacher_comment'],
+                          style: const TextStyle(fontSize: 13, height: 1.4)),
+                    ]),
+              )
           ],
         ),
       );
