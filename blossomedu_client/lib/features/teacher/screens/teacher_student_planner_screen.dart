@@ -186,12 +186,7 @@ class _TeacherStudentPlannerScreenState
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: Colors.indigo),
-            onPressed: _showAddAssignmentDialog,
-          ),
-        ],
+        actions: const [], // [FIX] Removed Add Button
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -376,11 +371,14 @@ class _TeacherStudentPlannerScreenState
               style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
             ),
             const SizedBox(height: 8),
+            // [FIX] Removed Add Button
+            /*
             OutlinedButton.icon(
               onPressed: _showAddAssignmentDialog,
               icon: const Icon(Icons.add, size: 16),
               label: const Text('일정 추가'),
             )
+            */
           ],
         ),
       );
