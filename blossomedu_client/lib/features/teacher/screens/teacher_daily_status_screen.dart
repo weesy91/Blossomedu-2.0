@@ -35,7 +35,7 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('accessToken');
+      final token = prefs.getString('auth_token'); // [FIX] Correct Key
       if (token == null) throw Exception('로그인이 필요합니다.');
 
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
