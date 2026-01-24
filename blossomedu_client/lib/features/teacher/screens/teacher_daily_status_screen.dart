@@ -43,7 +43,7 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
           '${AppConfig.baseUrl}/academy/api/v1/daily-status/?date=$dateStr');
 
       final response = await http.get(url, headers: {
-        'Authorization': 'Bearer $token',
+        'Authorization': 'Token $token', // [FIX] Use 'Token' scheme
         'Content-Type': 'application/json',
       });
 
