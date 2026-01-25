@@ -198,7 +198,12 @@ def calculate_score(details_data):
         ]
         
         # 5. 채점 (공백 무시 비교)
-        is_correct = False
+        # [FIX] Offline Test support: Trust explicit 'is_correct' if provided
+        if 'is_correct' in item:
+            is_correct = item['is_correct']
+        else:
+            is_correct = False
+
         
         # [DEBUG] Print values for investigation
         print(f"[GRADING DEBUG] Question: {item.get('english')}")
