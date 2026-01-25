@@ -5,6 +5,9 @@ import 'dart:js_interop';
 external JSPromise<JSBoolean> _openWindowOnSecondaryScreen(
     JSString url, JSString title, JSNumber width, JSNumber height);
 
+@JS('window.close')
+external void _windowClose();
+
 class WebMonitorHelper {
   static Future<bool> openProjectorWindow(String url,
       {String title = 'Projector', int width = 1200, int height = 800}) async {
@@ -16,6 +19,14 @@ class WebMonitorHelper {
     } catch (e) {
       print('[WebMonitorHelper] Error calling JS: $e');
       return false;
+    }
+  }
+
+  static void closeSelf() {
+    try {
+      _windowClose();
+    } catch (e) {
+      print('[WebMonitorHelper] Error closing window: $e');
     }
   }
 }

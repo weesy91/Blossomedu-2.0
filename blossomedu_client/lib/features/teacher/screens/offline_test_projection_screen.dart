@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/vocab_service.dart';
+import '../../../core/utils/web_monitor_helper.dart'; // [NEW] Auto-Close support
 
 class OfflineTestProjectionScreen extends StatefulWidget {
   final List<Map<String, dynamic>> words;
@@ -116,7 +117,11 @@ class _OfflineTestProjectionScreenState
     final isProjectorMode = widget.words.isEmpty;
 
     if (isProjectorMode) {
-      setState(() => _isFinished = true);
+      // [NEW] Auto Close Window
+      WebMonitorHelper.closeSelf();
+
+      // Fallback UI if close is blocked
+      if (mounted) setState(() => _isFinished = true);
     } else {
       context.pushReplacement('/teacher/offline-test/grading', extra: {
         'words': _localWords,

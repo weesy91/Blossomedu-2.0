@@ -9,4 +9,8 @@ class WebMonitorHelper {
     // Or return false to indicate "Not handled by JS".
     return false;
   }
+
+  static void closeSelf() {
+    // No-op on non-web
+  }
 }
