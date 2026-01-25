@@ -26,8 +26,10 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
   bool _isSearching = false;
   Map<String, dynamic>? _selectedStudent;
 
-  // Step 2: Book & Config
+  // [NEW] Book Workflow
   List<dynamic> _availableBooks = [];
+  List<dynamic> _publishers = []; // [NEW]
+  int? _selectedPublisherId;
   Map<String, dynamic>? _selectedBook;
   bool _isLoadingBooks = false;
 
@@ -82,13 +84,19 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
   Future<void> _loadBooks() async {
     setState(() => _isLoadingBooks = true);
     try {
-      // 1. Fetch Student's My Books? Or All Books?
-      // Since it's teacher/assistant, maybe All Books is better, but "Student's Books" is safer for assignments.
-      // Let's fetch ALL books for maximum flexibility (Ad-hoc test).
-      final books = await _vocabService.getVocabBooks();
+      // Fetch both books and publishers
+      final results = await Future.wait([
+        _vocabService.getVocabBooks(),
+        _vocabService.getPublishers(),
+      ]);
+
       if (mounted) {
         setState(() {
-          _availableBooks = books;
+          _availableBooks = results[0];
+          _publishers = results[1];
+          // Sort publishers by name
+          _publishers
+              .sort((a, b) => (a['name'] as String).compareTo(b['name']));
           _isLoadingBooks = false;
         });
       }
@@ -96,7 +104,7 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       if (mounted) {
         setState(() => _isLoadingBooks = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('교재 로드 실패: $e')));
+            .showSnackBar(SnackBar(content: Text('데이터 로드 실패: $e')));
       }
     }
   }
@@ -312,53 +320,90 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       TextEditingController(text: '1-1');
 
   Widget _buildStep2() {
+    // Filter books by publisher
+    final filteredBooks = _selectedPublisherId == null
+        ? <dynamic>[]
+        : _availableBooks.where((b) {
+            // Check publisher field. Could be int ID or object depending on serializer.
+            // Usually API returns ID or nested object.
+            // Let's assume ID or check 'publisher.id' if object.
+            // Safe check:
+            final p = b['publisher'];
+            if (p is int) return p == _selectedPublisherId;
+            if (p is Map) return p['id'] == _selectedPublisherId;
+            return false;
+          }).toList();
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Book Selector (Autocomplete)
-          const Text('교재 검색', style: TextStyle(fontWeight: FontWeight.bold)),
+          // 1. Publisher Selector
+          const Text('출판사 선택', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           _isLoadingBooks
               ? const LinearProgressIndicator()
-              : Autocomplete<Map<String, dynamic>>(
-                  initialValue: _selectedBook != null
-                      ? TextEditingValue(text: _selectedBook!['title'])
-                      : null,
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text.isEmpty) {
-                      return const Iterable<Map<String, dynamic>>.empty();
-                    }
-                    return _availableBooks.where((book) {
-                      return book['title']
-                          .toString()
-                          .toLowerCase()
-                          .contains(textEditingValue.text.toLowerCase());
-                    }).cast<Map<String, dynamic>>();
-                  },
-                  displayStringForOption: (option) => option['title'],
-                  onSelected: _onBookSelected,
-                  fieldViewBuilder: (context, textEditingController, focusNode,
-                      onFieldSubmitted) {
-                    return TextField(
-                      controller: textEditingController,
-                      focusNode: focusNode,
-                      decoration: InputDecoration(
-                        hintText: '교재 제목 입력 (예: 어휘왕)',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
-                      ),
-                      onSubmitted: (v) {
-                        // Allow submit if user typed exact name?
-                        // Autocomplete usually handles this via onSelected.
-                      },
+              : DropdownButtonFormField<int>(
+                  value: _selectedPublisherId,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
+                  ),
+                  hint: const Text('출판사를 선택하세요'),
+                  items: _publishers.map<DropdownMenuItem<int>>((p) {
+                    return DropdownMenuItem(
+                      value: p['id'],
+                      child: Text(p['name']),
                     );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedPublisherId = val;
+                      _selectedBook = null; // Reset book
+                    });
                   },
                 ),
+
+          const SizedBox(height: 24),
+
+          // 2. Book Selector
+          const Text('교재 선택', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: _selectedBook?['id'].toString(),
+            decoration: InputDecoration(
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            hint: Text(_selectedPublisherId == null
+                ? '출판사를 먼저 선택하세요'
+                : (filteredBooks.isEmpty ? '등록된 교재가 없습니다' : '교재를 선택하세요')),
+            items: filteredBooks.map<DropdownMenuItem<String>>((book) {
+              return DropdownMenuItem(
+                value: book['id'].toString(),
+                child: Text(
+                  book['title'],
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val == null) return;
+              final book =
+                  _availableBooks.firstWhere((b) => b['id'].toString() == val);
+              _onBookSelected(book);
+            },
+            disabledHint: Text(_selectedPublisherId == null
+                ? '출판사를 먼저 선택하세요'
+                : '등록된 교재가 없습니다'),
+            // Disable if no publisher or no books
+            onTap: null, // Default
+          ),
 
           const SizedBox(height: 24),
 
