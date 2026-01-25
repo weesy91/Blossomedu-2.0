@@ -231,6 +231,16 @@ class _StudyRecordScreenState extends State<StudyRecordScreen>
                 final bool isCorrect = d['is_correct'];
                 final bool isPending = d['is_correction_requested'] == true &&
                     d['is_resolved'] == false;
+
+                final String rawAnswer = d['student_answer'] ?? '';
+                final bool isAllEmpty = details.every((item) =>
+                    (item['student_answer'] ?? '').toString().isEmpty);
+
+                // Heuristic: If all answers are empty, it's likely an offline test.
+                final String displayAnswer = rawAnswer.isEmpty
+                    ? (isAllEmpty ? '(오프라인 시험)' : '(미입력)')
+                    : rawAnswer;
+
                 return ListTile(
                   dense: true,
                   leading: Icon(
@@ -240,8 +250,8 @@ class _StudyRecordScreenState extends State<StudyRecordScreen>
                   ),
                   title: Text(d['word_question'],
                       style: const TextStyle(fontWeight: FontWeight.w500)),
-                  subtitle: Text(
-                      '답: ${d['student_answer'].isEmpty ? '(미입력)' : d['student_answer']} / 정답: ${d['correct_answer']}'),
+                  subtitle:
+                      Text('답: $displayAnswer / 정답: ${d['correct_answer']}'),
                   trailing: isPending
                       ? const Icon(Icons.hourglass_empty,
                           size: 16, color: Colors.orange)
