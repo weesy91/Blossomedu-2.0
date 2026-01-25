@@ -8,67 +8,54 @@ from .models import TestResultDetail, MonthlyTestResultDetail, Word, TestResult,
 # ==============================================================================
 def get_vulnerable_words(profile):
     """
-    오답률 높은 단어 + 학생이 직접 추가한 오답 단어 병합하여 반환
+    [STRICT MODE] 오답 노트(PersonalWrongWord)에 있는 단어만 반환
+    - 검색 추가 단어(MasterWord only)도 포함하여 Word 객체처럼 포장해서 반환
+    - 기존 '취약 단어 자동 감지(25% 룰)'는 제거됨
     """
-    # 1. 기존 시험 오답 데이터 수집
-    normal_details = TestResultDetail.objects.filter(result__student=profile)
-    monthly_details = MonthlyTestResultDetail.objects.filter(result__student=profile)
-
-    stats = {}
-    def update_stats(queryset):
-        for d in queryset:
-            key = d.word_question.strip().lower()
-            if key not in stats: stats[key] = {'total': 0, 'wrong': 0}
-            stats[key]['total'] += 1
-            if not d.is_correct: stats[key]['wrong'] += 1
-
-    update_stats(normal_details)
-    update_stats(monthly_details)
-
-    # 틀린 비율이 25% 이상인 단어 필터링
-    vulnerable_keys = {text for text, data in stats.items() if data['total'] > 0 and (data['wrong'] / data['total'] >= 0.25)}
-
-    # 2. 학생이 직접 추가한 오답 단어 수집
+    # 1. 학생이 직접 추가한 오답 단어 수집 (유일한 소스)
     personal_wrongs = PersonalWrongWord.objects.filter(
         student=profile,
         success_count__lt=3
-    ).select_related('word', 'master_word')
+    ).select_related('word', 'word__book', 'master_word') # optimize query
+
+    final_words = []
+    seen_ids = set() # (word_id, master_word_id) tuple to dedupe logic if needed? 
+                     # PersonalWrongWord is unique by (student, master_word), so just listing them is fine.
+    
+    # We need to return objects that look like 'Word' model for the frontend/test loop
+    # attributes needed: id (can be None), master_word, english, korean, book_id (optional)
+    
+    class SearchWordWrapper:
+        def __init__(self, master_word, korean_hint=""):
+            self.id = None # No real Word ID
+            self.master_word = master_word
+            self.english = master_word.text
+            # [Fix] 검색 단어는 뜻이 DB에 없으므로 (MasterWord는 뜻 안가짐), 
+            # WordMeaning에서 가져오거나 해야 함. 하지만 여기선 대표 뜻 1개만 필요.
+            # 검색 단어 추가 시 뜻을 저장하지 않으므로, 실시간 조회하거나 빈칸.
+            # 다행히 start_test 할때 get_primary_pos나 뜻을 다시 조회하긴 함.
+            # get_vulnerable_words -> start_test -> response
+            
+            # MasterWord에 연결된 뜻 중 하나 가져오기 (임시)
+            meanings = list(master_word.meanings.all())
+            if meanings:
+                self.korean = meanings[0].meaning
+            else:
+                self.korean = "뜻 없음 (검색 단어)"
+            
+            self.number = 0 # Dummy day
+            self.book_id = 0 # Dummy book
+
     for pw in personal_wrongs:
-        if pw.master_word:
-            vulnerable_keys.add(pw.master_word.text.strip().lower())
-        elif pw.word:
-            vulnerable_keys.add(pw.word.english.strip().lower())
-    
-    if not vulnerable_keys:
-        return []
-
-    # 3. 실제 Word 객체 조회
-    candidates = Word.objects.annotate(
-        english_l=Lower('english')
-    ).filter(english_l__in=vulnerable_keys).select_related('book')
-
-    # 4. 정렬 (최근 본 단어장 우선)
-    recent_tests = TestResult.objects.filter(student=profile).order_by('-created_at').values_list('book_id', flat=True)[:20]
-    recent_book_ids = list(dict.fromkeys(recent_tests))
-
-    def get_priority(word):
-        if word.book_id in recent_book_ids:
-            return recent_book_ids.index(word.book_id)
-        return 9999
-
-    sorted_candidates = sorted(candidates, key=get_priority)
-
-    # 5. 중복 제거
-    unique_words = []
-    seen_english = set()
-
-    for w in sorted_candidates:
-        clean_eng = w.english.strip().lower()
-        if clean_eng not in seen_english:
-            unique_words.append(w)
-            seen_english.add(clean_eng)
-    
-    return unique_words
+        if pw.word:
+            # 교재에 있는 단어면 그대로 사용
+            final_words.append(pw.word)
+        elif pw.master_word:
+            # 검색 단어면 래퍼 생성
+            wrapper = SearchWordWrapper(pw.master_word)
+            final_words.append(wrapper)
+            
+    return final_words
 
 def is_monthly_test_period():
     import calendar
