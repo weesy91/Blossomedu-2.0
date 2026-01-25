@@ -203,65 +203,63 @@ def calculate_score(details_data):
             is_correct = item['is_correct']
         else:
             is_correct = False
-
-        
-        # [DEBUG] Print values for investigation
-        print(f"[GRADING DEBUG] Question: {item.get('english')}")
-        print(f"[GRADING DEBUG] User input: '{user_input}' -> tokens: {user_tokens}")
-        print(f"[GRADING DEBUG] Answer: '{ans_origin}' -> candidates: {ans_candidates}")
-        
-        if not user_tokens:
-            is_correct = False
-        else:
-            for u_token in user_tokens:
-                # 학생 답: "상호작용하다" -> "상호작용하다"
-                u_compact = u_token.replace(" ", "")
-                # [Fix] Remove redundant clean_text to ensure symmetry, or apply consistent logic.
-                # u_token is already from user_norm which passed check? No, user_norm is just NFC.
-                # user_input is NOT passed through clean_text in step 4?
-                # Wait, step 4 splits user_norm.split(','). It DOES NOT call clean_text on user_input!
-                # We should apply clean_text to user_input too for consistency.
-                
-                # Apply clean_text to the token strictly for comparison
-                u_clean = clean_text(u_token).replace(" ", "")
-
-                for a_token in ans_candidates:
-                    # 정답지: "상호 작용하다" -> "상호작용하다"
-                    a_clean = a_token.replace(" ", "")
-                    # a_token comes from clean_text(ans_norm), so it is already clean.
+            
+            # [DEBUG] Print values for investigation
+            # print(f"[GRADING DEBUG] Question: {item.get('english')}")
+            # print(f"[GRADING DEBUG] User input: '{user_input}' -> tokens: {user_tokens}")
+            # print(f"[GRADING DEBUG] Answer: '{ans_origin}' -> candidates: {ans_candidates}")
+            
+            if not user_tokens:
+                is_correct = False
+            else:
+                for u_token in user_tokens:
+                    # 학생 답: "상호작용하다" -> "상호작용하다"
+                    u_compact = u_token.replace(" ", "")
+                    # [Fix] Remove redundant clean_text to ensure symmetry, or apply consistent logic.
+                    # u_token is already from user_norm which passed check? No, user_norm is just NFC.
+                    # user_input is NOT passed through clean_text in step 4?
+                    # Wait, step 4 splits user_norm.split(','). It DOES NOT call clean_text on user_input!
+                    # We should apply clean_text to user_input too for consistency.
                     
-                    # [Relaxed Match] Ignore Tilde(~) for comparison if strict match fails
-                # [Relaxed Match] Ignore Tilde(~) for comparison if strict match fails
-                    if u_clean == a_clean:
-                        is_correct = True
-                        break
-                    
-                    # Fallback 1: Ignore tildes
-                    if u_clean.replace("~", "") == a_clean.replace("~", ""):
-                        is_correct = True
-                        break
+                    # Apply clean_text to the token strictly for comparison
+                    u_clean = clean_text(u_token).replace(" ", "")
 
-                    # Fallback 2: Ignore leading particles (에, 와, 을, 를...)
-                    # [Advanced Grading] "~에 의존하다" vs "의존하다" -> Match
-                    def strip_particles(t):
-                        # 1. Remove leading tildes/hyphens
-                        t = re.sub(r'^[~-]+\s*', '', t)
-                        # 2. Remove leading Korean particles (limiting to common ones)
-                        # Caution: simple '에' removal might affect words starting with 에 (에너지).
-                        # So we only remove if it looks like a particle pattern from the Answer Key side mostly.
-                        # But here strictly stripping common prepositional particles if followed by space or just checking end?
-                        # Actually, safe approach: Strip specifically "에", "와", "과", "을", "를" if they are at the start.
-                        t = re.sub(r'^(에|와|과|을|를|이|가|로|으로)\s*', '', t) 
-                        return t
-
-                    u_stem = strip_particles(u_clean)
-                    a_stem = strip_particles(a_clean)
-                    
-                    if u_stem == a_stem:
-                        is_correct = True
-                        break
+                    for a_token in ans_candidates:
+                        # 정답지: "상호 작용하다" -> "상호작용하다"
+                        a_clean = a_token.replace(" ", "")
+                        # a_token comes from clean_text(ans_norm), so it is already clean.
                         
-                if is_correct: break
+                        # [Relaxed Match] Ignore Tilde(~) for comparison if strict match fails
+                        if u_clean == a_clean:
+                            is_correct = True
+                            break
+                        
+                        # Fallback 1: Ignore tildes
+                        if u_clean.replace("~", "") == a_clean.replace("~", ""):
+                            is_correct = True
+                            break
+
+                        # Fallback 2: Ignore leading particles (에, 와, 을, 를...)
+                        # [Advanced Grading] "~에 의존하다" vs "의존하다" -> Match
+                        def strip_particles(t):
+                            # 1. Remove leading tildes/hyphens
+                            t = re.sub(r'^[~-]+\s*', '', t)
+                            # 2. Remove leading Korean particles (limiting to common ones)
+                            # Caution: simple '에' removal might affect words starting with 에 (에너지).
+                            # So we only remove if it looks like a particle pattern from the Answer Key side mostly.
+                            # But here strictly stripping common prepositional particles if followed by space or just checking end?
+                            # Actually, safe approach: Strip specifically "에", "와", "과", "을", "를" if they are at the start.
+                            t = re.sub(r'^(에|와|과|을|를|이|가|로|으로)\s*', '', t) 
+                            return t
+
+                        u_stem = strip_particles(u_clean)
+                        a_stem = strip_particles(a_clean)
+                        
+                        if u_stem == a_stem:
+                            is_correct = True
+                            break
+                            
+                    if is_correct: break
         
         if is_correct:
             score += 1
