@@ -280,36 +280,42 @@ def update_score_on_change(sender, instance, **kwargs):
 # ==========================================
 @receiver(post_delete, sender=TestResult)
 def auto_reset_cooldown(sender, instance, **kwargs):
-    # instance.student가 이제 바로 Profile 객체입니다.
-    profile = instance.student 
-    
-    # 더 이상 hasattr 체크나 profile 접근이 필요 없습니다.
-    # if not hasattr(student, 'profile'): return (삭제)
-    
-    now = timezone.now()
-    three_mins_ago = now - timedelta(minutes=3)
+    try:
+        # instance.student가 이제 바로 Profile 객체입니다.
+        profile = instance.student 
+        
+        # [Safety Check] If profile or user is being deleted, skip save
+        if not profile or not profile.pk:
+            return
 
-    # 쿼리 시 student=profile 로 변경
-    recent_challenge_fails = TestResult.objects.filter(
-        student=profile,
-        score__lt=27,
-        created_at__gte=three_mins_ago
-    ).exclude(test_range="오답집중")
+        now = timezone.now()
+        three_mins_ago = now - timedelta(minutes=3)
+        five_mins_ago = now - timedelta(minutes=5) # [FIX] Defined missing variable if needed, or check logic
 
-    if not recent_challenge_fails.exists():
-        profile.last_failed_at = None
+        # 쿼리 시 student=profile 로 변경
+        recent_challenge_fails = TestResult.objects.filter(
+            student=profile,
+            score__lt=27,
+            created_at__gte=three_mins_ago
+        ).exclude(test_range="오답집중")
 
-    recent_wrong_fails = TestResult.objects.filter(
-        student=profile,
-        score__lt=27,
-        created_at__gte=five_mins_ago,
-        test_range="오답집중"
-    )
+        if not recent_challenge_fails.exists():
+            profile.last_failed_at = None
 
-    if not recent_wrong_fails.exists():
-        profile.last_wrong_failed_at = None
+        recent_wrong_fails = TestResult.objects.filter(
+            student=profile,
+            score__lt=27,
+            created_at__gte=five_mins_ago,
+            test_range="오답집중"
+        )
 
-    profile.save()
+        if not recent_wrong_fails.exists():
+            profile.last_wrong_failed_at = None
+
+        profile.save()
+    except Exception:
+        # Student deletion cascade or other race condition
+        pass
 
 class PersonalWrongWord(models.Model):
     """
