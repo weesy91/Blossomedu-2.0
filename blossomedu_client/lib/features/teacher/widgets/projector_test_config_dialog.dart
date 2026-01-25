@@ -41,7 +41,7 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       TextEditingController(text: '1-1');
 
   // Config Options
-  double _durationPerWord = 3.0; // Seconds
+  double _durationPerWord = 5.0; // Seconds [FIX] Default 5s
   String _mode = 'eng_kor'; // eng_kor, kor_eng
   // RangeValues _dayRange = const RangeValues(1, 1); // Removed in favor of Controller
   int _maxDay = 1;
