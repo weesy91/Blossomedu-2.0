@@ -36,17 +36,37 @@ class _OfflineTestProjectionScreenState
   bool _isFetching = false;
   bool _isFinished = false;
   List<Map<String, dynamic>> _localWords = [];
+  String? _bgImgUrl; // [NEW] Background Image
 
   @override
   void initState() {
     super.initState();
     _localWords = widget.words;
 
+    // Always fetch book details for background image (even if words are passed)
+    if (widget.bookId != 0) {
+      _fetchBookDetails();
+    }
+
     // Use passed words if available, otherwise fetch
     if (_localWords.isEmpty && widget.bookId != 0) {
       _fetchWords();
     } else {
       _startTimer();
+    }
+  }
+
+  Future<void> _fetchBookDetails() async {
+    try {
+      final vocabService = VocabService();
+      final book = await vocabService.getVocabBook(widget.bookId);
+      if (mounted && book['cover_image'] != null) {
+        setState(() {
+          _bgImgUrl = book['cover_image'];
+        });
+      }
+    } catch (_) {
+      // Ignore errors (just use default bg)
     }
   }
 
@@ -134,32 +154,64 @@ class _OfflineTestProjectionScreenState
 
   @override
   Widget build(BuildContext context) {
+    // [NEW] Background Decoration
+    BoxDecoration bgDecoration;
+    if (_bgImgUrl != null) {
+      bgDecoration = BoxDecoration(
+        color: Colors.black, // Fallback behind image
+        image: DecorationImage(
+          image: NetworkImage(_bgImgUrl!),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.5),
+              BlendMode.darken), // Dim for readability
+        ),
+      );
+    } else {
+      // Nice Gradient Default
+      bgDecoration = const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1A2980), Color(0xFF26D0CE)], // Deep Blue -> Aqua
+        ),
+      );
+    }
+
     if (_isFetching) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      return Scaffold(
+        body: Container(
+          decoration: bgDecoration,
+          child: const Center(
+              child: CircularProgressIndicator(color: Colors.white)),
+        ),
       );
     }
 
     if (_isFinished) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Text(
-            '시험 종료',
-            style: TextStyle(
-                color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+      return Scaffold(
+        body: Container(
+          decoration: bgDecoration,
+          child: const Center(
+            child: Text(
+              '시험 종료',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       );
     }
 
     if (_localWords.isEmpty) {
-      return const Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-              child: Text('단어 목록이 비어있습니다.',
-                  style: TextStyle(color: Colors.white))));
+      return Scaffold(
+          body: Container(
+        decoration: bgDecoration,
+        child: const Center(
+            child:
+                Text('단어 목록이 비어있습니다.', style: TextStyle(color: Colors.white))),
+      ));
     }
 
     final currentWord = _localWords[_currentIndex];
@@ -168,91 +220,67 @@ class _OfflineTestProjectionScreenState
         : currentWord['korean'];
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Row(
-              children: [
-                // [NEW] Fullscreen Toggle
-                IconButton(
-                  icon: const Icon(Icons.fullscreen,
-                      color: Colors.white, size: 30),
-                  onPressed: () {
-                    // Simple toggle for now.
-                    // In Web, modifying URL bar/frame requires user interaction anyway.
-                    // This button provides that "User Interaction" context.
-                    // Ideally use 'dart:html' to requestFullscreen, but we want to avoid direct import if poss.
-                    // Since this is UI, let's leave it as a hint or use 'flutter_windowmanager' if applicable?
-                    // No, for Web, simplest is just to let user press F11, BUT
-                    // we can try SystemChrome (works on some platforms).
-                    // Or let's just leave it as a visual cue or implementing platform specific code?
-                    // Actually, let's keep it simple: Just Close button is fine if the window is already large.
-                    // User complained "it is not maximized". My previous fix ensures it opens with `availWidth`.
-
-                    // Let's Add it anyway using a simple JS helper if on web? No, import issues.
-                    // Let's rely on my previous fix for now.
-                    // BUT, to be safe, I will add it if I can easily use a package.
-                    // 'package:fullscreen_window' ? No.
-
-                    // Wait, if I add a button, I should make it work.
-                    // I will Skip adding the button for now and rely on the index.html fix.
-                    // If user complains again, I will add the button with proper web-interop.
-                    // But I need to restore the Close button code I targeted.
-                    _timer?.cancel();
-                    context.pop();
-                  },
-                ),
-              ],
+      body: Container(
+        decoration: bgDecoration,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 20,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () {
+                  _timer?.cancel();
+                  context.pop();
+                },
+              ),
             ),
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: LinearProgressIndicator(
-                  value: (_currentIndex + 1) / _localWords.length,
-                  backgroundColor: Colors.grey.shade800,
-                  color: Colors.blue,
-                  minHeight: 8.0,
-                  borderRadius: BorderRadius.circular(4),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: LinearProgressIndicator(
+                    value: (_currentIndex + 1) / _localWords.length,
+                    backgroundColor: Colors.grey.shade800,
+                    color: Colors.blue,
+                    minHeight: 8.0,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${_currentIndex + 1} / ${_localWords.length}',
-                style: const TextStyle(color: Colors.grey, fontSize: 18),
-              ),
-              const SizedBox(height: 60),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    displayWord ?? '',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 80,
-                      fontWeight: FontWeight.bold,
+                const SizedBox(height: 10),
+                Text(
+                  '${_currentIndex + 1} / ${_localWords.length}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 18),
+                ),
+                const SizedBox(height: 60),
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      displayWord ?? '',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 80,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 40),
-              Text(
-                '$_timeLeft',
-                style: TextStyle(
-                  color: _timeLeft <= 3 ? Colors.red : Colors.yellow,
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 40),
+                Text(
+                  '$_timeLeft',
+                  style: TextStyle(
+                    color: _timeLeft <= 3 ? Colors.red : Colors.yellow,
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

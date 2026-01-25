@@ -33,7 +33,7 @@ class WordBookSerializer(serializers.ModelSerializer):
         model = WordBook
         fields = [
             'id', 'title', 'publisher', 'publisher_name', 'total_words', 'total_days',
-            'csv_file', 'target_branch', 'target_school', 'target_grade', 
+            'csv_file', 'cover_image', 'target_branch', 'target_school', 'target_grade', 
             'created_at'
         ]
 

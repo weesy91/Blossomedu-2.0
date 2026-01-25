@@ -14,6 +14,16 @@ class VocabService {
     }
   }
 
+  // [NEW] Get single vocab book details
+  Future<Map<String, dynamic>> getVocabBook(int id) async {
+    try {
+      final response = await _dio.get('/vocab/api/v1/books/$id/');
+      return response.data;
+    } catch (e) {
+      throw Exception('Failed to load vocab book details: $e');
+    }
+  }
+
   // Upload a new vocab book (CSV)
   Future<void> uploadVocabBook({
     required String title,

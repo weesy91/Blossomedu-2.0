@@ -62,6 +62,7 @@ class WordBook(models.Model):
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="등록자")
     created_at = models.DateTimeField(auto_now_add=True)
     csv_file = models.FileField(upload_to='csvs/', blank=True, null=True, verbose_name="CSV 파일")
+    cover_image = models.FileField(upload_to='covers/', blank=True, null=True, verbose_name="표지/배경 이미지")
 
     # [NEW] School-Specific Visibility
     target_branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="대상 지점 (본사=NULL)")
