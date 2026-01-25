@@ -45,6 +45,12 @@ class _OfflineTestProjectionScreenState
     super.initState();
     _localWords = widget.words;
 
+    // [NEW] Listen for Remote Close Signal
+    WebMonitorHelper.listenForCloseSignal(() {
+      print('[Projector] Received Remote Close Signal. Closing...');
+      WebMonitorHelper.closeSelf();
+    });
+
     // Always fetch book details for background image (even if words are passed)
     if (widget.bookId != 0) {
       _fetchBookDetails();

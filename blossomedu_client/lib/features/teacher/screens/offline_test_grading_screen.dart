@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/vocab_service.dart';
+import '../../../core/utils/web_monitor_helper.dart'; // [NEW]
 
 class OfflineTestGradingScreen extends StatefulWidget {
   final List<Map<String, dynamic>> words;
@@ -25,6 +26,12 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
   final VocabService _vocabService = VocabService();
   late List<bool> _results; // true = O, false = X
   bool _isSaving = false;
+
+  @override
+  void dispose() {
+    WebMonitorHelper.sendCloseSignal(); // [NEW] Auto-close projector
+    super.dispose();
+  }
 
   @override
   void initState() {

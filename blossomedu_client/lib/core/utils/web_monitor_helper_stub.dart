@@ -13,4 +13,12 @@ class WebMonitorHelper {
   static void closeSelf() {
     // No-op on non-web
   }
+
+  static void sendCloseSignal() {
+    // No-op
+  }
+
+  static void listenForCloseSignal(void Function() onClose) {
+    // No-op
+  }
 }

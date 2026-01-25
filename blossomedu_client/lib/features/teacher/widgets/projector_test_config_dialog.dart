@@ -37,6 +37,9 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
   // RangeValues _dayRange = const RangeValues(1, 1); // Removed in favor of Controller
   int _maxDay = 1;
 
+  // [NEW] Book Search
+  // Removed unused fields
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +52,7 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
     if (query.isEmpty) return;
     setState(() => _isSearching = true);
     try {
+      // Use searchStudents (which returns raw list)
       final results = await _academyService.searchStudents(query: query);
       if (mounted) {
         setState(() {
@@ -285,9 +289,9 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
                     separatorBuilder: (_, __) => const Divider(),
                     itemBuilder: (context, index) {
                       final s = _searchResults[index];
-                      // [FIX] Correctly mapped fields or graceful fallbacks
-                      final school = s['school'] ?? s['school_name'] ?? '-';
-                      final grade = s['grade'] ?? s['grade_display'] ?? '-';
+                      // [FIX] Use school_name NOT school (which is ID)
+                      final school = s['school_name'] ?? '-';
+                      final grade = s['grade_display'] ?? s['grade'] ?? '-';
                       return ListTile(
                         leading: CircleAvatar(child: Text(s['name'][0])),
                         title: Text(s['name']),
@@ -313,33 +317,46 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Book Selector
-          const Text('교재 선택', style: TextStyle(fontWeight: FontWeight.bold)),
+          // 1. Book Selector (Autocomplete)
+          const Text('교재 검색', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           _isLoadingBooks
               ? const LinearProgressIndicator()
-              : DropdownButtonFormField<String>(
-                  value: _selectedBook?['id'].toString(),
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
-                  ),
-                  hint: const Text('교재를 선택하세요'),
-                  items: _availableBooks.map<DropdownMenuItem<String>>((book) {
-                    return DropdownMenuItem(
-                      value: book['id'].toString(),
-                      child: Text(
-                        book['title'],
-                        overflow: TextOverflow.ellipsis,
+              : Autocomplete<Map<String, dynamic>>(
+                  initialValue: _selectedBook != null
+                      ? TextEditingValue(text: _selectedBook!['title'])
+                      : null,
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return const Iterable<Map<String, dynamic>>.empty();
+                    }
+                    return _availableBooks.where((book) {
+                      return book['title']
+                          .toString()
+                          .toLowerCase()
+                          .contains(textEditingValue.text.toLowerCase());
+                    }).cast<Map<String, dynamic>>();
+                  },
+                  displayStringForOption: (option) => option['title'],
+                  onSelected: _onBookSelected,
+                  fieldViewBuilder: (context, textEditingController, focusNode,
+                      onFieldSubmitted) {
+                    return TextField(
+                      controller: textEditingController,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        hintText: '교재 제목 입력 (예: 어휘왕)',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
                       ),
+                      onSubmitted: (v) {
+                        // Allow submit if user typed exact name?
+                        // Autocomplete usually handles this via onSelected.
+                      },
                     );
-                  }).toList(),
-                  onChanged: (val) {
-                    final book = _availableBooks
-                        .firstWhere((b) => b['id'].toString() == val);
-                    _onBookSelected(book);
                   },
                 ),
 

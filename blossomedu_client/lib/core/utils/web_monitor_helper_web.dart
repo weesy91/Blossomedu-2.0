@@ -1,12 +1,13 @@
 // Web implementation
 import 'dart:js_interop';
+import 'dart:html' as html;
 
 @JS('openWindowOnSecondaryScreen')
 external JSPromise<JSBoolean> _openWindowOnSecondaryScreen(
     JSString url, JSString title, JSNumber width, JSNumber height);
 
-@JS('window.close')
-external void _windowClose();
+// @JS('window.close')
+// external void _windowClose();
 
 class WebMonitorHelper {
   static Future<bool> openProjectorWindow(String url,
@@ -24,9 +25,33 @@ class WebMonitorHelper {
 
   static void closeSelf() {
     try {
-      _windowClose();
+      html.window.close();
     } catch (e) {
       print('[WebMonitorHelper] Error closing window: $e');
+    }
+  }
+
+  // [NEW] Remote Close Logic
+  static void sendCloseSignal() {
+    try {
+      final channel = html.BroadcastChannel('blossom_projector_control');
+      channel.postMessage('close');
+      channel.close();
+    } catch (e) {
+      print('[WebMonitorHelper] Error sending close signal: $e');
+    }
+  }
+
+  static void listenForCloseSignal(void Function() onClose) {
+    try {
+      final channel = html.BroadcastChannel('blossom_projector_control');
+      channel.onMessage.listen((event) {
+        if (event.data == 'close') {
+          onClose();
+        }
+      });
+    } catch (e) {
+      print('[WebMonitorHelper] Error listening signal: $e');
     }
   }
 }
