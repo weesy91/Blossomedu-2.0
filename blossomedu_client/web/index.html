@@ -34,5 +34,49 @@
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
+  
+  <script>
+    // [NEW] Multi-Screen Window Management Helper
+    async function openWindowOnSecondaryScreen(url, title, w, h) {
+      try {
+        // Check API support
+        if ('getScreenDetails' in window) {
+           const screenDetails = await window.getScreenDetails();
+           // Find a screen that is DIFFERENT from the current screen
+           const currentScreen = screenDetails.currentScreen;
+           const screens = screenDetails.screens;
+           
+           let targetScreen = screens.find(s => s !== currentScreen);
+           
+           // If no other screen, just use current (fallback)
+           if (!targetScreen) {
+             console.log("No secondary screen found. Using default.");
+             window.open(url, title, `width=${w},height=${h}`);
+             return true;
+           }
+           
+           // Calculate center for the target screen if needed, or just offset
+           // Let's just place it at top-left of the target screen + some padding
+           const left = targetScreen.availLeft + (targetScreen.availWidth - w) / 2;
+           const top = targetScreen.availTop + (targetScreen.availHeight - h) / 2;
+           
+           console.log(`Opening on screen: ${targetScreen.label} at ${left},${top}`);
+           
+           window.open(url, title, `left=${left},top=${top},width=${w},height=${h}`);
+           return true;
+        } else {
+           // Fallback for browsers without API support
+           console.log("Window Management API not supported.");
+           window.open(url, title, `width=${w},height=${h}`);
+           return false;
+        }
+      } catch (e) {
+        console.error("Error opening window on secondary screen", e);
+        // Fallback on error (e.g. permission denied)
+        window.open(url, title, `width=${w},height=${h}`);
+        return false;
+      }
+    }
+  </script>
 </body>
 </html>

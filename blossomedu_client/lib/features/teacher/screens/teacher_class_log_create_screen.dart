@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/services/academy_service.dart';
 import '../../../core/services/vocab_service.dart';
 import 'package:url_launcher/url_launcher.dart'; // [NEW] For Projector Window
+import '../../../core/utils/web_monitor_helper.dart'; // [NEW] Cross-Platform Auto Pjection
 
 class TeacherClassLogCreateScreen extends StatefulWidget {
   final String studentId;
@@ -2544,19 +2545,23 @@ class _TeacherClassLogCreateScreenState
                 // Assuming Hash Strategy (typical for Flutter Web): /#/teacher/...
                 final fullPath = '/#${uri.toString()}';
 
-                if (await canLaunchUrl(Uri.parse(fullPath))) {
-                  await launchUrl(Uri.parse(fullPath),
-                      webOnlyWindowName: '_blank');
-                } else {
-                  // Fallback try without hash if not hash strategy?
-                  // Or just use relative? launchUrl('...') might fail if scheme missing.
-                  // Easier way: usage of dart:html window.open but that requires import 'dart:html' which breaks mobile compl.
-                  // url_launcher is better.
-                  try {
+                // [NEW] Try Auto-Projection to Secondary Screen (Web Only)
+                bool launched = await WebMonitorHelper.openProjectorWindow(
+                    fullPath,
+                    title: 'Blossomedu Projector');
+
+                if (!launched) {
+                  // Fallback to standard new window
+                  if (await canLaunchUrl(Uri.parse(fullPath))) {
                     await launchUrl(Uri.parse(fullPath),
                         webOnlyWindowName: '_blank');
-                  } catch (e) {
-                    print('Launch Error: $e');
+                  } else {
+                    try {
+                      await launchUrl(Uri.parse(fullPath),
+                          webOnlyWindowName: '_blank');
+                    } catch (e) {
+                      print('Launch Error: $e');
+                    }
                   }
                 }
 
