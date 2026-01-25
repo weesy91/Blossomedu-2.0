@@ -2434,12 +2434,15 @@ class _TeacherClassLogCreateScreenState
       return;
     }
 
+    // [FIX] Capture parent context safe for async usage after dialog pop
+    final parentContext = context;
+
     int duration = 3;
     String mode = 'eng_kor'; // eng_kor, kor_eng
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Row(
             children: [
@@ -2452,7 +2455,9 @@ class _TeacherClassLogCreateScreenState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('교재: ${_findBook(row['bookId'])?['title'] ?? '알 수 없음'}'),
+              // [FIX] Pass row['type'] to resolve correct book title (prevent ID collision)
+              Text(
+                  '교재: ${_findBook(row['bookId'], type: row['type'])?['title'] ?? '알 수 없음'}'),
               const SizedBox(height: 8),
               Text('범위: ${row['range']}'),
               const Divider(height: 24),
@@ -2508,12 +2513,12 @@ class _TeacherClassLogCreateScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('취소', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.pop(context); // Close dialog first
+                Navigator.pop(dialogContext); // Close dialog first
 
                 try {
                   // Using VocabService locally
@@ -2530,8 +2535,9 @@ class _TeacherClassLogCreateScreenState
                     testWords = testWords.sublist(0, 30);
                   }
 
-                  if (context.mounted) {
-                    final grade = await context
+                  // [FIX] Use parentContext for navigation
+                  if (parentContext.mounted) {
+                    final grade = await parentContext
                         .push('/teacher/offline-test/projection', extra: {
                       'words': testWords,
                       'duration': duration, // int
@@ -2543,17 +2549,26 @@ class _TeacherClassLogCreateScreenState
 
                     // If grade returned, update row
                     if (grade != null && grade is String) {
-                      setState(() {
-                        row['score'] = grade; // Auto-fill grade (A/B/C/F)
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('시험 완료! 등급: $grade')),
-                      );
+                      // Note: 'setState' here refers to the DIALOG'S setState if inside this block?
+                      // Actually, this async block closes over the outer 'this.setState' because
+                      // 'StatefulBuilder' provides 'setState' as argument, but we are in listener.
+                      // Ideally we want to update the SCREEN state.
+                      // Since we are in the State class method, direct call to 'setState' updates the screen.
+                      // But we must check 'mounted' for the Screen.
+                      if (mounted) {
+                        this.setState(() {
+                          row['score'] = grade; // Auto-fill grade (A/B/C/F)
+                        });
+                        ScaffoldMessenger.of(parentContext).showSnackBar(
+                          SnackBar(content: Text('시험 완료! 등급: $grade')),
+                        );
+                      }
                     }
                   }
                 } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  // [FIX] Use parentContext for error snackbar
+                  if (parentContext.mounted) {
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
                       SnackBar(content: Text('시험 준비 실패: $e')),
                     );
                   }
