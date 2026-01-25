@@ -369,7 +369,8 @@ final router = GoRouter(
           range: extra['range']?.toString() ?? query['range'] ?? '',
           studentId: extra['studentId']?.toString() ?? query['studentId'] ?? '',
           mode: extra['mode']?.toString() ?? query['mode'] ?? 'eng_kor',
-          wordIds: extra['wordIds']?.toString() ?? query['wordIds'], // [NEW]
+          wordIds: extra['wordIds']?.toString() ?? query['wordIds'],
+          dataSource: query['dataSource'], // [NEW] Shared Prefs Source
         );
       },
     ),

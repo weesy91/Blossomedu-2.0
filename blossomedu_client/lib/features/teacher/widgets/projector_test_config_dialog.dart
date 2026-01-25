@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert'; // [NEW]
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // [NEW]
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants.dart';
 import '../../../core/services/academy_service.dart';
@@ -130,9 +132,9 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
   bool _isStarting = false;
 
   Future<void> _startProjector() async {
-    if (_selectedStudent == null || _selectedBook == null) return;
+    // [FIX] Allow start without book if Wrong Answer Mode
+    if (_testType == 'normal' && _selectedBook == null) return;
 
-    // [FIX] Validate Range
     final rangeStr = _rangeController.text.trim();
     if (rangeStr.isEmpty) {
       ScaffoldMessenger.of(context)
@@ -142,36 +144,52 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
 
     setState(() => _isStarting = true);
 
-    final studentId = _selectedStudent!['id'];
-    final bookId = _selectedBook!['id'];
-    // final rangeStr = ... using controller value now
+    final bookId = _testType == 'normal' ? _selectedBook!['id'] : 0;
+    // For normal test: Student ID is optional. For Wrong Answer: Required.
+    final studentId = _selectedStudent != null ? _selectedStudent!['id'] : null;
     final duration = _durationPerWord.toInt();
 
     try {
-      // 1. Fetch random words here (Master Source)
-      // This ensures Grading Screen (Main) and Projector (Secondary) use IDENTICAL words/order.
-      final result = await _vocabService.getWords(bookId,
-          dayRange: rangeStr, shuffle: true);
+      // 1. Generate Test Questions (Server-side handling POS/Selection)
+      // This ensures "Offline Test" matches "Online Student Test" logic (Distinct POS)
+      final List<dynamic> result = await _vocabService.generateTestQuestions(
+        bookId: bookId,
+        range: _testType == 'normal'
+            ? (rangeStr.isEmpty ? 'ALL' : rangeStr)
+            : 'WRONG_ONLY',
+        count: 30, // Standard Offline Test Size
+        studentId: studentId, // Pass for Wrong Answer Mode or Logging
+      );
 
-      var testWords = result.cast<Map<String, dynamic>>();
-      // Match limitation logic (e.g. max 30)
-      if (testWords.length > 30) {
-        testWords = testWords.sublist(0, 30);
+      if (result.isEmpty) {
+        throw Exception('출제할 단어가 없습니다. 범위를 확인해주세요.');
       }
 
-      // 2. Extract IDs for Projector URL
-      final wordIdsParam = testWords.map((w) => w['id']).join(',');
+      // Map to consistent format
+      final testWords = result
+          .map((w) => {
+                'id': w['id'], // TestDetail/Word ID
+                'wordId': w['word_id'],
+                'english': w['english'],
+                'korean': w['korean'], // Specific meaning for the POS
+                'pos': w['pos'], // Specific POS (String)
+                'meaning_groups': w['meaning_groups'], // Full data if needed
+              })
+          .toList();
 
-      // 3. Construct Projector URL
+      // 2. Save to SharedPreferences for Projector Window (Cross-Window Data Sharing)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('offline_test_data', jsonEncode(testWords));
+
+      // 3. Construct Projector URL with 'local' source
       final uri = Uri(
         path: '/teacher/offline-test/projection',
         queryParameters: {
-          'bookId': bookId.toString(),
-          'studentId': studentId.toString(),
-          'range': rangeStr,
+          'dataSource': 'local', // [NEW] Read from Prefs
+          'bookId': bookId.toString(), // For BG image
           'duration': duration.toString(),
           'mode': _mode,
-          'wordIds': wordIdsParam, // [NEW] Pass exact IDs order
+          // 'studentId': studentId.toString(), // Optional for display
         },
       );
       final fullPath = '/#${uri.toString()}';
@@ -189,8 +207,8 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       if (mounted) {
         context.pop(); // Close Dialog
         context.push('/teacher/offline-test/grading', extra: {
-          'words': testWords, // [IMPORTANT] Pass exact words
-          'studentId': studentId,
+          'words': testWords, // Pass EXACT same list
+          'studentId': studentId?.toString() ?? '',
           'bookId': bookId,
           'range': rangeStr,
         });

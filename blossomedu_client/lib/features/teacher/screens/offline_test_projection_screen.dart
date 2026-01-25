@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert'; // [NEW]
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // [NEW]
 import '../../../core/services/vocab_service.dart';
-import '../../../core/utils/web_monitor_helper.dart'; // [NEW] Auto-Close support
+import '../../../core/utils/web_monitor_helper.dart';
 
 class OfflineTestProjectionScreen extends StatefulWidget {
   final List<Map<String, dynamic>> words;
@@ -11,7 +13,8 @@ class OfflineTestProjectionScreen extends StatefulWidget {
   final int bookId;
   final String range;
   final String studentId;
-  final String? wordIds; // [NEW] For exact sync
+  final String? wordIds;
+  final String? dataSource; // [NEW] 'local' or 'remote'
 
   const OfflineTestProjectionScreen({
     super.key,
@@ -22,6 +25,7 @@ class OfflineTestProjectionScreen extends StatefulWidget {
     required this.range,
     required this.studentId,
     this.wordIds,
+    this.dataSource,
   });
 
   @override
@@ -81,40 +85,51 @@ class _OfflineTestProjectionScreenState
   Future<void> _fetchWords() async {
     setState(() => _isFetching = true);
     try {
-      final vocabService = VocabService();
-      final hasIds = widget.wordIds != null && widget.wordIds!.isNotEmpty;
+      List<Map<String, dynamic>> testWords = [];
 
-      final result = await vocabService.getWords(
-        widget.bookId,
-        dayRange: widget.range,
-        shuffle: !hasIds, // If IDs provided, we handle order locally
-      );
+      // 1. Local Storage Source (Synced with Dialog)
+      if (widget.dataSource == 'local') {
+        final prefs = await SharedPreferences.getInstance();
+        final jsonStr = prefs.getString('offline_test_data');
+        if (jsonStr != null) {
+          final List<dynamic> decoded = jsonDecode(jsonStr);
+          testWords = decoded.cast<Map<String, dynamic>>();
+        }
+      }
+      // 2. Legacy/Fallback Remote Fetch
+      else {
+        final vocabService = VocabService();
+        final hasIds = widget.wordIds != null && widget.wordIds!.isNotEmpty;
+
+        final result = await vocabService.getWords(
+          widget.bookId,
+          dayRange: widget.range,
+          shuffle: !hasIds,
+        );
+        var fetched = result.cast<Map<String, dynamic>>();
+
+        if (hasIds) {
+          final idList = widget.wordIds!
+              .split(',')
+              .map((e) => int.tryParse(e) ?? 0)
+              .toList();
+          fetched = fetched.where((w) => idList.contains(w['id'])).toList();
+          fetched.sort((a, b) {
+            final idxA = idList.indexOf(a['id']);
+            final idxB = idList.indexOf(b['id']);
+            return idxA.compareTo(idxB);
+          });
+          testWords = fetched;
+        } else {
+          if (fetched.length > 30) {
+            fetched = fetched.sublist(0, 30);
+          }
+          testWords = fetched;
+        }
+      }
 
       if (mounted) {
         setState(() {
-          var testWords = result.cast<Map<String, dynamic>>();
-
-          if (hasIds) {
-            final idList = widget.wordIds!
-                .split(',')
-                .map((e) => int.tryParse(e) ?? 0)
-                .toList();
-            // Filter
-            testWords =
-                testWords.where((w) => idList.contains(w['id'])).toList();
-            // Sort by ID order in param
-            testWords.sort((a, b) {
-              final idxA = idList.indexOf(a['id']);
-              final idxB = idList.indexOf(b['id']);
-              return idxA.compareTo(idxB);
-            });
-          } else {
-            // Fallback/Legacy Logic
-            if (testWords.length > 30) {
-              testWords = testWords.sublist(0, 30);
-            }
-          }
-
           _localWords = testWords;
           _isFetching = false;
           _startTimer();
@@ -244,9 +259,18 @@ class _OfflineTestProjectionScreenState
     }
 
     final currentWord = _localWords[_currentIndex];
-    final displayWord = widget.mode == 'eng_kor'
-        ? currentWord['english']
-        : currentWord['korean'];
+    String? displayWord;
+
+    if (widget.mode == 'eng_kor') {
+      displayWord = currentWord['english'];
+      // [UX] Show POS if available to disambiguate
+      final pos = currentWord['pos'];
+      if (pos != null && pos.toString().isNotEmpty) {
+        displayWord = '($pos) $displayWord';
+      }
+    } else {
+      displayWord = currentWord['korean'];
+    }
 
     return Scaffold(
       body: Container(
