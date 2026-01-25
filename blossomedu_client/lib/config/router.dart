@@ -123,7 +123,7 @@ final router = GoRouter(
           routes: [
             GoRoute(
               path: '/teacher/home',
-              builder: (context, state) => const TeacherHomeScreen(),
+              builder: (context, state) => TeacherHomeScreen(),
             ),
           ],
         ),
@@ -369,6 +369,7 @@ final router = GoRouter(
           range: extra['range']?.toString() ?? query['range'] ?? '',
           studentId: extra['studentId']?.toString() ?? query['studentId'] ?? '',
           mode: extra['mode']?.toString() ?? query['mode'] ?? 'eng_kor',
+          wordIds: extra['wordIds']?.toString() ?? query['wordIds'], // [NEW]
         );
       },
     ),

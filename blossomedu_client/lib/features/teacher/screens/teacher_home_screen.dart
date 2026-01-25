@@ -5,10 +5,9 @@ import '../../../core/providers/user_provider.dart';
 import '../../../core/services/vocab_service.dart';
 import '../../../core/services/academy_service.dart'; // [NEW]
 import 'package:intl/intl.dart'; // [NEW]
+import '../widgets/projector_test_config_dialog.dart'; // [NEW]
 
 class TeacherHomeScreen extends StatefulWidget {
-  const TeacherHomeScreen({super.key});
-
   @override
   State<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
 }
@@ -259,7 +258,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             const SizedBox(height: 32),
 
             // 3. Quick Actions
-            const Text('빠른 실행',
+            const Text('빠른 실행 (New)',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
 
@@ -271,6 +270,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               children: [
+                _buildFeatureCard(
+                  icon: Icons.connected_tv,
+                  title: '단어 시험 실행',
+                  subtitle: '수업/시험용 듀얼 모드',
+                  color: Colors.blueAccent,
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const ProjectorTestConfigDialog(),
+                    );
+                  },
+                ),
                 _buildFeatureCard(
                   icon: Icons.people_alt,
                   title: '학생 목록',

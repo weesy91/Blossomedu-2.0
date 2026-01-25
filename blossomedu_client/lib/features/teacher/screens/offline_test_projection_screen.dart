@@ -11,6 +11,7 @@ class OfflineTestProjectionScreen extends StatefulWidget {
   final int bookId;
   final String range;
   final String studentId;
+  final String? wordIds; // [NEW] For exact sync
 
   const OfflineTestProjectionScreen({
     super.key,
@@ -20,6 +21,7 @@ class OfflineTestProjectionScreen extends StatefulWidget {
     required this.bookId,
     required this.range,
     required this.studentId,
+    this.wordIds,
   });
 
   @override
@@ -74,18 +76,39 @@ class _OfflineTestProjectionScreenState
     setState(() => _isFetching = true);
     try {
       final vocabService = VocabService();
+      final hasIds = widget.wordIds != null && widget.wordIds!.isNotEmpty;
+
       final result = await vocabService.getWords(
         widget.bookId,
         dayRange: widget.range,
-        shuffle: true,
+        shuffle: !hasIds, // If IDs provided, we handle order locally
       );
 
       if (mounted) {
         setState(() {
           var testWords = result.cast<Map<String, dynamic>>();
-          if (testWords.length > 30) {
-            testWords = testWords.sublist(0, 30);
+
+          if (hasIds) {
+            final idList = widget.wordIds!
+                .split(',')
+                .map((e) => int.tryParse(e) ?? 0)
+                .toList();
+            // Filter
+            testWords =
+                testWords.where((w) => idList.contains(w['id'])).toList();
+            // Sort by ID order in param
+            testWords.sort((a, b) {
+              final idxA = idList.indexOf(a['id']);
+              final idxB = idList.indexOf(b['id']);
+              return idxA.compareTo(idxB);
+            });
+          } else {
+            // Fallback/Legacy Logic
+            if (testWords.length > 30) {
+              testWords = testWords.sublist(0, 30);
+            }
           }
+
           _localWords = testWords;
           _isFetching = false;
           _startTimer();
