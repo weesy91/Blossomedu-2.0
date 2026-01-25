@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/academy_service.dart';
 import '../../../core/services/vocab_service.dart';
+import 'package:url_launcher/url_launcher.dart'; // [NEW] For Projector Window
 
 class TeacherClassLogCreateScreen extends StatefulWidget {
   final String studentId;
@@ -2515,6 +2516,83 @@ class _TeacherClassLogCreateScreenState
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('취소', style: TextStyle(color: Colors.grey)),
+            ),
+            // [NEW] Projector Mode (New Window)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('프로젝터 실행'),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.teal),
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+
+                // 1. Launch Projection in New Window
+                final params = {
+                  'duration': duration.toString(),
+                  'bookId': row['bookId'].toString(),
+                  'range': row['range'].toString(),
+                  'studentId': widget.studentId,
+                  'mode': mode,
+                };
+                final uri = Uri(
+                  path: '/teacher/offline-test/projection',
+                  queryParameters: params,
+                );
+                // Need absolute URL or path? standard url_launcher with web can handle relative path if handled correctly,
+                // but typically it expects absolute or scheme. Open internal route in new tab?
+                // GoRouter doesn't easily expose full href.
+                // We can use '#' strategy manually if we know base.
+                // Assuming Hash Strategy (typical for Flutter Web): /#/teacher/...
+                final fullPath = '/#${uri.toString()}';
+
+                if (await canLaunchUrl(Uri.parse(fullPath))) {
+                  await launchUrl(Uri.parse(fullPath),
+                      webOnlyWindowName: '_blank');
+                } else {
+                  // Fallback try without hash if not hash strategy?
+                  // Or just use relative? launchUrl('...') might fail if scheme missing.
+                  // Easier way: usage of dart:html window.open but that requires import 'dart:html' which breaks mobile compl.
+                  // url_launcher is better.
+                  try {
+                    await launchUrl(Uri.parse(fullPath),
+                        webOnlyWindowName: '_blank');
+                  } catch (e) {
+                    print('Launch Error: $e');
+                  }
+                }
+
+                // 2. Main Window -> Grading Screen
+                if (parentContext.mounted) {
+                  try {
+                    final vocabService = VocabService();
+                    final result = await vocabService.getWords(
+                      row['bookId'],
+                      dayRange: row['range'],
+                      shuffle: true,
+                    );
+                    var testWords = result.cast<Map<String, dynamic>>();
+                    if (testWords.length > 30)
+                      testWords = testWords.sublist(0, 30);
+
+                    final grade = await parentContext
+                        .push('/teacher/offline-test/grading', extra: {
+                      'words': testWords,
+                      'bookId': row['bookId'],
+                      'range': row['range'],
+                      'studentId': widget.studentId,
+                    });
+
+                    if (grade != null && grade is String) {
+                      if (mounted) {
+                        this.setState(() {
+                          row['score'] = grade;
+                        });
+                      }
+                    }
+                  } catch (e) {
+                    print('Grading nav error: $e');
+                  }
+                }
+              },
             ),
             ElevatedButton(
               onPressed: () async {

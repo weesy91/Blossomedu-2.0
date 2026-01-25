@@ -355,14 +355,20 @@ final router = GoRouter(
         final words =
             rawWords.map((e) => Map<String, dynamic>.from(e)).toList();
 
+        // [FIX] Support Query Params for Standalone Window Logic
+        final query = state.uri.queryParameters;
+
         return OfflineTestProjectionScreen(
           words: words,
-          durationPerWord:
-              int.tryParse(extra['duration']?.toString() ?? '3') ?? 3,
-          bookId: int.tryParse(extra['bookId'].toString()) ?? 0,
-          range: extra['range']?.toString() ?? '',
-          studentId: extra['studentId']?.toString() ?? '',
-          mode: extra['mode']?.toString() ?? 'eng_kor',
+          durationPerWord: int.tryParse(
+                  extra['duration']?.toString() ?? query['duration'] ?? '3') ??
+              3,
+          bookId: int.tryParse(
+                  extra['bookId']?.toString() ?? query['bookId'] ?? '0') ??
+              0,
+          range: extra['range']?.toString() ?? query['range'] ?? '',
+          studentId: extra['studentId']?.toString() ?? query['studentId'] ?? '',
+          mode: extra['mode']?.toString() ?? query['mode'] ?? 'eng_kor',
         );
       },
     ),
