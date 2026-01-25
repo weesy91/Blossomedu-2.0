@@ -34,7 +34,7 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
   // Config Options
   double _durationPerWord = 3.0; // Seconds
   String _mode = 'eng_kor'; // eng_kor, kor_eng
-  RangeValues _dayRange = const RangeValues(1, 1);
+  // RangeValues _dayRange = const RangeValues(1, 1); // Removed in favor of Controller
   int _maxDay = 1;
 
   @override
@@ -103,8 +103,8 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       // Reset Range
       _maxDay = book['total_days'] ?? book['totalDays'] ?? 30;
       if (_maxDay < 1) _maxDay = 1;
-      _dayRange =
-          RangeValues(1, _maxDay.toDouble() > 5 ? 5 : _maxDay.toDouble());
+      // [FIX] Use Text Controller
+      _rangeController.text = '1-$_maxDay';
     });
   }
 
@@ -113,11 +113,19 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
   Future<void> _startProjector() async {
     if (_selectedStudent == null || _selectedBook == null) return;
 
+    // [FIX] Validate Range
+    final rangeStr = _rangeController.text.trim();
+    if (rangeStr.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('시험 범위를 입력하세요')));
+      return;
+    }
+
     setState(() => _isStarting = true);
 
     final studentId = _selectedStudent!['id'];
     final bookId = _selectedBook!['id'];
-    final rangeStr = '${_dayRange.start.toInt()}~${_dayRange.end.toInt()}';
+    // final rangeStr = ... using controller value now
     final duration = _durationPerWord.toInt();
 
     try {
@@ -277,11 +285,13 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
                     separatorBuilder: (_, __) => const Divider(),
                     itemBuilder: (context, index) {
                       final s = _searchResults[index];
+                      // [FIX] Correctly mapped fields or graceful fallbacks
+                      final school = s['school'] ?? s['school_name'] ?? '-';
+                      final grade = s['grade'] ?? s['grade_display'] ?? '-';
                       return ListTile(
                         leading: CircleAvatar(child: Text(s['name'][0])),
                         title: Text(s['name']),
-                        subtitle: Text(
-                            '${s['school'] ?? "-"} / ${s['grade'] ?? "-"}'),
+                        subtitle: Text('$school / $grade'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => _selectStudent(s),
                       );
@@ -292,6 +302,10 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       ),
     );
   }
+
+  // [NEW] Range Controller
+  final TextEditingController _rangeController =
+      TextEditingController(text: '1-1');
 
   Widget _buildStep2() {
     return Padding(
@@ -332,30 +346,21 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
           const SizedBox(height: 24),
 
           if (_selectedBook != null) ...[
-            // 2. Range Selector
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('시험 범위 (Day)',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('${_dayRange.start.toInt()} ~ ${_dayRange.end.toInt()}',
-                    style: const TextStyle(
-                        color: AppColors.primary, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            RangeSlider(
-              values: _dayRange,
-              min: 1,
-              max: _maxDay.toDouble(),
-              divisions: _maxDay > 1 ? _maxDay - 1 : 1,
-              labels: RangeLabels(
-                _dayRange.start.toInt().toString(),
-                _dayRange.end.toInt().toString(),
+            // 2. Range Input (Text Field) [FIX]
+            const Text('시험 범위 (Day)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _rangeController,
+              decoration: InputDecoration(
+                hintText: '예: 1-5 또는 1,3,5',
+                helperText: '최대 Day: $_maxDay',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
-              activeColor: AppColors.primary,
-              onChanged: (values) {
-                setState(() => _dayRange = values);
-              },
+              keyboardType: TextInputType.datetime, // Numbers and symbols
             ),
 
             const SizedBox(height: 24),
@@ -443,8 +448,9 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
+                  // [FIX] Reduced padding for compactness
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
