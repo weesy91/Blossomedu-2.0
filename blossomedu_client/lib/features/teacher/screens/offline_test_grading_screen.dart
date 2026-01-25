@@ -127,6 +127,11 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
                 final word = widget.words[index];
                 final isCorrect = _results[index];
 
+                String posText = _getPosText(word['pos']);
+                if (posText.isEmpty) {
+                  posText = _inferPos(word['korean'] ?? '');
+                }
+
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.grey.shade200,
@@ -134,7 +139,7 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
                   ),
                   title: Row(
                     children: [
-                      if (word['pos'] != null || word['korean'] != null)
+                      if (posText.isNotEmpty)
                         Container(
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(
@@ -144,7 +149,7 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            word['pos'] ?? _inferPos(word['korean'] ?? ''),
+                            posText,
                             style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.blue,
@@ -213,21 +218,7 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
   }
 
   Widget _buildSubtitle(Map<String, dynamic> word) {
-    // If specific POS is requested and meaning_groups available, filter it
-    final targetPos = word['pos'];
-    final groups = word['meaning_groups'];
-
-    if (targetPos != null && groups is List) {
-      // Find group matching POS
-      for (var group in groups) {
-        if (group is Map && group['pos'] == targetPos) {
-          return Text(group['meaning'] ?? '',
-              style: const TextStyle(
-                  color: Colors.black87, fontWeight: FontWeight.w500));
-        }
-      }
-    }
-    // Fallback
+    // Safely display korean meaning
     return Text(word['korean'] ?? '');
   }
 
@@ -247,6 +238,14 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
       return 'adv';
     }
     return 'n';
+  }
+
+  String _getPosText(dynamic pos) {
+    if (pos == null) return '';
+    if (pos is List) {
+      return pos.join(',');
+    }
+    return pos.toString();
   }
 
   Widget _buildToggleButton(int index, bool value, bool groupValue) {
