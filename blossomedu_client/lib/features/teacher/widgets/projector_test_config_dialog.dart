@@ -102,7 +102,10 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
       if (mounted) {
         setState(() {
           _availableBooks = results[0];
-          _publishers = results[1];
+          _publishers = results[1]
+              .where((p) =>
+                  p['name'] != 'SYSTEM' && p['name'] != '개인단어장') // [FIX] Filter
+              .toList();
           // Sort publishers by name
           _publishers
               .sort((a, b) => (a['name'] as String).compareTo(b['name']));
