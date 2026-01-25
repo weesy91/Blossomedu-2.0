@@ -236,15 +236,19 @@ class VocabService {
     required int bookId,
     required String range,
     int count = 30,
+    int? studentId, // [NEW] Optional student ID for Wrong Answer Test
   }) async {
     try {
+      final params = <String, dynamic>{
+        'book_id': bookId,
+        'range': range,
+        'count': count,
+      };
+      if (studentId != null) params['student_id'] = studentId;
+
       final response = await _dio.get(
         '/vocab/api/v1/tests/start_test/',
-        queryParameters: {
-          'book_id': bookId,
-          'range': range,
-          'count': count,
-        },
+        queryParameters: params,
       );
       return response.data['questions'];
     } catch (e) {
