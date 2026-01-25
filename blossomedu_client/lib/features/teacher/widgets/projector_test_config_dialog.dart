@@ -327,200 +327,215 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
     final filteredBooks = _selectedPublisherId == null
         ? <dynamic>[]
         : _availableBooks.where((b) {
-            // Check publisher field. Could be int ID or object depending on serializer.
-            // Usually API returns ID or nested object.
-            // Let's assume ID or check 'publisher.id' if object.
-            // Safe check:
             final p = b['publisher'];
             if (p is int) return p == _selectedPublisherId;
             if (p is Map) return p['id'] == _selectedPublisherId;
             return false;
           }).toList();
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // [NEW] Test Type Selector
-          Row(
-            children: [
-              _buildTypeChip('normal', '일반 시험'),
-              const SizedBox(width: 12),
-              _buildTypeChip('wrong_answer', '오답 노트 시험'),
-            ],
-          ),
-          const SizedBox(height: 24),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // [NEW] Test Type Selector
+                Row(
+                  children: [
+                    _buildTypeChip('normal', '일반 시험'),
+                    const SizedBox(width: 12),
+                    _buildTypeChip('wrong_answer', '오답 노트 시험'),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-          if (_testType == 'normal') ...[
-            // 1. Publisher Selector
-            const Text('출판사 선택', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            _isLoadingBooks
-                ? const LinearProgressIndicator()
-                : DropdownButtonFormField<int>(
-                    value: _selectedPublisherId,
+                if (_testType == 'normal') ...[
+                  // 1. Publisher Selector
+                  const Text('출판사 선택',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _isLoadingBooks
+                      ? const LinearProgressIndicator()
+                      : DropdownButtonFormField<int>(
+                          value: _selectedPublisherId,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                          ),
+                          hint: const Text('출판사를 선택하세요'),
+                          items: _publishers.map<DropdownMenuItem<int>>((p) {
+                            return DropdownMenuItem(
+                              value: p['id'],
+                              child: Text(p['name']),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedPublisherId = val;
+                              _selectedBook = null; // Reset book
+                            });
+                          },
+                        ),
+
+                  const SizedBox(height: 24),
+
+                  // 2. Book Selector
+                  const Text('교재 선택',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedBook?['id'].toString(),
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 12),
                     ),
-                    hint: const Text('출판사를 선택하세요'),
-                    items: _publishers.map<DropdownMenuItem<int>>((p) {
+                    hint: Text(_selectedPublisherId == null
+                        ? '출판사를 먼저 선택하세요'
+                        : (filteredBooks.isEmpty
+                            ? '등록된 교재가 없습니다'
+                            : '교재를 선택하세요')),
+                    items: filteredBooks.map<DropdownMenuItem<String>>((book) {
                       return DropdownMenuItem(
-                        value: p['id'],
-                        child: Text(p['name']),
+                        value: book['id'].toString(),
+                        child: Text(
+                          book['title'],
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
-                      setState(() {
-                        _selectedPublisherId = val;
-                        _selectedBook = null; // Reset book
-                      });
+                      if (val == null) return;
+                      final book = _availableBooks
+                          .firstWhere((b) => b['id'].toString() == val);
+                      _onBookSelected(book);
                     },
+                    disabledHint: Text(_selectedPublisherId == null
+                        ? '출판사를 먼저 선택하세요'
+                        : '등록된 교재가 없습니다'),
+                    onTap: null,
                   ),
 
-            const SizedBox(height: 24),
-
-            // 2. Book Selector
-            const Text('교재 선택', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _selectedBook?['id'].toString(),
-              decoration: InputDecoration(
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              hint: Text(_selectedPublisherId == null
-                  ? '출판사를 먼저 선택하세요'
-                  : (filteredBooks.isEmpty ? '등록된 교재가 없습니다' : '교재를 선택하세요')),
-              items: filteredBooks.map<DropdownMenuItem<String>>((book) {
-                return DropdownMenuItem(
-                  value: book['id'].toString(),
-                  child: Text(
-                    book['title'],
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val == null) return;
-                final book = _availableBooks
-                    .firstWhere((b) => b['id'].toString() == val);
-                _onBookSelected(book);
-              },
-              disabledHint: Text(_selectedPublisherId == null
-                  ? '출판사를 먼저 선택하세요'
-                  : '등록된 교재가 없습니다'),
-              // Disable if no publisher or no books
-              onTap: null, // Default
-            ),
-
-            const SizedBox(height: 24),
-
-            // 2. Range Input (Text Field) [FIX]
-            const Text('시험 범위 (Day)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _rangeController,
-              decoration: InputDecoration(
-                hintText: '예: 1-5 또는 1,3,5',
-                helperText: '최대 Day: $_maxDay',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              keyboardType: TextInputType.datetime, // Numbers and symbols
-            ),
-          ] else ...[
-            // Wrong Answer Mode UI
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                      child: Text('학생이 이전에 틀린 단어들 중 최대 30문제를 무작위로 출제합니다.')),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-
-          const SizedBox(height: 24),
-
-          // 3. Options (Mode & Duration)
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('시험 모드',
+                  // [FIX] Hide Range until book is selected
+                  if (_selectedBook != null) ...[
+                    const SizedBox(height: 24),
+                    // Range Input
+                    const Text('시험 범위 (Day)',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _mode,
+                    TextFormField(
+                      controller: _rangeController,
                       decoration: InputDecoration(
+                        hintText: '예: 1-5 또는 1,3,5',
+                        helperText: '최대 Day: $_maxDay',
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         contentPadding:
                             const EdgeInsets.symmetric(horizontal: 12),
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                            value: 'eng_kor', child: Text('영어 -> 한글')),
-                        DropdownMenuItem(
-                            value: 'kor_eng', child: Text('한글 -> 영어')),
+                      keyboardType: TextInputType.datetime,
+                    ),
+                  ]
+                ] else ...[
+                  // Wrong Answer Mode UI
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: Colors.orange),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                            child:
+                                Text('학생이 이전에 틀린 단어들 중 최대 30문제를 무작위로 출제합니다.')),
                       ],
-                      onChanged: (v) => setState(() => _mode = v!),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('제한 시간 (초)',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<double>(
-                      value: _durationPerWord,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // [FIX] Show Options only if valid state
+                if (_testType == 'wrong_answer' ||
+                    (_testType == 'normal' && _selectedBook != null)) ...[
+                  const SizedBox(height: 24),
+                  // 3. Options (Mode & Duration)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('시험 모드',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _mode,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                    value: 'eng_kor', child: Text('영어 -> 한글')),
+                                DropdownMenuItem(
+                                    value: 'kor_eng', child: Text('한글 -> 영어')),
+                              ],
+                              onChanged: (v) => setState(() => _mode = v!),
+                            ),
+                          ],
+                        ),
                       ),
-                      items: [2.0, 3.0, 5.0, 7.0, 10.0].map((t) {
-                        return DropdownMenuItem(
-                            value: t, child: Text('${t.toInt()}초'));
-                      }).toList(),
-                      onChanged: (v) => setState(() => _durationPerWord = v!),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('제한 시간 (초)',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<double>(
+                              value: _durationPerWord,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                              items: [2.0, 3.0, 5.0, 7.0, 10.0].map((t) {
+                                return DropdownMenuItem(
+                                    value: t, child: Text('${t.toInt()}초'));
+                              }).toList(),
+                              onChanged: (v) =>
+                                  setState(() => _durationPerWord = v!),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
+        ),
 
-          const Spacer(),
-
-          // Actions
-          Row(
+        // Actions (Fixed at bottom)
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
             children: [
               TextButton(
                 onPressed: () => setState(() => _step = 1), // Back
@@ -543,7 +558,6 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  // [FIX] Reduced padding for compactness
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -552,8 +566,8 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
