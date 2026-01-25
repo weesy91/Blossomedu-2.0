@@ -132,11 +132,34 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
                     backgroundColor: Colors.grey.shade200,
                     child: Text('${index + 1}'),
                   ),
-                  title: Text(
-                    word['english'] ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  title: Row(
+                    children: [
+                      if (word['pos'] != null || word['korean'] != null)
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            word['pos'] ?? _inferPos(word['korean'] ?? ''),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      Expanded(
+                        child: Text(
+                          word['english'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
-                  subtitle: Text(word['korean'] ?? ''),
+                  subtitle: _buildSubtitle(word),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -187,6 +210,43 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSubtitle(Map<String, dynamic> word) {
+    // If specific POS is requested and meaning_groups available, filter it
+    final targetPos = word['pos'];
+    final groups = word['meaning_groups'];
+
+    if (targetPos != null && groups is List) {
+      // Find group matching POS
+      for (var group in groups) {
+        if (group is Map && group['pos'] == targetPos) {
+          return Text(group['meaning'] ?? '',
+              style: const TextStyle(
+                  color: Colors.black87, fontWeight: FontWeight.w500));
+        }
+      }
+    }
+    // Fallback
+    return Text(word['korean'] ?? '');
+  }
+
+  String _inferPos(String meaning) {
+    if (meaning.endsWith('다')) return 'v';
+    if (meaning.endsWith('ㄴ') ||
+        meaning.endsWith('은') ||
+        meaning.endsWith('는') ||
+        meaning.endsWith('한') ||
+        meaning.endsWith('적인') ||
+        meaning.endsWith('의')) {
+      return 'adj';
+    }
+    if (meaning.endsWith('게') ||
+        meaning.endsWith('히') ||
+        meaning.endsWith('으로')) {
+      return 'adv';
+    }
+    return 'n';
   }
 
   Widget _buildToggleButton(int index, bool value, bool groupValue) {
