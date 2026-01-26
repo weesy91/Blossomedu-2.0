@@ -765,10 +765,13 @@ class _TeacherClassLogCreateScreenState
     if (type == null) return [];
     final filtered = _allBooks.where((b) {
       if (b['type'] != type) return false;
-      // Only filter by publisher if type is VOCAB and publisher is selected
-      if (type == 'VOCAB' && publisher != null) {
+
+      // [FIX] Filter by publisher for ALL types if publisher is selected
+      if (publisher != null) {
         final bookPublisher = _normalizePublisher(b['publisher']?.toString());
         final selectedPublisher = _normalizePublisher(publisher.toString());
+        // If book publisher is empty, it might be a system book or should be shown?
+        // Usually strict filtering is expected if publisher is selected.
         return bookPublisher == selectedPublisher;
       }
       return true;
