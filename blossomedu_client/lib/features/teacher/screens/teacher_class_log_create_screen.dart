@@ -1237,14 +1237,28 @@ class _TeacherClassLogCreateScreenState
                       'SCHOOL_EXAM'
                     ],
                     rangeHint: '범위 (예: 1~3)',
-                    onAdd: () => setState(() => _hwMainRows.add({
+                    onAdd: () => setState(() {
+                      if (_hwMainRows.isNotEmpty) {
+                        final last = _hwMainRows.last;
+                        _hwMainRows.add({
+                          'type': last['type'],
+                          'publisher': last['publisher'],
+                          'bookId': last['bookId'],
+                          'range': '',
+                          'dueDate': last['dueDate'],
+                          'description': last['description'] ?? '',
+                        });
+                      } else {
+                        _hwMainRows.add({
                           'type': null,
                           'publisher': null,
                           'bookId': null,
                           'range': '',
                           'dueDate': _defaultDueDate,
                           'description': '',
-                        })),
+                        });
+                      }
+                    }),
                   ),
                   const SizedBox(height: 40),
                 ],
