@@ -1995,14 +1995,27 @@ class _TeacherClassLogCreateScreenState
               ),
               TextButton.icon(
                 onPressed: () => setState(() {
-                  _vocabAssignments.add({
-                    'isWrongWords': false,
-                    'dueDate': _defaultDueDate,
-                    'publisher': null,
-                    'bookId': null,
-                    'range': '',
-                    'wrongWordsCount': 30,
-                  });
+                  if (_vocabAssignments.isNotEmpty) {
+                    final lastItem = _vocabAssignments.last;
+                    _vocabAssignments.add({
+                      'isWrongWords': lastItem['isWrongWords'],
+                      'dueDate': lastItem['dueDate'], // Keep same due date
+                      'publisher': lastItem['publisher'],
+                      'bookId': lastItem['bookId'],
+                      'range': '', // Reset range only
+                      'wrongWordsCount': lastItem['wrongWordsCount'],
+                      // Don't copy ID, submissionStatus, isCompleted
+                    });
+                  } else {
+                    _vocabAssignments.add({
+                      'isWrongWords': false,
+                      'dueDate': _defaultDueDate,
+                      'publisher': null,
+                      'bookId': null,
+                      'range': '',
+                      'wrongWordsCount': 30,
+                    });
+                  }
                 }),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('과제 추가', style: TextStyle(fontSize: 13)),
