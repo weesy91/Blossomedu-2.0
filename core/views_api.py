@@ -604,21 +604,27 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
 
         queryset = StudentProfile.objects.filter(user__is_active=True)
         
-        # 1. Permission Logic
-        if user.is_superuser:
-            # View All
-            pass 
-        else:
-            profile = user.staff_profile
-            # Only Principal/Vice can see stats
-            if profile.position not in ['PRINCIPAL', 'VICE']:
-                 return Response({'total': 0, 'breakdown': []})
-
+        # 1. Check Profile First (Priority over Superuser)
+        # Even if Superuser, if they have a branch assignment, they are treated as Branch Staff here.
+        profile = getattr(user, 'staff_profile', None)
+        
+        if profile and profile.position in ['PRINCIPAL', 'VICE']:
             if profile.branch:
                 queryset = queryset.filter(branch=profile.branch)
-            else:
-                # Principal with no branch? Show nothing safe
+            elif not user.is_superuser:
+                # Principal without branch & Not Superuser => Nothing
                 return Response({'total': 0, 'breakdown': []})
+            else:
+                # Principal without branch BUT Superuser => View All
+                pass
+        
+        elif user.is_superuser:
+            # No relevant profile, but superuser => View All
+            pass
+        
+        else:
+            # Not Principal, Not Superuser => Nothing
+            return Response({'total': 0, 'breakdown': []})
 
         stats = queryset.values('branch__name').annotate(count=Count('id')).order_by('branch__name')
         
