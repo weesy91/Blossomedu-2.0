@@ -1025,27 +1025,36 @@ class _TeacherClassLogCreateScreenState
       final type = data['type'];
       final rangeStr = minR == maxR ? '$minR' : '$minR-$maxR';
 
+      // [FIX] Auto-fill publisher
+      String? publisher;
+      if (bookId != null) {
+        final book = _findBook(bookId, type: type == 'VOCAB' ? 'VOCAB' : null);
+        if (book != null) {
+          publisher = _normalizePublisher(book['publisher']?.toString());
+        }
+      }
+
       if (type == 'VOCAB' && bookId != null) {
         // Add to vocab assignments
         _vocabAssignments.add({
           'isWrongWords': false,
           'dueDate': _defaultDueDate,
-          'publisher': null,
+          'publisher': publisher, // [FIX] Set Publisher
           'bookId': bookId,
           'range': rangeStr,
+          'wrongWordsCount': 30, // Default for non-cumulative
         });
       } else if (bookId != null) {
         // Add to main homework rows
-        // Find the book to get its type
-        final book = _findBook(bookId);
         _hwMainRows.add({
-          'type': book?['type'],
-          'publisher': book?['publisher'],
+          'type': type == 'UNKNOWN' ? null : type, // Use type if known
+          'publisher': publisher, // [FIX] Set Publisher
           'bookId': bookId,
           'range': rangeStr,
           'startUnit': minR,
           'endUnit': maxR,
           'dueDate': _defaultDueDate,
+          'description': '',
         });
       }
     }
