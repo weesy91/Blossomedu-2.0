@@ -141,26 +141,27 @@ def crawl_daum_dic(query):
         if len(data) > 1 and data[1]:
             formatted_meanings = []
             
-            # POS Mapping (Google -> App Standard)
+            # POS Mapping (Google -> App Standard Abbr)
+            # User requested: n.(명사) v.(동사) a.(형용사) ad.(부사) prep.(전치사) conj.(접속사) pron.(대명사)
             POS_MAP = {
-                'noun': '명사',
-                'verb': '동사',
-                'adjective': '형용사',
-                'adverb': '부사',
-                'preposition': '전치사',
-                'conjunction': '접속사',
-                'pronoun': '대명사',
-                'interjection': '감탄사',
-                'article': '관사',
-                'abbreviation': '약어',
-                'prefix': '접두사',
-                'suffix': '접미사',
+                'noun': 'n.',
+                'verb': 'v.',
+                'adjective': 'a.',
+                'adverb': 'ad.',
+                'preposition': 'prep.',
+                'conjunction': 'conj.',
+                'pronoun': 'pron.',
+                'interjection': 'interj.',
+                'article': 'art.',
+                'abbreviation': 'abbr.',
+                'prefix': 'prefix',
+                'suffix': 'suffix',
             }
 
             for part_of_speech in data[1]:
                 if isinstance(part_of_speech, list) and len(part_of_speech) > 1:
                     raw_pos = part_of_speech[0] # noun, verb, etc.
-                    # Map to Korean or use raw if not found
+                    # Map to Abbr or use raw
                     pos_label = POS_MAP.get(raw_pos, raw_pos) 
                     
                     meanings = part_of_speech[1]
@@ -173,8 +174,10 @@ def crawl_daum_dic(query):
                                 pos_meanings.append(m)
                                 
                         if pos_meanings:
-                            # [명사] 뜻1, 뜻2
-                            formatted_meanings.append(f"[{pos_label}] {', '.join(pos_meanings)}")
+                            # n. 뜻1, 뜻2 (No brackets, just prefix usually?)
+                            # User image shows "prep. ~을 제외하고"
+                            # So format: "n. 뜻1, 뜻2"
+                            formatted_meanings.append(f"{pos_label} {', '.join(pos_meanings)}")
             
             if formatted_meanings:
                 korean = " ".join(formatted_meanings)
