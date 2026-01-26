@@ -134,6 +134,7 @@ class _OfflineTestProjectionScreenState
           _isFetching = false;
           _startTimer();
         });
+        _broadcastProgress(); // [NEW] Initial Broadcast
       }
     } catch (e) {
       print('Error fetching words: $e');
@@ -170,10 +171,28 @@ class _OfflineTestProjectionScreenState
       setState(() {
         _currentIndex++;
       });
+      _broadcastProgress(); // [NEW] Broadcast
       _startTimer();
     } else {
       _finishTest();
     }
+  }
+
+  // [NEW] Helper to broadcast
+  void _broadcastProgress() {
+    if (_localWords.isEmpty) return;
+    final currentWord = _localWords[_currentIndex];
+    String displayWord = currentWord['english'] ?? '';
+    // If needed, we can send Korean too, but usually English is the "Question"
+    if (widget.mode == 'kor_eng') {
+      displayWord = currentWord['korean'] ?? '';
+    }
+
+    WebMonitorHelper.sendProgress(
+      current: _currentIndex + 1,
+      total: _localWords.length,
+      word: displayWord,
+    );
   }
 
   void _finishTest() {

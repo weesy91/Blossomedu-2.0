@@ -33,12 +33,26 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
     super.dispose();
   }
 
+  // [NEW] Progress State
+  String? _progressWord;
+  int _progressCurrent = 0;
+  int _progressTotal = 0;
+
   @override
   void initState() {
     super.initState();
-    // Default all correct? Or all wrong? Let's default to all correct for convenience?
-    // Usually exams are mostly correct.
     _results = List.filled(widget.words.length, true);
+
+    // [NEW] Listen for projector progress
+    WebMonitorHelper.listenForProgress((current, total, word) {
+      if (mounted) {
+        setState(() {
+          _progressCurrent = current;
+          _progressTotal = total;
+          _progressWord = word;
+        });
+      }
+    });
   }
 
   int get _score {
@@ -118,6 +132,51 @@ class _OfflineTestGradingScreenState extends State<OfflineTestGradingScreen> {
       ),
       body: Column(
         children: [
+          // [NEW] Progress Indicator Header (Synced with Projector)
+          if (_progressTotal > 0)
+            Container(
+              width: double.infinity,
+              color: Colors.blue.shade50,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.connected_tv, size: 24, color: Colors.blue),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Now Projecting: $_progressWord',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.blue,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Progress: $_progressCurrent / $_progressTotal',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      value: _progressCurrent / _progressTotal,
+                      strokeWidth: 3,
+                    ),
+                  )
+                ],
+              ),
+            ),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
