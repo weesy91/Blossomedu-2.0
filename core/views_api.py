@@ -591,19 +591,34 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
     def stats(self, request):
         """
         활성 학생 통계 (분원별 수)
+        - 개발자(Superuser): 전체 분원 통계
+        - 원장/부원장: 본인 분원 통계
+        - 그 외(강사 등): 권한 없음 (빈 값)
         """
         from django.db.models import Count
         user = request.user
-        queryset = StudentProfile.objects.filter(user__is_active=True)
+        
+        # 0. Initial Check
+        if not hasattr(user, 'staff_profile') and not user.is_superuser:
+            return Response({'total': 0, 'breakdown': []})
 
-        # Permission Check (Same as get_queryset logic roughly)
-        if not user.is_superuser:
-             if hasattr(user, 'staff_profile') and user.staff_profile.branch:
-                 queryset = queryset.filter(branch=user.staff_profile.branch)
-             else:
-                 # If not superuser and no branch, theoretically specific access?
-                 # But sticking to "Director seeing branch stats".
-                 pass
+        queryset = StudentProfile.objects.filter(user__is_active=True)
+        
+        # 1. Permission Logic
+        if user.is_superuser:
+            # View All
+            pass 
+        else:
+            profile = user.staff_profile
+            # Only Principal/Vice can see stats
+            if profile.position not in ['PRINCIPAL', 'VICE']:
+                 return Response({'total': 0, 'breakdown': []})
+
+            if profile.branch:
+                queryset = queryset.filter(branch=profile.branch)
+            else:
+                # Principal with no branch? Show nothing safe
+                return Response({'total': 0, 'breakdown': []})
 
         stats = queryset.values('branch__name').annotate(count=Count('id')).order_by('branch__name')
         
