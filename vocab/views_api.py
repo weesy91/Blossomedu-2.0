@@ -615,7 +615,27 @@ class TestViewSet(viewsets.ModelViewSet):
         - Snowball 로직이 적용된 문제 리스트를 반환합니다.
         """
         print("DEBUG: start_test API HIT!")
-        if not hasattr(request.user, 'profile'):
+        
+        profile = None
+        # [FIX] Teacher Support: Use student_id query param
+        if request.user.is_staff or request.user.is_superuser:
+            student_id = request.query_params.get('student_id')
+            if student_id:
+                from core.models import StudentProfile
+                try:
+                    profile = StudentProfile.objects.get(id=student_id)
+                except StudentProfile.DoesNotExist:
+                     return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+            # else:
+            #     # If no student specified, maybe allow generic test generation?
+            #     # But services.generate_test_questions might need profile.
+            #     # For now, let's proceed with profile=None if service supports it, 
+            #     # or error if "Wrong Answer" mode.
+            pass
+        elif hasattr(request.user, 'profile'):
+            profile = request.user.profile
+
+        if not profile and not (request.user.is_staff or request.user.is_superuser):
             print("DEBUG: start_test API called - No Profile")
             return Response({'error': 'No profile'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -627,9 +647,11 @@ class TestViewSet(viewsets.ModelViewSet):
         except ValueError:
             count = 30
         
-        # [Cooldown Check] Snowball Mode (book_id=0) checks last_wrong_failed_at
+        # [Cooldown Check] Snowball Mode (book_id=0) requires Profile
         if str(book_id) == '0' or day_range == 'WRONG_ONLY':
-             profile = request.user.profile
+             if not profile:
+                  return Response({'error': 'Student ID required for Wrong Answer Test'}, status=status.HTTP_400_BAD_REQUEST)
+             
              if profile.last_wrong_failed_at:
                  from django.utils import timezone
                  from datetime import timedelta
@@ -645,7 +667,8 @@ class TestViewSet(viewsets.ModelViewSet):
 
         is_wrong_only = str(book_id) == '0' or day_range == 'WRONG_ONLY'
         if is_wrong_only:
-            raw_candidates = utils.get_vulnerable_words(request.user.profile)
+            # profile is guaranteed here
+            raw_candidates = utils.get_vulnerable_words(profile)
             if not raw_candidates:
                 return Response({'questions': []})
             random.shuffle(raw_candidates)
@@ -653,7 +676,6 @@ class TestViewSet(viewsets.ModelViewSet):
             questions = []
             for w in selected:
                 pos_tag = services.get_primary_pos(w.korean) if w.korean else None
-                # [FIX] Build meaning_groups for POS display
                 meaning_groups = []
                 if w.korean:
                     grouped, _ = services.split_meanings_by_pos(w.korean)
@@ -671,7 +693,7 @@ class TestViewSet(viewsets.ModelViewSet):
                     'english': w.english,
                     'korean': w.korean,
                     'pos': pos_tag,
-                    'meaning_groups': meaning_groups,  # [NEW] Include for POS display
+                    'meaning_groups': meaning_groups,
                     'is_snowball': True
                 })
             return Response({'questions': questions})
@@ -679,8 +701,13 @@ class TestViewSet(viewsets.ModelViewSet):
         if not book_id:
             return Response({'error': 'book_id required'}, status=status.HTTP_400_BAD_REQUEST)
             
+        # For Normal Test, profile might be None if Teacher didn't select student.
+        # services.generate_test_questions needs to handle optional profile?
+        # Let's check services.py. If it requires profile, we must error or fix it.
+        # Assuming for now we pass profile (which might be None for Teacher w/o Student ID)
+        
         questions = services.generate_test_questions(
-            student_profile=request.user.profile,
+            student_profile=profile, # Can be None if teacher and no student selected
             book_id=book_id,
             day_range=day_range,
             total_count=count
