@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart'; // [NEW]
 import '../../../core/services/academy_service.dart';
 import 'dart:async';
 
@@ -60,10 +61,76 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     }
   }
 
+  Future<void> _uploadExcel() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        withData: true, // Important for Web/Bytes access
+      );
+
+      if (result != null) {
+        setState(() => _isLoading = true);
+
+        final bytes = result.files.single.bytes;
+        final name = result.files.single.name;
+
+        if (bytes == null) {
+          throw '파일 내용을 읽을 수 없습니다.';
+        }
+
+        final res = await _academyService.uploadStudentExcel(bytes, name);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(res['message'] ?? '업로드 완료')),
+          );
+          // Show errors if any
+          if (res['errors'] != null && (res['errors'] as List).isNotEmpty) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('업로드 경고/에러'),
+                content: SingleChildScrollView(
+                    child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children:
+                      (res['errors'] as List).map((e) => Text('- $e')).toList(),
+                )),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('닫기'))
+                ],
+              ),
+            );
+          }
+          _fetchStudents(); // Refresh
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('업로드 실패: $e')),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('학생 계정 관리')),
+      appBar: AppBar(
+        title: const Text('학생 계정 관리'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.upload_file),
+            tooltip: '엑셀 일괄 등록',
+            onPressed: _uploadExcel,
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           context.push('/teacher/student/register'); // Existing Registration

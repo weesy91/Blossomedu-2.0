@@ -367,6 +367,222 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
         
         return Response({'message': '비밀번호가 재설정되었습니다'})
 
+    @action(detail=False, methods=['post'])
+    def upload_excel(self, request):
+        """
+        엑셀 파일 일괄 업로드
+        형식: '수강생 관리' 시트 (Sample.xlsx 참조)
+        """
+        import pandas as pd
+        import re
+        from datetime import datetime, time
+        
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': '파일이 제공되지 않았습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            df = pd.read_excel(file)
+            
+            # Column Mapping (Excel Col -> Variable)
+            # 이름(학교), 담당선생님, 수업요일, 수업시간, 독해선생님, 독해수업요일, 독해수업시간, 입/퇴원, 학생이름, 학교, 학년, 학생 H.P, 어머니 H.P, 아버지 H.P, 주소
+            
+            created_count = 0
+            updated_count = 0
+            errors = []
+            
+            # Grade Mapping
+            GRADE_MAP = {
+                '초1': 1, '초2': 2, '초3': 3, '초4': 4, '초5': 5, '초6': 6,
+                '중1': 7, '중2': 8, '중3': 9,
+                '고1': 10, '고2': 11, '고3': 12, '졸업': 13
+            }
+            
+            # Day Mapping
+            DAY_MAP = {
+                '월요일': 'Mon', '화요일': 'Tue', '수요일': 'Wed', '목요일': 'Thu', '금요일': 'Fri', '토요일': 'Sat', '일요일': 'Sun',
+                '월': 'Mon', '화': 'Tue', '수': 'Wed', '목': 'Thu', '금': 'Fri', '토': 'Sat', '일': 'Sun'
+            }
+
+            for index, row in df.iterrows():
+                try:
+                    # 1. Basic Validation
+                    name = str(row['학생이름']).strip()
+                    if not name or name == 'nan': continue
+                    
+                    status_val = str(row['입/퇴원']).strip()
+                    # Skip '퇴원' users? Or mark as inactive?
+                    # Request was "create accounts". Let's create even if inactive, but set is_active=False?
+                    # User likely wants Active students primarily.
+                    is_active = (status_val == '입학')
+
+                    phone = str(row['학생 H.P']).strip()
+                    if not phone or phone == 'nan': 
+                        # Phone is required for ID
+                        continue
+
+                    # 2. User ID / Phone Parsing
+                    # 010-1234-5678 -> 01012345678
+                    clean_phone = re.sub(r'[^0-9]', '', phone)
+                    if not clean_phone: continue
+
+                    username = clean_phone
+                    
+                    user, created = User.objects.get_or_create(username=username)
+                    if created:
+                        # Default Password: Last 4 digits or '1234'
+                        pw = clean_phone[-4:] if len(clean_phone) >= 4 else '1234'
+                        user.set_password(pw)
+                        created_count += 1
+                    else:
+                        updated_count += 1
+                    
+                    user.is_active = is_active # Sync status
+                    user.save()
+
+                    # 3. Create/Update Profile
+                    # Ensure profile exists (signal should create it, but safe to get_or_create)
+                    if not hasattr(user, 'profile'):
+                        StudentProfile.objects.create(user=user, name=name)
+                    
+                    profile = user.profile
+                    profile.name = name
+                    profile.phone_number = phone
+                    
+                    # 4. School
+                    school_name = str(row['학교']).strip()
+                    if school_name and school_name != 'nan':
+                        school, _ = School.objects.get_or_create(name=school_name)
+                        profile.school = school
+                        # Branch assignment? We can infer from Staff who is uploading? 
+                        # For now, if user has branch assignment, use that?
+                        # Or if school has branch?
+                        if hasattr(request.user, 'staff_profile') and request.user.staff_profile.branch:
+                             profile.branch = request.user.staff_profile.branch
+                    
+                    # 5. Grade
+                    grade_str = str(row['학년']).strip()
+                    # Extract grade part if mixed (e.g. '고1(휴학)')
+                    # Simple map check
+                    if grade_str in GRADE_MAP:
+                        profile.base_grade = GRADE_MAP[grade_str]
+                        profile.base_year = timezone.now().year # Reset base year to now for correct calculation
+                    
+                    # 6. Parents
+                    mom_phone = str(row['어머니 H.P']).strip()
+                    if mom_phone and mom_phone != 'nan':
+                        profile.parent_phone_mom = mom_phone
+                        
+                    dad_phone = str(row['아버지 H.P']).strip()
+                    if dad_phone and dad_phone != 'nan':
+                        profile.parent_phone_dad = dad_phone
+                        
+                    # 7. Address & Memo
+                    addr = str(row['주소']).strip()
+                    if addr and addr != 'nan':
+                        profile.address = addr
+                        
+                    memo = str(row['특이사항']).strip()
+                    if memo and memo != 'nan':
+                        profile.memo = memo
+
+                    # 8. Start Date
+                    start_date_val = row['수업시작일']
+                    if pd.notnull(start_date_val):
+                         # Timestamp to Date
+                         try:
+                            if hasattr(start_date_val, 'date'):
+                                profile.start_date = start_date_val.date()
+                         except:
+                            pass
+
+                    # 9. Schedule Logic (Try to match ClassTime)
+                    def parse_time_custom(time_val, is_weekend):
+                        try:
+                            if pd.isna(time_val) or str(time_val).strip() == '':
+                                return None
+                            
+                            h, m = 0, 0
+                            if isinstance(time_val, (datetime, time)):
+                                t = time_val if isinstance(time_val, time) else time_val.time()
+                                h, m = t.hour, t.minute
+                            else:
+                                # String parse
+                                time_str = str(time_val).strip()
+                                parts = time_str.replace(':', '.').split('.')
+                                if len(parts) >= 2:
+                                    h = int(parts[0])
+                                    m = int(parts[1])
+                                else:
+                                    return None
+
+                            # Apply Logic
+                            if is_weekend:
+                                # Weekend: 24-hour format (Trust the number)
+                                pass
+                            else:
+                                # Weekday: 12-hour format (Implicitly PM)
+                                # If 1~11, assume PM (add 12). 
+                                # Exception: 12 is usually 12 PM (noon) or 12 AM (midnight)?
+                                # Academy context: 12 is likely noon (12:00). 
+                                # 1, 2, 3... are 13, 14, 15...
+                                if 0 < h < 12:
+                                    h += 12
+                            
+                            return time(h, m)
+                        except:
+                            return None
+
+                    # Syntax
+                    syntax_day_str = str(row['수업요일']).strip()
+                    
+                    if syntax_day_str in DAY_MAP:
+                        day_code = DAY_MAP[syntax_day_str]
+                        is_weekend = day_code in ['Sat', 'Sun']
+                        
+                        time_obj = parse_time_custom(row['수업시간'], is_weekend)
+                        
+                        if time_obj:
+                            # Find ClassTime
+                            cts = ClassTime.objects.filter(
+                                day=day_code,
+                                class_type='SYNTAX',
+                                start_time=time_obj
+                            )
+                            if cts.exists():
+                                profile.syntax_class = cts.first()
+
+                    # Reading
+                    reading_day_str = str(row['독해수업요일']).strip()
+                    
+                    if reading_day_str in DAY_MAP:
+                        day_code = DAY_MAP[reading_day_str]
+                        is_weekend = day_code in ['Sat', 'Sun']
+
+                        time_obj = parse_time_custom(row['독해수업시간'], is_weekend)
+
+                        if time_obj:
+                            cts = ClassTime.objects.filter(
+                                day=day_code,
+                                class_type='READING',
+                                start_time=time_obj
+                            )
+                            if cts.exists():
+                                profile.reading_class = cts.first()
+
+                    profile.save()
+
+                except Exception as row_e:
+                    errors.append(f"Row {index}: {str(row_e)}")
+
+            return Response({
+                'message': f'Upload Complete. Created: {created_count}, Updated: {updated_count}',
+                'errors': errors[:10] # Return first 10 errors
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class StaffManagementViewSet(viewsets.ModelViewSet):
     """
     강사 관리 API (전체 목록, 검색)

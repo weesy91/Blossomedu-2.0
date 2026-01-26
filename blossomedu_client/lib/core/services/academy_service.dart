@@ -858,4 +858,34 @@ class AcademyService {
       throw Exception('Error searching logs: $e');
     }
   }
+
+  // [NEW] Excel Upload for Student Registration
+  Future<Map<String, dynamic>> uploadStudentExcel(
+      List<int> fileBytes, String filename) async {
+    final url = Uri.parse(
+        '${AppConfig.baseUrl}/core/api/v1/management/students/upload_excel/');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
+    try {
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Authorization'] = 'Token $token';
+
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: filename),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        throw Exception(
+            '${response.statusCode}: ${utf8.decode(response.bodyBytes)}');
+      }
+    } catch (e) {
+      throw Exception('Excel Upload Failed: $e');
+    }
+  }
 }
