@@ -742,9 +742,14 @@ class _TeacherClassLogCreateScreenState
       unique.putIfAbsent(normalized, () => normalized);
     }
 
-    // [FIX] Do NOT merge System Publishers manually.
-    // User requested to hide them from dropdown as 'Incorrect Answers' etc are handled separately.
-    // Only publishers present in _allBooks will appear.
+    // [FIX] Merge System Publishers, but EXCLUDE internal/system types (e.g. SYSTEM, Private)
+    // EBS is a valid publisher, so we must include it.
+    for (final sysPub in _systemPublishers) {
+      if (sysPub.isEmpty) continue;
+      // Filter out unwanted system types
+      if (sysPub == 'SYSTEM' || sysPub == '개인단어장') continue;
+      unique.putIfAbsent(sysPub, () => sysPub);
+    }
 
     if (type == 'VOCAB' && _extraVocabPublishers.isNotEmpty) {
       for (final extra in _extraVocabPublishers) {
