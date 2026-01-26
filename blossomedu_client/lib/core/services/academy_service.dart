@@ -657,6 +657,25 @@ class AcademyService {
     }
   }
 
+// [NEW] Smart Kiosk Check
+  Future<Map<String, dynamic>> checkAttendanceByPhone(
+      String phoneNumber) async {
+    final url =
+        Uri.parse('${AppConfig.baseUrl}/academy/api/v1/attendances/check/');
+    final headers = await _getHeaders();
+    final body = {'phone_number': phoneNumber};
+
+    final response =
+        await http.post(url, headers: headers, body: jsonEncode(body));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      final err = jsonDecode(utf8.decode(response.bodyBytes));
+      throw Exception(err['error'] ?? 'Check failed');
+    }
+  }
+
   Future<void> createTemporarySchedule(Map<String, dynamic> data) async {
     final url = Uri.parse('${AppConfig.baseUrl}/academy/api/v1/schedules/');
     final headers = await _getHeaders();

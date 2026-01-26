@@ -17,9 +17,19 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
   bool _isSuccess = false;
 
   void _onKeyPress(String value) {
-    if (_input.length < 8) {
+    if (_input.length < 11) {
+      // 11 Digits
       setState(() {
         _input += value;
+        _message = null;
+      });
+    }
+  }
+
+  void _onShortcut010() {
+    if (_input.isEmpty) {
+      setState(() {
+        _input = '010';
         _message = null;
       });
     }
@@ -41,8 +51,11 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
     }
   }
 
-  Future<void> _submit(String type) async {
-    if (_input.isEmpty) return;
+  Future<void> _submit() async {
+    if (_input.length < 11) {
+      setState(() => _message = '핸드폰 번호 11자리를 입력해주세요.');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -50,45 +63,18 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
     });
 
     try {
-      // Input is treated as Student ID (PK) for now.
-      // TODO: If needed, map Phone Number or Access Code to ID here.
-      final studentId = int.tryParse(_input);
-      if (studentId == null) {
-        throw Exception('올바른 학생 번호를 입력해주세요.');
-      }
+      final result = await _academyService.checkAttendanceByPhone(_input);
+      // result: { 'message': ..., 'mode': 'IN'/'OUT', 'student_name': ... }
 
-      // But backend expects specific status enum.
-      // 'PRESENT', 'LATE', 'ABSENT', 'LEAVE_EARLY'?
-      // Usually Kiosk just marks 'PRESENT' (Check-in) and maybe 'LEAVE' (Check-out).
-      // Let's assume 'PRESENT' for both or differentiate if backend supports it.
-      // Blossom backend `Attendance` model status choices?
-      // Typically: PRESENT, LATE, ABSENT, EXCUSED. Doesn't seem to have 'LEAVE'.
-      // For now, Kiosk = Check-in = PRESENT.
-      // If user wants Check-out, we might need a separate API or logic.
-      // Let's stick to Check-in (PRESENT) for MVP or "LEAVE" if supported.
-      // Safest: type == 'IN' ? 'PRESENT' : 'LEAVE' (if added).
-      // Re-reading models.py (from memory/previous context) - generic status char field.
-      // Let's send 'PRESENT' for In, and maybe 'LEAVE' for Out?
-      // Update: User asked for "Check-in/Check-out Kiosk".
-      // I'll send 'PRESENT' for Check-in.
-      // For Check-out, if backend doesn't support 'LEAVE' status, I'll allow it but might be just a log.
-
-      final realStatus = type == 'IN' ? 'PRESENT' : 'LEAVE';
-
-      await _academyService.createAttendance(
-        studentId,
-        realStatus,
-        DateTime.now(),
-      );
+      final msg = result['message'];
 
       setState(() {
         _isSuccess = true;
-        _message = type == 'IN' ? '등원 처리가 완료되었습니다 👋' : '하원 처리가 완료되었습니다 🏠';
+        _message = msg;
         _input = '';
       });
 
-      // Auto clear message
-      Future.delayed(const Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
           setState(() {
             _message = null;
@@ -99,7 +85,7 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
     } catch (e) {
       setState(() {
         _isSuccess = false;
-        _message = '오류: 학생 번호를 확인해주세요.'; // $e
+        _message = e.toString().replaceAll('Exception: ', '');
       });
     } finally {
       if (mounted) {
@@ -137,7 +123,7 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              '학생 번호를 입력해주세요',
+              '핸드폰 번호 11자리를 입력해주세요',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -186,7 +172,7 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
                     const SizedBox(height: 20),
                     _buildKeyRow(['7', '8', '9']),
                     const SizedBox(height: 20),
-                    _buildKeyRow(['C', '0', '⌫']),
+                    _buildKeyRow(['010', '0', '⌫']), // [FIX] C -> 010
                   ],
                 ),
               ),
@@ -197,56 +183,24 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
             // Action Buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 80,
-                      child: ElevatedButton(
-                        onPressed: _isLoading || _input.isEmpty
-                            ? null
-                            : () => _submit('IN'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 5,
-                        ),
-                        child: const Text(
-                          '등원',
-                          style: TextStyle(
-                              fontSize: 28, fontWeight: FontWeight.bold),
-                        ),
-                      ),
+              child: SizedBox(
+                height: 80,
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading || _input.length < 11 ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 5,
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: SizedBox(
-                      height: 80,
-                      child: ElevatedButton(
-                        onPressed: _isLoading || _input.isEmpty
-                            ? null
-                            : () => _submit('OUT'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 5,
-                        ),
-                        child: const Text(
-                          '하원',
-                          style: TextStyle(
-                              fontSize: 28, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
+                  child: const Text(
+                    '등하원 체크',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
-                ],
+                ),
               ),
             ),
             const Spacer(),
@@ -268,12 +222,13 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
   }
 
   Widget _buildKey(String key) {
-    if (key == 'C') {
+    if (key == '010') {
       return _buildActionButton(
-          Icons.refresh, Colors.grey.shade300, Colors.black, _onClear);
+          null, Colors.indigo.shade50, Colors.indigo, _onShortcut010, '010');
     } else if (key == '⌫') {
+      // Long press clear? For now standard delete.
       return _buildActionButton(
-          Icons.backspace, Colors.grey.shade300, Colors.black, _onDelete);
+          Icons.backspace, Colors.grey.shade300, Colors.black, _onDelete, null);
     }
 
     return Expanded(
@@ -310,13 +265,15 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
     );
   }
 
-  Widget _buildActionButton(
-      IconData icon, Color bg, Color contentColor, VoidCallback onTap) {
+  Widget _buildActionButton(IconData? icon, Color bg, Color contentColor,
+      VoidCallback onTap, String? text) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: InkWell(
           onTap: onTap,
+          onLongPress:
+              text == null ? _onClear : null, // Long press backspace to clear
           borderRadius: BorderRadius.circular(100),
           child: Container(
             decoration: BoxDecoration(
@@ -324,7 +281,13 @@ class _AttendanceKioskScreenState extends State<AttendanceKioskScreen> {
               color: bg,
             ),
             child: Center(
-              child: Icon(icon, color: contentColor, size: 28),
+              child: text != null
+                  ? Text(text,
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: contentColor))
+                  : Icon(icon, color: contentColor, size: 28),
             ),
           ),
         ),

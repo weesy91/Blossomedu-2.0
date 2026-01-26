@@ -235,6 +235,72 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED, headers=headers)
 
+    @action(detail=False, methods=['post'])
+    def check(self, request):
+        """
+        Smart Kiosk Check-in/out
+        - Input: phone_number (11 digits)
+        - Logic:
+          1. Find student (exact match or stripped dashes)
+          2. Check today's record
+          3. None -> Create (PRESENT, check_in_time=now) -> Return "등원"
+          4. Exists & left_at is None -> Update (left_at=now) -> Return "하원"
+          5. Exists & left_at Exists -> Update (left_at=now) -> Return "하원 (갱신)"
+        """
+        phone = request.data.get('phone_number', '').strip().replace('-', '')
+        if not phone:
+             return Response({'error': 'Please provide phone_number.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Find Student
+        # Try finding by exact phone, or stripped
+        # StudentProfile stores phone_number. Format might vary.
+        # Let's try flexible search?
+        # For now, simplistic approach:
+        
+        student = StudentProfile.objects.filter(phone_number__replace='-', __contains=phone).first()
+        # Django lookup doesn't support 'replace' directly like that easily without annotations.
+        # Fallback: Filter by phone_number ending with input?
+        # Or just standard filter if clean.
+        
+        # Better: Search by exact match first, then formatted.
+        student = StudentProfile.objects.filter(phone_number=phone).first()
+        if not student:
+            # Try with dashes? 010-1234-5678
+            if len(phone) == 11:
+                formatted = f"{phone[:3]}-{phone[3:7]}-{phone[7:]}"
+                student = StudentProfile.objects.filter(phone_number=formatted).first()
+        
+        if not student:
+            return Response({'error': '학생을 찾을 수 없습니다. (핸드폰 번호 확인)'}, status=status.HTTP_404_NOT_FOUND)
+
+        today = timezone.now().date()
+        now = timezone.now()
+
+        # 2. Check Record
+        attendance = Attendance.objects.filter(student=student, date=today).first()
+        
+        msg = ""
+        mode = ""
+
+        if not attendance:
+            # Check-in
+            Attendance.objects.create(
+                student=student,
+                date=today,
+                status='PRESENT',
+                check_in_time=now
+            )
+            msg = f"{student.name} 학생 등원했습니다."
+            mode = "IN"
+        else:
+            # Check-out (or Update)
+            attendance.left_at = now
+            attendance.save(update_fields=['left_at'])
+            msg = f"{student.name} 학생 하원했습니다."
+            mode = "OUT"
+
+        return Response({'message': msg, 'mode': mode, 'student_name': student.name}, status=status.HTTP_200_OK)
+
 class ClassLogViewSet(viewsets.ModelViewSet):
     """
     수업 일지 API (조회/생성)
