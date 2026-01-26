@@ -742,13 +742,9 @@ class _TeacherClassLogCreateScreenState
       unique.putIfAbsent(normalized, () => normalized);
     }
 
-    // [FIX] Merge System Publishers (Only for VOCAB)
-    if (type == 'VOCAB') {
-      for (final sysPub in _systemPublishers) {
-        if (sysPub.isEmpty) continue;
-        unique.putIfAbsent(sysPub, () => sysPub);
-      }
-    }
+    // [FIX] Do NOT merge System Publishers manually.
+    // User requested to hide them from dropdown as 'Incorrect Answers' etc are handled separately.
+    // Only publishers present in _allBooks will appear.
 
     if (type == 'VOCAB' && _extraVocabPublishers.isNotEmpty) {
       for (final extra in _extraVocabPublishers) {
