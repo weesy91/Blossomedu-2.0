@@ -162,7 +162,8 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
             ? (rangeStr.isEmpty ? 'ALL' : rangeStr)
             : 'WRONG_ONLY',
         count: 30, // Standard Offline Test Size
-        studentId: studentId, // Pass for Wrong Answer Mode or Logging
+        // [FIX] Only pass studentId for 'wrong_answer' mode to avoid 400 errors if server validates student state
+        studentId: _testType == 'wrong_answer' ? studentId : null,
       );
 
       print('[DEBUG] Generated ${result.length} questions');
