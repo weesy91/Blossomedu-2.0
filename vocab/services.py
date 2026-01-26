@@ -58,8 +58,12 @@ def _normalize_pos_tag(pos):
         'pron': 'pron',
         'prep': 'prep',
         'conj': 'conj',
+        'art': 'adj',    # Map Article to Adjective
+        'abbr': 'n',     # Map Abbreviation to Noun
+        'prefix': 'n',   # Map Prefix to Noun
+        'suffix': 'n',   # Map Suffix to Noun
     }
-    return mapping.get(pos, pos)
+    return mapping.get(pos, 'n') # Default to noun if unknown key
 
 def _infer_pos_from_korean(meaning):
     m = re.sub(r'\(.*?\)|\[.*?\]', '', meaning).strip()
@@ -80,9 +84,9 @@ def parse_meaning_tokens(meaning_text):
     entries = []
     parts = [p.strip() for p in re.split(r'[,/]', meaning_text)]
 
-    # Manual POS prefixes at the start of a meaning token.
+    # Manual POS prefixes including extended types
     prefix_re = re.compile(
-        r'^(n|v|adj|a|adv|ad|prep|conj|pron|int|vi|vt)(?:\.\s*|\s+)',
+        r'^(n|v|adj|a|adv|ad|prep|conj|pron|int|interj|vi|vt|art|abbr|prefix|suffix)(?:\.\s*|\s+)',
         re.IGNORECASE,
     )
     for p in parts:

@@ -180,7 +180,7 @@ def crawl_daum_dic(query):
                             formatted_meanings.append(f"{pos_label} {', '.join(pos_meanings)}")
             
             if formatted_meanings:
-                korean = " ".join(formatted_meanings)
+                korean = " / ".join(formatted_meanings)
             else:
                  # Fallback
                  korean = ", ".join(korean_candidates[:6]) if korean_candidates else ""
