@@ -1,11 +1,11 @@
 {
-    "name": "blossomedu_client",
-    "short_name": "blossomedu_client",
+    "name": "Blossomedu",
+    "short_name": "Blossomedu",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "블라썸에듀 학습 관리 시스템",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
