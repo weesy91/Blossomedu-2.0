@@ -923,31 +923,42 @@ class _TeacherClassLogCreateScreenState
       // Try to identify book by related_textbook, related_vocab_book, or title
       final textbookId = asm['related_textbook'];
       final vocabBookId = asm['related_vocab_book'];
-      final title = asm['title']?.toString() ?? '';
+      final title = asm['title']?.toString().trim() ?? '';
 
       String bookKey;
       String bookType;
       int? bookId;
       String displayTitle = title;
 
+      // [FIX] Extract bracket content as "Standard Title" for manual entries
+      String? extractedBookName;
+      final match = RegExp(r'\[(.+?)\]').firstMatch(title);
+      if (match != null) {
+        extractedBookName = match.group(1);
+        displayTitle = '[$extractedBookName]'; // [FIX] Normalize display title
+      }
+
       if (vocabBookId != null) {
         bookKey = 'VOCAB_$vocabBookId';
         bookType = 'VOCAB';
         bookId = vocabBookId;
-        // Extract book title from assignment title (e.g., "[단어장명] Day 1-10" → "단어장명")
-        final match = RegExp(r'\[(.+?)\]').firstMatch(title);
-        if (match != null) displayTitle = match.group(1) ?? title;
+        if (extractedBookName != null) displayTitle = '[$extractedBookName]';
       } else if (textbookId != null) {
         bookKey = 'TEXTBOOK_$textbookId';
         bookType = 'TEXTBOOK';
         bookId = textbookId;
-        final match = RegExp(r'\[(.+?)\]').firstMatch(title);
-        if (match != null) displayTitle = match.group(1) ?? title;
+        if (extractedBookName != null) displayTitle = '[$extractedBookName]';
       } else {
-        // Fallback: use title as key
-        bookKey = 'TITLE_$title';
-        bookType = 'UNKNOWN';
-        displayTitle = title;
+        // Fallback: use extracted book name as key if possible to merge "Book 8" and "Book 9"
+        if (extractedBookName != null) {
+          bookKey = 'TITLE_[$extractedBookName]';
+          bookType = 'UNKNOWN';
+          // displayTitle is already set to '[$extractedBookName]' above
+        } else {
+          bookKey = 'TITLE_$title';
+          bookType = 'UNKNOWN';
+          displayTitle = title;
+        }
       }
 
       // Parse the range from title or dedicated fields
