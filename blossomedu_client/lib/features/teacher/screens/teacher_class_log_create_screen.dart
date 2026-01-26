@@ -43,10 +43,8 @@ class _TeacherClassLogCreateScreenState
   final Set<String> _systemPublishers = {}; // [NEW]
 
   // Default Due Date used for initialization
-  final DateTime _defaultDueDate = () {
-    final now = DateTime.now().add(const Duration(days: 7));
-    return DateTime(now.year, now.month, now.day, 22, 0); // Default 10 PM
-  }();
+  // Default Due Date used for initialization
+  late DateTime _defaultDueDate;
 
   final TextEditingController _commentController = TextEditingController();
 
@@ -85,6 +83,12 @@ class _TeacherClassLogCreateScreenState
   @override
   void initState() {
     super.initState();
+    // [FIX] Default due date = Log Date (Today) 22:00
+    final baseDate =
+        widget.date != null ? DateTime.parse(widget.date!) : DateTime.now();
+    _defaultDueDate =
+        DateTime(baseDate.year, baseDate.month, baseDate.day, 22, 0);
+
     _fetchInitialData();
     // [NEW] Check Attendance Status
     WidgetsBinding.instance.addPostFrameCallback((_) {
