@@ -1,6 +1,6 @@
-// Web implementation
 import 'dart:js_interop';
 import 'dart:html' as html;
+import 'dart:convert';
 
 @JS('openWindowOnSecondaryScreen')
 external JSPromise<JSBoolean> _openWindowOnSecondaryScreen(
@@ -63,13 +63,13 @@ class WebMonitorHelper {
       {required int current, required int total, String? word}) {
     try {
       final channel = html.BroadcastChannel('blossom_projector_sync');
-      // Simple JSON replacement
-      channel.postMessage({
+      final payload = jsonEncode({
         'type': 'progress',
         'current': current,
         'total': total,
         'word': word ?? '',
       });
+      channel.postMessage(payload);
       channel.close();
     } catch (e) {
       print('[WebMonitorHelper] Error sending progress: $e');
@@ -82,20 +82,19 @@ class WebMonitorHelper {
       final channel = html.BroadcastChannel('blossom_projector_sync');
       channel.onMessage.listen((event) {
         final data = event.data;
-        if (data is Map || (data is JSObject)) {
-          // Check type safely if possible, or just try catch
+        if (data is String) {
           try {
-            // Dart-JS interop might return LinkedMap or JSObject.
-            // In pure Dart web (dart:html), postMessage sends cloned data.
-            // If it's a Map:
-            if (data['type'] == 'progress') {
+            final decoded = jsonDecode(data);
+            if (decoded is Map && decoded['type'] == 'progress') {
               onProgress(
-                data['current'] as int,
-                data['total'] as int,
-                data['word'] as String,
+                decoded['current'] as int,
+                decoded['total'] as int,
+                decoded['word'] as String,
               );
             }
-          } catch (_) {}
+          } catch (e) {
+            print('[WebMonitorHelper] Decode error: $e');
+          }
         }
       });
     } catch (e) {
