@@ -140,17 +140,28 @@ def crawl_daum_dic(query):
 
         # 1. 사전 데이터(data[1])가 있으면 거기서 여러 뜻을 가져옵니다.
         if len(data) > 1 and data[1]:
+            formatted_meanings = []
             for part_of_speech in data[1]:
                 if isinstance(part_of_speech, list) and len(part_of_speech) > 1:
+                    pos_label = part_of_speech[0] # noun, verb, etc.
                     meanings = part_of_speech[1]
+                    
                     if isinstance(meanings, list):
-                        # 각 품사별로 상위 3개 뜻만
+                        # Limit to top 3 meanings per POS
+                        pos_meanings = []
                         for m in meanings[:3]:
-                            if m and m not in korean_candidates:
-                                korean_candidates.append(m)
+                            if m and m not in pos_meanings:
+                                pos_meanings.append(m)
+                                
+                        if pos_meanings:
+                            # [명사] 뜻1, 뜻2
+                            formatted_meanings.append(f"[{pos_label}] {', '.join(pos_meanings)}")
             
-            # 리스트를 콤마로 연결 (최대 5~6개 정도만 표시 추천)
-            korean = ", ".join(korean_candidates[:6])
+            if formatted_meanings:
+                korean = " ".join(formatted_meanings)
+            else:
+                 # Fallback
+                 korean = ", ".join(korean_candidates[:6]) if korean_candidates else ""
             
         # 2. 사전 데이터가 없으면 기본 번역(data[0])을 사용
         else:

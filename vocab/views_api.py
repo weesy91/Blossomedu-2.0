@@ -1010,7 +1010,8 @@ class SearchWordViewSet(viewsets.ViewSet):
         has_exact_db = False
         
         # 1. DB 검색
-        db_words = Word.objects.filter(english__icontains=query).select_related('book')[:5]
+        from django.db.models.functions import Length
+        db_words = Word.objects.filter(english__icontains=query).annotate(len=Length('english')).order_by('len')[:5]
         for w in db_words:
             if w.english and w.english.lower() == query.lower():
                 has_exact_db = True
