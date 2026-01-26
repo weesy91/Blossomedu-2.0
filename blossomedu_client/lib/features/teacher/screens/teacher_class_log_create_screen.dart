@@ -801,19 +801,25 @@ class _TeacherClassLogCreateScreenState
     try {
       final matches = _allBooks.where((b) => b['id'] == id).toList();
       if (matches.isEmpty) return null;
+
+      // 1. Try Strict Type Match first
       if (type != null && type.isNotEmpty) {
         final targetType = type.toUpperCase();
-        for (final b in matches) {
-          final bType = (b['type']?.toString() ?? '').toUpperCase();
-          if (bType == targetType) return b;
-        }
+        final strictMatch = matches.firstWhere(
+            (b) => (b['type']?.toString() ?? '').toUpperCase() == targetType,
+            orElse: () => {});
+        if (strictMatch.isNotEmpty) return strictMatch;
       }
-      if (matches.length == 1) return matches.first;
-      for (final b in matches) {
-        if ((b['type']?.toString() ?? '').toUpperCase() != 'VOCAB') {
-          return b;
-        }
+
+      // 2. Fallback: Return any book with matching ID
+      // If multiple, prefer non-VOCAB if we are looking for generic textbook
+      if (matches.length > 1) {
+        final nonVocab = matches.firstWhere(
+            (b) => (b['type']?.toString() ?? '').toUpperCase() != 'VOCAB',
+            orElse: () => {});
+        if (nonVocab.isNotEmpty) return nonVocab;
       }
+
       return matches.first;
     } catch (_) {
       return null;
