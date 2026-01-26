@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/academy_service.dart';
+import '../../../core/services/vocab_service.dart'; // [NEW]
 
 class TextbookCreateScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -16,14 +17,18 @@ class TextbookCreateScreen extends StatefulWidget {
 class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
   final _formKey = GlobalKey<FormState>();
   final _academyService = AcademyService();
+  final _vocabService = VocabService(); // [NEW]
 
   late TextEditingController _titleController;
-  late TextEditingController _publisherController;
   late TextEditingController _levelController;
-  late TextEditingController _totalUnitsController; // [NEW]
-  late TextEditingController _otLinkController; // [NEW] OT Link
+  late TextEditingController _totalUnitsController;
+  late TextEditingController _otLinkController;
   late String _selectedCategory;
-  bool _hasOt = false; // [NEW]
+  bool _hasOt = false;
+
+  // [NEW] Publisher Selection
+  String? _selectedPublisher;
+  List<String> _systemPublishers = [];
 
   // Units
   List<Map<String, dynamic>> _units = [];
@@ -34,39 +39,58 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
     super.initState();
     final data = widget.initialData;
     _titleController = TextEditingController(text: data?['title'] ?? '');
-    _publisherController =
-        TextEditingController(text: data?['publisher'] ?? '');
+    // Replace text controller with selection variable
+    if (data?['publisher'] != null &&
+        data!['publisher'].toString().isNotEmpty) {
+      _selectedPublisher = data['publisher'];
+    }
     _levelController = TextEditingController(text: data?['level'] ?? '');
-    _totalUnitsController = TextEditingController(
-        text: (data?['total_units'] ?? '0').toString()); // [NEW]
+    _totalUnitsController =
+        TextEditingController(text: (data?['total_units'] ?? '0').toString());
     _selectedCategory = data?['category'] ?? widget.initialCategory ?? 'SYNTAX';
-    _hasOt = data?['has_ot'] ?? false; // [NEW]
+    _hasOt = data?['has_ot'] ?? false;
 
-    _otLinkController = TextEditingController(); // Top-level init
+    _otLinkController = TextEditingController();
+
+    _fetchPublishers(); // [NEW]
 
     if (data != null && data['units'] != null) {
       final uList = List<Map<String, dynamic>>.from(data['units']);
-      // [NEW] Extract OT (Unit 0)
       final otIndex = uList.indexWhere((u) => u['unit_number'] == 0);
       if (otIndex != -1) {
         _otLinkController.text = uList[otIndex]['link_url'] ?? '';
         uList.removeAt(otIndex);
-        // Force sync has_ot if unit exists
         if (!_hasOt) _hasOt = true;
       }
       _units = uList;
-    } else {
-      // Initialize with 0 units or maybe 1?
+    }
+  }
+
+  Future<void> _fetchPublishers() async {
+    try {
+      final publishers = await _vocabService.getPublishers();
+      if (mounted) {
+        setState(() {
+          _systemPublishers =
+              publishers.map((e) => e['name'].toString()).toList();
+          // Ensure selected publisher exists in list (for legacy compatibility)
+          if (_selectedPublisher != null &&
+              !_systemPublishers.contains(_selectedPublisher)) {
+            _systemPublishers.add(_selectedPublisher!);
+          }
+        });
+      }
+    } catch (e) {
+      print('Error fetching publishers: $e');
     }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _publisherController.dispose();
     _levelController.dispose();
-    _totalUnitsController.dispose(); // [NEW]
-    _otLinkController.dispose(); // [NEW]
+    _totalUnitsController.dispose();
+    _otLinkController.dispose();
     super.dispose();
   }
 
@@ -98,12 +122,12 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
     try {
       final payload = {
         'title': _titleController.text,
-        'publisher': _publisherController.text,
+        'publisher': _selectedPublisher ?? '', // [NEW] Use selection
         'level': _levelController.text,
         'category': _selectedCategory,
-        'total_units': int.tryParse(_totalUnitsController.text) ??
-            _units.length, // [NEW] Prefer explicit input
-        'has_ot': _hasOt, // [NEW]
+        'total_units':
+            int.tryParse(_totalUnitsController.text) ?? _units.length,
+        'has_ot': _hasOt,
         'units': [
           if (_hasOt) {'unit_number': 0, 'link_url': _otLinkController.text},
           ..._units
@@ -190,7 +214,8 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
       'READING': '독해',
       'GRAMMAR': '어법',
       'LISTENING': '듣기',
-      'SCHOOL_EXAM': '내신'
+      'SCHOOL_EXAM': '내신',
+      'MOCK_EXAM': '모의고사', // [NEW]
     };
 
     return Scaffold(
@@ -228,9 +253,16 @@ class _TextbookCreateScreenState extends State<TextbookCreateScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: _publisherController,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedPublisher,
                           decoration: const InputDecoration(labelText: '출판사'),
+                          items: _systemPublishers.map((p) {
+                            return DropdownMenuItem(value: p, child: Text(p));
+                          }).toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedPublisher = val),
+                          validator: (v) =>
+                              v == null || v.isEmpty ? '출판사를 선택하세요' : null,
                         ),
                       ),
                       const SizedBox(width: 16),

@@ -121,6 +121,7 @@ class Textbook(models.Model):
         ('GRAMMAR', '📗 어법 교재'),
         ('LISTENING', '🎧 듣기 교재'),
         ('SCHOOL_EXAM', '🏫 내신 대비'),
+        ('MOCK_EXAM', '🎓 모의고사'),
     ]
 
     title = models.CharField(max_length=100, verbose_name="교재명")

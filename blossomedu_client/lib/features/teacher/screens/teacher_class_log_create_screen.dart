@@ -77,6 +77,7 @@ class _TeacherClassLogCreateScreenState
     'GRAMMAR': '어법',
     'LISTENING': '듣기',
     'SCHOOL_EXAM': '내신',
+    'MOCK_EXAM': '모의고사', // [NEW]
   };
 
   @override
@@ -669,7 +670,10 @@ class _TeacherClassLogCreateScreenState
           return {
             if (isVocab) 'wordbook': row['bookId'],
             if (!isVocab) 'textbook': row['bookId'],
-            'progress_range': row['range'],
+            'progress_range':
+                (row['startUnit'] != null && row['endUnit'] != null)
+                    ? '${row['startUnit']}-${row['endUnit']}'
+                    : (row['range'] ?? ''),
             'score': row['score'] ?? '',
           };
         }).toList(),
@@ -706,7 +710,8 @@ class _TeacherClassLogCreateScreenState
       'READING',
       'GRAMMAR',
       'LISTENING',
-      'SCHOOL_EXAM'
+      'SCHOOL_EXAM',
+      'MOCK_EXAM', // [NEW]
     ];
   }
 
@@ -1011,7 +1016,6 @@ class _TeacherClassLogCreateScreenState
           'startUnit': minR,
           'endUnit': maxR,
           'dueDate': _defaultDueDate,
-          'isOt': false,
         });
       }
     }
@@ -1101,7 +1105,6 @@ class _TeacherClassLogCreateScreenState
                           'bookId': null,
                           'range': '',
                           'score': 'B',
-                          'isOt': false,
                           'description': '',
                         })),
                   ),
@@ -1159,7 +1162,6 @@ class _TeacherClassLogCreateScreenState
                           'bookId': null,
                           'range': '',
                           'dueDate': _defaultDueDate,
-                          'isOt': false,
                           'description': '',
                         })),
                   ),
@@ -1621,16 +1623,13 @@ class _TeacherClassLogCreateScreenState
       row['type'] = types.first;
     }
 
-    final bool isVocab = row['type'] == 'VOCAB';
-
     // Check if selected book has units
     final selectedBook =
         _findBook(row['bookId'], type: row['type']?.toString());
     final List<dynamic> units = selectedBook?['units'] ?? [];
     final bool hasUnits = units.isNotEmpty;
-    // [NEW] OT Logic
-    final bool hasOt = selectedBook?['has_ot'] == true;
-    final bool isOtSelected = row['isOt'] == true; // [FIX] Use boolean flag
+
+    // OT Logic Removed - Rely on Unit 0
 
     const decoration = InputDecoration(
       contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 11),
@@ -1646,7 +1645,7 @@ class _TeacherClassLogCreateScreenState
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Type dropdown
+            // 1. Type dropdown
             if (types.length > 1)
               Container(
                 width: 90,
@@ -1664,17 +1663,18 @@ class _TeacherClassLogCreateScreenState
                       .toList(),
                   onChanged: (val) => setState(() {
                     row['type'] = val;
-                    row['publisher'] = null;
-                    row['bookId'] = null;
+                    row['publisher'] = null; // Reset Publisher
+                    row['bookId'] = null; // Reset Book
                     row['startUnit'] = null;
                     row['endUnit'] = null;
                   }),
                 ),
               ),
-            // Publisher dropdown (only for Vocab)
-            if (isVocab)
+
+            // 2. Publisher dropdown (For ALL types if selected)
+            if (row['type'] != null)
               Container(
-                width: 140,
+                width: 110, // Adjusted width
                 margin: const EdgeInsets.only(right: 8),
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
@@ -1682,7 +1682,8 @@ class _TeacherClassLogCreateScreenState
                   decoration: decoration.copyWith(hintText: '출판사'),
                   value: row['publisher'],
                   items: () {
-                    final publishers = _getPublishersForType('VOCAB');
+                    final publishers = _getPublishersForType(row['type']);
+                    // Safety check if current publisher is still valid
                     final current = row['publisher'];
                     if (current != null &&
                         !publishers.any((p) => p == current)) {
@@ -1698,12 +1699,15 @@ class _TeacherClassLogCreateScreenState
                   }(),
                   onChanged: (val) => setState(() {
                     row['publisher'] = _normalizePublisher(val);
-                    row['bookId'] = null;
+                    row['bookId'] = null; // Reset Book
+                    row['startUnit'] = null;
+                    row['endUnit'] = null;
                   }),
                 ),
               ),
+
             const Spacer(),
-            // [MOVED] Date Picker in Header Row
+            // Date Picker (Moved)
             if (allowedTypes != null) ...[
               InkWell(
                 onTap: () async {
@@ -1765,7 +1769,7 @@ class _TeacherClassLogCreateScreenState
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Book Dropdown
+            // 3. Book Dropdown (Filtered by Type & Publisher)
             Expanded(
               flex: hasUnits ? 4 : 4,
               child: DropdownButtonFormField<int>(
@@ -1775,6 +1779,7 @@ class _TeacherClassLogCreateScreenState
                 value: row['bookId'],
                 items: () {
                   if (row['type'] == null) return <DropdownMenuItem<int>>[];
+                  // Filter by Type AND Publisher
                   final books =
                       _getBooksFiltered(row['type'], row['publisher']);
                   if (row['bookId'] != null &&
@@ -1798,57 +1803,8 @@ class _TeacherClassLogCreateScreenState
             ),
             const SizedBox(width: 8),
 
-            // [NEW] OT Toggle Checkbox (if applicable)
-            if (hasOt) ...[
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    row['isOt'] = !(row['isOt'] ?? false);
-                    if (row['isOt']) {
-                      row['range'] = 'OT';
-                      row['startUnit'] = null;
-                      row['endUnit'] = null;
-                    } else {
-                      if (row['range'] == 'OT') row['range'] = '';
-                    }
-                  });
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isOtSelected ? Colors.indigo.shade50 : Colors.white,
-                    border: Border.all(
-                        color: isOtSelected
-                            ? Colors.indigo
-                            : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isOtSelected
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        size: 18,
-                        color: isOtSelected ? Colors.indigo : Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text('OT',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  isOtSelected ? Colors.indigo : Colors.grey)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-
-            // Range Input: Dynamic (Units Dropdown or Text)
-            if (hasUnits && !isVocab && !isOtSelected) ...[
+            // 4. Range Input: Dynamic (Units Dropdown or Text)
+            if (hasUnits && row['type'] != 'VOCAB') ...[
               // Start Unit
               Expanded(
                   flex: 3,
@@ -1857,12 +1813,14 @@ class _TeacherClassLogCreateScreenState
                     isDense: true,
                     decoration: decoration.copyWith(hintText: '시작 강'),
                     value: row['startUnit'],
-                    items: units
-                        .map((u) => DropdownMenuItem(
-                            value: u['unit_number'] as int,
-                            child: Text('${u['unit_number']}강',
-                                style: const TextStyle(fontSize: 13))))
-                        .toList(),
+                    items: units.map((u) {
+                      final uNum = u['unit_number'] as int;
+                      final label = uNum == 0 ? 'OT' : '${uNum}강';
+                      return DropdownMenuItem(
+                          value: uNum,
+                          child: Text(label,
+                              style: const TextStyle(fontSize: 13)));
+                    }).toList(),
                     onChanged: (val) => setState(() => row['startUnit'] = val),
                   )),
               const SizedBox(width: 4),
@@ -1877,16 +1835,18 @@ class _TeacherClassLogCreateScreenState
                     isDense: true,
                     decoration: decoration.copyWith(hintText: '끝 강'),
                     value: row['endUnit'],
-                    items: units
-                        .map((u) => DropdownMenuItem(
-                            value: u['unit_number'] as int,
-                            child: Text('${u['unit_number']}강',
-                                style: const TextStyle(fontSize: 13))))
-                        .toList(),
+                    items: units.map((u) {
+                      final uNum = u['unit_number'] as int;
+                      final label = uNum == 0 ? 'OT' : '${uNum}강';
+                      return DropdownMenuItem(
+                          value: uNum,
+                          child: Text(label,
+                              style: const TextStyle(fontSize: 13)));
+                    }).toList(),
                     onChanged: (val) => setState(() => row['endUnit'] = val),
                   )),
-            ] else if (!isOtSelected) ...[
-              // Text Input
+            ] else ...[
+              // Text Input fallback
               Expanded(
                 flex: 4,
                 child: TextField(
@@ -1905,7 +1865,6 @@ class _TeacherClassLogCreateScreenState
 
             if (hasScore) ...[
               const SizedBox(width: 8),
-              // [NEW] Offline Test Launcher
               if (row['bookId'] != null)
                 InkWell(
                   onTap: () => _showOfflineTestDialog(row),
@@ -2397,7 +2356,6 @@ class _TeacherClassLogCreateScreenState
         'isCompleted': isCompleted,
         'range': range,
         'dueDate': dueDate ?? _defaultDueDate,
-        'isOt': false,
         'type': null,
         'publisher': publisher,
         'bookId': bookId,
