@@ -1016,7 +1016,12 @@ class _TeacherClassLogCreateScreenState
     final merged = _mergeAssignmentRanges(assignments);
     if (merged.isEmpty) return;
 
-    // Separate by type: VOCAB → _vocabAssignments, TEXTBOOK → _hwMainRows
+    // Clear default empty row if present (optional UX choice)
+    if (_teachingRows.length == 1 && _teachingRows[0]['bookId'] == null) {
+      _teachingRows.clear();
+    }
+
+    // Populate _teachingRows (Today's Progress/Check)
     for (final entry in merged.entries) {
       final data = entry.value;
       final bookId = data['bookId'];
@@ -1025,7 +1030,7 @@ class _TeacherClassLogCreateScreenState
       final type = data['type'];
       final rangeStr = minR == maxR ? '$minR' : '$minR-$maxR';
 
-      // [FIX] Auto-fill publisher
+      // Auto-fill publisher
       String? publisher;
       if (bookId != null) {
         final book = _findBook(bookId, type: type == 'VOCAB' ? 'VOCAB' : null);
@@ -1034,29 +1039,29 @@ class _TeacherClassLogCreateScreenState
         }
       }
 
-      if (type == 'VOCAB' && bookId != null) {
-        // Add to vocab assignments
-        _vocabAssignments.add({
-          'isWrongWords': false,
-          'dueDate': _defaultDueDate,
-          'publisher': publisher, // [FIX] Set Publisher
-          'bookId': bookId,
-          'range': rangeStr,
-          'wrongWordsCount': 30, // Default for non-cumulative
-        });
-      } else if (bookId != null) {
-        // Add to main homework rows
-        _hwMainRows.add({
-          'type': type == 'UNKNOWN' ? null : type, // Use type if known
-          'publisher': publisher, // [FIX] Set Publisher
-          'bookId': bookId,
-          'range': rangeStr,
-          'startUnit': minR,
-          'endUnit': maxR,
-          'dueDate': _defaultDueDate,
-          'description': '',
-        });
-      }
+      _teachingRows.add({
+        'type': type == 'UNKNOWN' ? null : type,
+        'publisher': publisher,
+        'bookId': bookId,
+        'range': rangeStr,
+        'score': 'B', // Default score
+        'isOt': false,
+        'startUnit': minR, // For unit dropdowns if applicable
+        'endUnit': maxR,
+        'description': '',
+      });
+    }
+
+    // Ensure at least one row exists
+    if (_teachingRows.isEmpty) {
+      _teachingRows.add({
+        'type': null,
+        'publisher': null,
+        'bookId': null,
+        'range': '',
+        'score': 'B',
+        'isOt': false
+      });
     }
 
     setState(() {});
