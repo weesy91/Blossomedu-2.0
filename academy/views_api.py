@@ -253,14 +253,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
         # 1. Find Student
         # Try finding by exact phone, or stripped
-        # StudentProfile stores phone_number. Format might vary.
-        # Let's try flexible search?
-        # For now, simplistic approach:
-        
-        student = StudentProfile.objects.filter(phone_number__replace='-', __contains=phone).first()
-        # Django lookup doesn't support 'replace' directly like that easily without annotations.
-        # Fallback: Filter by phone_number ending with input?
-        # Or just standard filter if clean.
         
         # Better: Search by exact match first, then formatted.
         student = StudentProfile.objects.filter(phone_number=phone).first()
