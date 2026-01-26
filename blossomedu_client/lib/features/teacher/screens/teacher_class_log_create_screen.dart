@@ -742,13 +742,12 @@ class _TeacherClassLogCreateScreenState
       unique.putIfAbsent(normalized, () => normalized);
     }
 
-    // [NEW] Merge System Publishers (for ALL types)
-    for (final sysPub in _systemPublishers) {
-      if (sysPub.isEmpty) continue;
-      // You might want to filter system publishers by type if metadata supported it,
-      // but currently Publisher model is generic. So we add all.
-      // Or we can add them to unique list.
-      unique.putIfAbsent(sysPub, () => sysPub);
+    // [FIX] Merge System Publishers (Only for VOCAB)
+    if (type == 'VOCAB') {
+      for (final sysPub in _systemPublishers) {
+        if (sysPub.isEmpty) continue;
+        unique.putIfAbsent(sysPub, () => sysPub);
+      }
     }
 
     if (type == 'VOCAB' && _extraVocabPublishers.isNotEmpty) {
