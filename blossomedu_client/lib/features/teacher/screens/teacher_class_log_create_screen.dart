@@ -953,11 +953,14 @@ class _TeacherClassLogCreateScreenState
       // Parse the range from title or dedicated fields
       int? rangeStart, rangeEnd;
 
-      // First try vocab_range fields
-      if (asm['vocab_range_start'] != null && asm['vocab_range_end'] != null) {
+      // First try vocab_range fields (Ignore if both are 0)
+      if (asm['vocab_range_start'] != null &&
+          asm['vocab_range_end'] != null &&
+          (asm['vocab_range_start'] > 0 || asm['vocab_range_end'] > 0)) {
         rangeStart = asm['vocab_range_start'];
         rangeEnd = asm['vocab_range_end'];
-      } else if (asm['textbook_range'] != null) {
+      } else if (asm['textbook_range'] != null &&
+          asm['textbook_range'].toString().isNotEmpty) {
         final parsed = _parseRange(asm['textbook_range'].toString());
         rangeStart = parsed.$1;
         rangeEnd = parsed.$2;
