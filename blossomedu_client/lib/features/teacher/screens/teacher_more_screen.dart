@@ -21,7 +21,7 @@ class TeacherMoreScreen extends StatelessWidget {
 
     bool hasAdminAccess() {
       if (isSuper) return true;
-      return pos == 'PRINCIPAL';
+      return ['PRINCIPAL', 'VICE'].contains(pos);
     }
 
     return Scaffold(

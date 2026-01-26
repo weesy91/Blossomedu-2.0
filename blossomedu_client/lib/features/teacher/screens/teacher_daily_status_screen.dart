@@ -20,6 +20,8 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
   String? _errorMessage;
 
   Map<String, dynamic>? _data;
+  List<String> _teachers = [];
+  String? _selectedTeacher;
 
   @override
   void initState() {
@@ -49,8 +51,20 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        // Extract Unique Teachers
+        final students = decoded['students'] as List? ?? [];
+        final teacherSet = <String>{};
+        for (var s in students) {
+          if (s['teacher'] != null) teacherSet.add(s['teacher'].toString());
+        }
+
         setState(() {
           _data = decoded;
+          _teachers = teacherSet.toList()..sort();
+          if (_selectedTeacher != null &&
+              !_teachers.contains(_selectedTeacher)) {
+            _selectedTeacher = null;
+          }
           _isLoading = false;
         });
       } else {
@@ -97,6 +111,7 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
       body: Column(
         children: [
           _buildHeader(),
+          _buildFilter(), // [NEW] Teacher Filter
           Expanded(
             child: _buildBody(),
           ),
@@ -171,6 +186,39 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
     );
   }
 
+  // [NEW] Teacher Filter Widget
+  Widget _buildFilter() {
+    if (_teachers.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.white,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          const Text('담당 강사: ', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          DropdownButton<String>(
+            value: _selectedTeacher,
+            hint: const Text('전체 보기'),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('전체 보기')),
+              ..._teachers.map((t) => DropdownMenuItem(
+                    value: t,
+                    child: Text(t),
+                  ))
+            ],
+            onChanged: (val) {
+              setState(() => _selectedTeacher = val);
+            },
+            underline: Container(), // Remove underline
+            style: const TextStyle(color: Colors.black87, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_errorMessage != null) return Center(child: Text('오류: $_errorMessage'));
@@ -180,7 +228,13 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
       return const Center(child: Text('해당 날짜에 등원 예정인 학생이 없습니다.'));
     }
 
-    final students = _data!['students'] as List;
+    var students = _data!['students'] as List;
+
+    // Filter by Teacher
+    if (_selectedTeacher != null) {
+      students =
+          students.where((s) => s['teacher'] == _selectedTeacher).toList();
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -221,7 +275,17 @@ class _TeacherDailyStatusScreenState extends State<TeacherDailyStatusScreen> {
 
     return GestureDetector(
       onTap: () {
-        context.push('/teacher/student/${s['id']}');
+        // [FIX] Navigate to Daily Class Log instead of Student Planner
+        // Note: Default to SYNTAX subject as data doesn't provide specific subject yet.
+        // If not own student, 'TeacherClassLogCreateScreen' basically shows View/Edit.
+        // Ideally we should pass 'readonly=true' if we supported it, but user just said "View access".
+        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+        context.push(Uri(path: '/teacher/class_log/create', queryParameters: {
+          'studentId': s['id'].toString(),
+          'studentName': name,
+          'date': dateStr,
+          'subject': 'SYNTAX',
+        }).toString());
       },
       child: Container(
         padding: const EdgeInsets.all(16),
