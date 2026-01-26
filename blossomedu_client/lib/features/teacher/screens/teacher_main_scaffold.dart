@@ -101,6 +101,25 @@ class _TeacherMainScaffoldState extends State<TeacherMainScaffold> {
         ],
         onTap: (index) {
           if (index == 2) return; // FAB Space - skip
+
+          // [NEW] Student Menu Disabled temporarily
+          if (index == 3) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('준비중'),
+                content: const Text('다른 메뉴로 대체될 예정입니다.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('확인'),
+                  ),
+                ],
+              ),
+            );
+            return;
+          }
+
           _onTap(index);
         },
       ),
