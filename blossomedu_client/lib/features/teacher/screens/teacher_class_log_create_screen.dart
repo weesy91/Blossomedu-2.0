@@ -1030,17 +1030,22 @@ class _TeacherClassLogCreateScreenState
       final type = data['type'];
       final rangeStr = minR == maxR ? '$minR' : '$minR-$maxR';
 
-      // Auto-fill publisher
+      // Auto-fill publisher & Correct Type
       String? publisher;
+      String? realType = type; // e.g. VOCAB or TEXTBOOK or UNKNOWN
+
       if (bookId != null) {
         final book = _findBook(bookId, type: type == 'VOCAB' ? 'VOCAB' : null);
         if (book != null) {
           publisher = _normalizePublisher(book['publisher']?.toString());
+          // [FIX] Use the actual book type (SYNTAX, READING, etc.) instead of generic 'TEXTBOOK'
+          realType = book['type'];
         }
       }
 
       _teachingRows.add({
-        'type': type == 'UNKNOWN' ? null : type,
+        'type':
+            (realType == 'UNKNOWN' || realType == 'TEXTBOOK') ? null : realType,
         'publisher': publisher,
         'bookId': bookId,
         'range': rangeStr,
