@@ -138,12 +138,31 @@ def crawl_daum_dic(query):
             except Exception:
                 pass
 
-        # 1. 사전 데이터(data[1])가 있으면 거기서 여러 뜻을 가져옵니다.
         if len(data) > 1 and data[1]:
             formatted_meanings = []
+            
+            # POS Mapping (Google -> App Standard)
+            POS_MAP = {
+                'noun': '명사',
+                'verb': '동사',
+                'adjective': '형용사',
+                'adverb': '부사',
+                'preposition': '전치사',
+                'conjunction': '접속사',
+                'pronoun': '대명사',
+                'interjection': '감탄사',
+                'article': '관사',
+                'abbreviation': '약어',
+                'prefix': '접두사',
+                'suffix': '접미사',
+            }
+
             for part_of_speech in data[1]:
                 if isinstance(part_of_speech, list) and len(part_of_speech) > 1:
-                    pos_label = part_of_speech[0] # noun, verb, etc.
+                    raw_pos = part_of_speech[0] # noun, verb, etc.
+                    # Map to Korean or use raw if not found
+                    pos_label = POS_MAP.get(raw_pos, raw_pos) 
+                    
                     meanings = part_of_speech[1]
                     
                     if isinstance(meanings, list):
