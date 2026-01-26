@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # 기본값을 False로 두어 배포 환경에서 안전하게 합니다.
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = True # os.getenv('DEBUG', 'False') == 'True'  #[FIXME] Temporary Debugging
 
 ALLOWED_HOSTS = ['*']
 
