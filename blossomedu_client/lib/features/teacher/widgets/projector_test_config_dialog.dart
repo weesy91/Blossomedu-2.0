@@ -153,8 +153,9 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
     final duration = _durationPerWord.toInt();
 
     try {
+      print('[DEBUG] Generating test questions for bookId: $bookId');
+
       // 1. Generate Test Questions (Server-side handling POS/Selection)
-      // This ensures "Offline Test" matches "Online Student Test" logic (Distinct POS)
       final List<dynamic> result = await _vocabService.generateTestQuestions(
         bookId: bookId,
         range: _testType == 'normal'
@@ -164,25 +165,45 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
         studentId: studentId, // Pass for Wrong Answer Mode or Logging
       );
 
+      print('[DEBUG] Generated ${result.length} questions');
+
       if (result.isEmpty) {
         throw Exception('출제할 단어가 없습니다. 범위를 확인해주세요.');
       }
 
-      // Map to consistent format
+      // Map to consistent format safely
       final testWords = result
-          .map((w) => {
-                'id': w['id'], // TestDetail/Word ID
-                'wordId': w['word_id'],
-                'english': w['english'],
-                'korean': w['korean'], // Specific meaning for the POS
-                'pos': w['pos'], // Specific POS (String)
-                'meaning_groups': w['meaning_groups'], // Full data if needed
-              })
-          .toList();
+          .map((w) {
+            if (w is! Map) {
+              print('[ERROR] Invalid item format: $w');
+              return <String, dynamic>{};
+            }
+            return {
+              'id': w['id'],
+              'wordId': w['word_id'] ?? 0,
+              'english': w['english'] ?? '',
+              'korean': w['korean'] ?? '', // Specific meaning for the POS
+              'pos': w['pos']?.toString() ?? '', // Specific POS (String)
+              'meaning_groups':
+                  w['meaning_groups'] ?? [], // Full data if needed
+            };
+          })
+          .where((w) => w.isNotEmpty)
+          .toList()
+          .cast<Map<String, dynamic>>();
+
+      print('[DEBUG] Mapped words. Encoding to JSON...');
 
       // 2. Save to SharedPreferences for Projector Window (Cross-Window Data Sharing)
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('offline_test_data', jsonEncode(testWords));
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('offline_test_data', jsonEncode(testWords));
+        print('[DEBUG] Saved to SharedPreferences');
+      } catch (e) {
+        print('[ERROR] SharedPreferences error: $e');
+        // Continue globally but log it? Or throw? Projector won't work without it.
+        throw Exception('설정 저장 실패: $e');
+      }
 
       // 3. Construct Projector URL with 'local' source
       final uri = Uri(
@@ -196,6 +217,8 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
         },
       );
       final fullPath = '/#${uri.toString()}';
+
+      print('[DEBUG] Opening Projector Window: $fullPath');
 
       // 4. Open Projector Window
       bool launched = await WebMonitorHelper.openProjectorWindow(fullPath,
@@ -217,10 +240,20 @@ class _ProjectorTestConfigDialogState extends State<ProjectorTestConfigDialog> {
         });
       }
     } catch (e) {
+      print('[ERROR] _startProjector failed: $e');
       if (mounted) {
         setState(() => _isStarting = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('실행 실패: $e')));
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('오류 발생'),
+            content: Text('시험 실행 중 오류가 발생했습니다.\ndetail: $e'),
+            actions: [
+              TextButton(
+                  onPressed: () => context.pop(), child: const Text('확인'))
+            ],
+          ),
+        );
       }
     }
   }
