@@ -822,29 +822,22 @@ class _TeacherClassLogCreateScreenState
   // Helper: Check if a date corresponds to a "Regular Class" day
   bool _isRegularClass(String dateStr) {
     if (_studentSchedule.isEmpty) {
-      return true; // Default to Regular if unknown? Or Makeup? Let's assume Regular to include everything if no schedule.
+      return true; // Default to Regular if unknown
     }
     try {
       final date = DateTime.parse(dateStr);
-      // Weekday: 1=Mon, ..., 7=Sun
-      // Backend 'class_times' format expected: List of objects or strings?
-      // Based on typical Blossomedu: [{'day': 'Mon', 'subject': 'SYNTAX'}, ...]
-      // OR ['Mon', 'Tue']?
-      // Need to check getStudent response structure.
-      // Based on previous view of academy_service.dart:
-      // 'class_times': s['class_times'] ?? [],
-
-      // Let's assume it matches the day of week.
-      // DateFormat('E').format(date) -> "Mon", "Tue"
-      final dayStr = DateFormat('E').format(date); // "Mon", "Tue"...
+      // Backend stores day as 'Mon', 'Tue' etc. (English)
+      // Force 'en_US' to ensure we get 'Mon' not '월'
+      final dayStr = DateFormat('E', 'en_US').format(date);
 
       // Check if ANY schedule entry matches this day AND subject
-      // class_times entries usually have 'day' and 'subject'
       return _studentSchedule.any((s) {
         if (s is Map) {
           final sDay = s['day']; // 'Mon'
-          final sSub = s['subject']; // 'SYNTAX'
-          return sDay == dayStr && sSub == widget.subject;
+          // [FIX] Use 'type' (e.g. 'SYNTAX') instead of 'subject' (Korean Name)
+          // widget.subject is 'SYNTAX' or 'READING'
+          final sType = s['type'];
+          return sDay == dayStr && sType == widget.subject;
         }
         return false;
       });
