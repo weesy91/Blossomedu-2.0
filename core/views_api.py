@@ -373,22 +373,17 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
         엑셀 파일 일괄 업로드
         형식: '수강생 관리' 시트 (Sample.xlsx 참조)
         """
-    @action(detail=False, methods=['post'])
-    def upload_excel(self, request):
-        """
-        엑셀 파일 일괄 업로드
-        형식: '수강생 관리' 시트 (Sample.xlsx 참조)
-        """
-        file = request.FILES.get('file')
-        if not file:
-            return Response({'error': '파일이 제공되지 않았습니다.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
+            file = request.FILES.get('file')
+            if not file:
+                return Response({'error': '파일이 제공되지 않았습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
             import pandas as pd
             import re
             from datetime import datetime, time
+            import traceback
             
-            df = pd.read_excel(file)
+            df = pd.read_excel(file, engine='openpyxl')
             
             # Column Mapping (Excel Col -> Variable)
             # 이름(학교), 담당선생님, 수업요일, 수업시간, 독해선생님, 독해수업요일, 독해수업시간, 입/퇴원, 학생이름, 학교, 학년, 학생 H.P, 어머니 H.P, 아버지 H.P, 주소
@@ -586,6 +581,10 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
                 'errors': errors[:10] # Return first 10 errors
             })
         except Exception as e:
+            try:
+                import traceback
+                traceback.print_exc()
+            except: pass
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
