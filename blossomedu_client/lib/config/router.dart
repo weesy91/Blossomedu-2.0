@@ -45,6 +45,7 @@ import '../features/teacher/screens/teacher_daily_status_screen.dart'; // [NEW]
 import '../features/reports/screens/report_list_screen.dart'; // [NEW]
 import '../features/reports/screens/report_create_screen.dart'; // [NEW]
 import '../features/reports/screens/report_web_view_screen.dart'; // [NEW]
+import '../features/attendance/screens/attendance_kiosk_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -417,6 +418,11 @@ final router = GoRouter(
         final uuid = state.pathParameters['uuid']!;
         return ReportWebViewScreen(uuid: uuid);
       },
+    ),
+    // [NEW] Attendance Kiosk
+    GoRoute(
+      path: '/attendance/kiosk',
+      builder: (context, state) => const AttendanceKioskScreen(),
     ),
   ],
 );

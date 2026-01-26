@@ -129,6 +129,12 @@ class TeacherMoreScreen extends StatelessWidget {
                     subtitle: '학원 공지사항 등록 및 배너 관리',
                     onTap: () => context.push('/teacher/announcements'),
                   ),
+                  _MenuItem(
+                    icon: Icons.touch_app, // Kiosk Icon
+                    title: '등하원 키오스크 모드',
+                    subtitle: '학생용 등하원 체크 화면 실행',
+                    onTap: () => context.push('/attendance/kiosk'),
+                  ),
                 ]),
 
               const SizedBox(height: 10),

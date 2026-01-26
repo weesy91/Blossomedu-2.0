@@ -29,6 +29,7 @@ class TeacherClassLogCreateScreen extends StatefulWidget {
 class _TeacherClassLogCreateScreenState
     extends State<TeacherClassLogCreateScreen> {
   final AcademyService _academyService = AcademyService();
+  final VocabService _vocabService = VocabService(); // [NEW]
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -39,6 +40,7 @@ class _TeacherClassLogCreateScreenState
   Map<String, dynamic>? _prevOtherLog;
   int? _editingLogId;
   final Set<String> _extraVocabPublishers = {};
+  final Set<String> _systemPublishers = {}; // [NEW]
 
   // Default Due Date used for initialization
   final DateTime _defaultDueDate = () {
@@ -127,6 +129,17 @@ class _TeacherClassLogCreateScreenState
         mappedBooks.addAll(mappedVocab);
       } catch (_) {
         // Ignore vocab load failures and continue with fallback/mock data.
+      }
+
+      // [NEW] Fetch System Publishers
+      try {
+        final publishers = await _vocabService.getPublishers();
+        for (final p in publishers) {
+          final name = p['name']?.toString() ?? '';
+          if (name.isNotEmpty) _systemPublishers.add(name);
+        }
+      } catch (e) {
+        print('Error fetching system publishers: $e');
       }
 
       // [FIX] Restore Mock Vocab Books if none exist (for testing)
@@ -724,6 +737,16 @@ class _TeacherClassLogCreateScreenState
       if (normalized.isEmpty) continue;
       unique.putIfAbsent(normalized, () => normalized);
     }
+
+    // [NEW] Merge System Publishers (for ALL types)
+    for (final sysPub in _systemPublishers) {
+      if (sysPub.isEmpty) continue;
+      // You might want to filter system publishers by type if metadata supported it,
+      // but currently Publisher model is generic. So we add all.
+      // Or we can add them to unique list.
+      unique.putIfAbsent(sysPub, () => sysPub);
+    }
+
     if (type == 'VOCAB' && _extraVocabPublishers.isNotEmpty) {
       for (final extra in _extraVocabPublishers) {
         if (extra.isEmpty) continue;

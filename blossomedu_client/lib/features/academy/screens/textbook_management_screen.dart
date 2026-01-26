@@ -21,14 +21,15 @@ class _TextbookManagementScreenState extends State<TextbookManagementScreen>
     'READING',
     'GRAMMAR',
     'LISTENING',
-    'SCHOOL_EXAM'
+    'SCHOOL_EXAM',
+    'MOCK_EXAM', // [NEW]
   ];
-  final List<String> _tabLabels = ['구문', '독해', '어법', '듣기', '내신'];
+  final List<String> _tabLabels = ['구문', '독해', '어법', '듣기', '내신', '모의고사'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this); // [FIX] 6 tabs
   }
 
   @override
