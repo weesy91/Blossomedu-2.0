@@ -587,6 +587,40 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
             except: pass
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """
+        활성 학생 통계 (분원별 수)
+        """
+        from django.db.models import Count
+        user = request.user
+        queryset = StudentProfile.objects.filter(user__is_active=True)
+
+        # Permission Check (Same as get_queryset logic roughly)
+        if not user.is_superuser:
+             if hasattr(user, 'staff_profile') and user.staff_profile.branch:
+                 queryset = queryset.filter(branch=user.staff_profile.branch)
+             else:
+                 # If not superuser and no branch, theoretically specific access?
+                 # But sticking to "Director seeing branch stats".
+                 pass
+
+        stats = queryset.values('branch__name').annotate(count=Count('id')).order_by('branch__name')
+        
+        # Reform data to list
+        data = []
+        total_active = 0
+        for s in stats:
+            b_name = s['branch__name'] or '지점 미정'
+            cnt = s['count']
+            data.append({'branch': b_name, 'count': cnt})
+            total_active += cnt
+            
+        return Response({
+            'total': total_active,
+            'breakdown': data
+        })
+
 
 class StaffManagementViewSet(viewsets.ModelViewSet):
     """

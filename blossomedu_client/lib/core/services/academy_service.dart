@@ -309,6 +309,20 @@ class AcademyService {
     }
   }
 
+  // [NEW] Student Stats
+  Future<Map<String, dynamic>> getStudentStats() async {
+    final url = Uri.parse(
+        '${AppConfig.baseUrl}/core/api/v1/management/students/stats/');
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load stats: ${response.body}');
+    }
+  }
+
   // [NEW] Staff Management Search
   Future<List<dynamic>> searchStaff({String query = ''}) async {
     final url = Uri.parse(

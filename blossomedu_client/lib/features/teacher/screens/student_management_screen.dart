@@ -17,6 +17,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   final _searchController = TextEditingController();
 
   List<dynamic> _students = [];
+  Map<String, dynamic>? _stats; // [NEW]
   bool _isLoading = true;
   Timer? _debounce;
 
@@ -44,10 +45,21 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   Future<void> _fetchStudents({String query = ''}) async {
     setState(() => _isLoading = true);
     try {
-      final data = await _academyService.searchStudents(query: query);
+      final results = await Future.wait([
+        _academyService.searchStudents(query: query),
+        if (query.isEmpty)
+          _academyService.getStudentStats()
+        else
+          Future.value(null),
+      ]);
+
+      final data = results[0] as List<dynamic>;
+      final stats = results[1] as Map<String, dynamic>?;
+
       if (mounted) {
         setState(() {
           _students = data;
+          if (stats != null) _stats = stats;
           _isLoading = false;
         });
       }
@@ -139,6 +151,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       ),
       body: Column(
         children: [
+          _buildStatsHeader(), // [NEW]
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -211,6 +224,64 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         },
                       ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsHeader() {
+    if (_stats == null) return const SizedBox.shrink();
+
+    final total = _stats!['total'] ?? 0;
+    final breakdown = _stats!['breakdown'] as List? ?? [];
+
+    return Container(
+      width: double.infinity,
+      color: Colors.indigo.shade50,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Text('총 재원생 (활성 계정)',
+              style: TextStyle(color: Colors.indigo.shade800, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('$total명',
+              style: TextStyle(
+                  color: Colors.indigo.shade900,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold)),
+          if (breakdown.length > 1) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: breakdown.map((b) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.indigo.shade100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(b['branch'] ?? '-',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo.shade700)),
+                      const SizedBox(width: 6),
+                      Text('${b['count']}명',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade800)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            )
+          ]
         ],
       ),
     );
