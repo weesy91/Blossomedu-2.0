@@ -1037,7 +1037,7 @@ class _TeacherClassLogCreateScreenState
     // Populate _teachingRows (Today's Progress/Check)
     for (final entry in merged.entries) {
       final data = entry.value;
-      final bookId = data['bookId'];
+      int? bookId = data['bookId'];
       final minR = data['minRange'];
       final maxR = data['maxRange'];
       final type = data['type'];
@@ -1053,6 +1053,25 @@ class _TeacherClassLogCreateScreenState
           publisher = _normalizePublisher(book['publisher']?.toString());
           // [FIX] Use the actual book type (SYNTAX, READING, etc.) instead of generic 'TEXTBOOK'
           realType = book['type'];
+        }
+      } else {
+        // [FIX] Fallback: If ID is missing (Manual Entry), try to find book by Title
+        // Title format is usually "[BookName] ..."
+        final title = data['title']?.toString() ?? '';
+        final match = RegExp(r'\[(.+?)\]').firstMatch(title);
+        if (match != null) {
+          final extractedName = match.group(1)!;
+          // Search in _allBooks
+          final found = _allBooks.firstWhere(
+            (b) => b['title'] == extractedName,
+            orElse: () => {},
+          );
+          if (found.isNotEmpty) {
+            // Found matching book!
+            bookId = found['id'];
+            publisher = _normalizePublisher(found['publisher']?.toString());
+            realType = found['type'];
+          }
         }
       }
 
