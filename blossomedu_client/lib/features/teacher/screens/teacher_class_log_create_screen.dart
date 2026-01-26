@@ -1946,7 +1946,7 @@ class _TeacherClassLogCreateScreenState
 
             if (hasScore) ...[
               const SizedBox(width: 8),
-              if (row['bookId'] != null)
+              if (row['bookId'] != null && row['type'] == 'VOCAB')
                 InkWell(
                   onTap: () => _showOfflineTestDialog(row),
                   borderRadius: BorderRadius.circular(4),
