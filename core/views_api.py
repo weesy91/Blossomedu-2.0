@@ -373,15 +373,21 @@ class StudentManagementViewSet(viewsets.ModelViewSet):
         엑셀 파일 일괄 업로드
         형식: '수강생 관리' 시트 (Sample.xlsx 참조)
         """
-        import pandas as pd
-        import re
-        from datetime import datetime, time
-        
+    @action(detail=False, methods=['post'])
+    def upload_excel(self, request):
+        """
+        엑셀 파일 일괄 업로드
+        형식: '수강생 관리' 시트 (Sample.xlsx 참조)
+        """
         file = request.FILES.get('file')
         if not file:
             return Response({'error': '파일이 제공되지 않았습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            import pandas as pd
+            import re
+            from datetime import datetime, time
+            
             df = pd.read_excel(file)
             
             # Column Mapping (Excel Col -> Variable)
