@@ -241,23 +241,21 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         Smart Kiosk Check-in/out
         - Input: phone_number (11 digits)
         - Logic:
-          1. Find student (exact match or stripped dashes)
-          2. Check today's record
-          3. None -> Create (PRESENT, check_in_time=now) -> Return "등원"
-          4. Exists & left_at is None -> Update (left_at=now) -> Return "하원"
-          5. Exists & left_at Exists -> Update (left_at=now) -> Return "하원 (갱신)"
+          1. Find student
+          2. Check for today's class schedule
+          3. Determine Status:
+             - Early/On-time: PRESENT
+             - Late (~40min): LATE
+             - Very Late (40min+): ABSENT
+          4. Create or Update Attendance
         """
         phone = request.data.get('phone_number', '').strip().replace('-', '')
         if not phone:
              return Response({'error': 'Please provide phone_number.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # 1. Find Student
-        # Try finding by exact phone, or stripped
-        
-        # Better: Search by exact match first, then formatted.
         student = StudentProfile.objects.filter(phone_number=phone).first()
         if not student:
-            # Try with dashes? 010-1234-5678
             if len(phone) == 11:
                 formatted = f"{phone[:3]}-{phone[3:7]}-{phone[7:]}"
                 student = StudentProfile.objects.filter(phone_number=formatted).first()
@@ -265,24 +263,77 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         if not student:
             return Response({'error': '학생을 찾을 수 없습니다. (핸드폰 번호 확인)'}, status=status.HTTP_404_NOT_FOUND)
 
-        today = timezone.now().date()
+        today_date = timezone.now().date()
         now = timezone.now()
-
+        
         # 2. Check Record
-        attendance = Attendance.objects.filter(student=student, date=today).first()
+        attendance = Attendance.objects.filter(student=student, date=today_date).first()
         
         msg = ""
         mode = ""
 
         if not attendance:
-            # Check-in
+            # Check-in Logic
+            status_val = 'PRESENT' # Default
+            
+            # Find Today's Schedule
+            # Weekday: 0=Mon, 1=Tue, ...
+            # ClassTime DayChoices: 'Mon', 'Tue'...
+            weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            today_day_str = weekdays[today_date.weekday()]
+            
+            # Collect student's classes for today
+            today_classes = []
+            if student.syntax_class and student.syntax_class.day == today_day_str:
+                today_classes.append(student.syntax_class)
+            if student.reading_class and student.reading_class.day == today_day_str:
+                today_classes.append(student.reading_class)
+            if student.extra_class and student.extra_class.day == today_day_str:
+                today_classes.append(student.extra_class)
+            
+            # Sort by start time
+            today_classes.sort(key=lambda c: c.start_time)
+
+
+            if today_classes:
+                target_class = today_classes[0]
+                # Combine today_date + start_time to make timezone-aware datetime
+                # Assuming class time is in local/server time (Seoul).
+                # timezone.now() is usually UTC if USE_TZ=True.
+                # We need to construct class_start_dt carefully.
+                # For safety in limited context, let's use check_in_time's date/tz combined with class time.
+                
+                # Naive combination first
+                class_start_naive = datetime.combine(today_date, target_class.start_time)
+                # Make it aware using 'now's timezone
+                class_start_dt = class_start_naive.replace(tzinfo=now.tzinfo) 
+                
+                # Diff
+                diff = now - class_start_dt
+                diff_minutes = diff.total_seconds() / 60
+                
+                if diff_minutes <= 0:
+                    status_val = 'PRESENT'
+                    msg = f"{student.name} 학생 등원했습니다."
+                elif diff_minutes <= 40:
+                    # Late but within 40 mins
+                    status_val = 'LATE'
+                    msg = f"{student.name} 학생 지각입니다. ({int(diff_minutes)}분 지각)"
+                else:
+                    # Over 40 mins -> ABSENT
+                    status_val = 'ABSENT'
+                    msg = f"{student.name} 학생 결석 처리되었습니다. (40분 초과)"
+            else:
+                # No class today -> Just Present (Extra study)
+                status_val = 'PRESENT'
+                msg = f"{student.name} 학생 등원했습니다. (수업 없음)"
+
             Attendance.objects.create(
                 student=student,
-                date=today,
-                status='PRESENT',
+                date=today_date,
+                status=status_val,
                 check_in_time=now
             )
-            msg = f"{student.name} 학생 등원했습니다."
             mode = "IN"
         else:
             # Check-out (or Update)
