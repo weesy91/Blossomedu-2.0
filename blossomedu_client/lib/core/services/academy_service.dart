@@ -52,6 +52,24 @@ class AcademyService {
     return getAssignments();
   }
 
+  // [NEW] Manual Assignment Completion by Teacher
+  Future<void> completeAssignment(int assignmentId) async {
+    final url = Uri.parse(
+        '${AppConfig.baseUrl}/academy/api/v1/assignments/$assignmentId/complete_by_teacher/');
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.post(url, headers: headers);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to complete assignment: ${response.body}');
+      }
+    } catch (e) {
+      print('Complete Assignment Error: $e');
+      throw Exception('Failed to complete assignment');
+    }
+  }
+
   // [NEW] 과제 생성 (Teacher)
   Future<void> createAssignment(Map<String, dynamic> data) async {
     final url = Uri.parse('${AppConfig.baseUrl}/academy/api/v1/assignments/');

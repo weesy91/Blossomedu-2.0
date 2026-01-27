@@ -178,6 +178,36 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         task.save(update_fields=update_fields)
 
         return Response({'status': submission.status}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def complete_by_teacher(self, request, pk=None):
+        """
+        선생님이 수동으로 과제를 '완료' 처리
+        """
+        task = self.get_object()
+        
+        # 권한 체크: 스태프이거나, 해당 학생의 담당 선생님이어야 함
+        user = request.user
+        if not user.is_staff:
+             return Response({'error': '선생님만 사용할 수 있는 기능입니다.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # (Optional) 담당 선생님 체크 로직 추가 가능
+        
+        task.is_completed = True
+        task.completed_at = timezone.now()
+        task.is_rejected = False
+        task.resubmission_deadline = None
+        task.save(update_fields=['is_completed', 'completed_at', 'is_rejected', 'resubmission_deadline'])
+        
+        # If there is a submission, mark it approved too
+        if hasattr(task, 'submission'):
+            sub = task.submission
+            sub.status = AssignmentSubmission.Status.APPROVED
+            sub.teacher_comment = '선생님 확인완료 (오프라인/기타)'
+            sub.reviewed_at = timezone.now()
+            sub.save()
+
+        return Response({'status': 'completed'}, status=status.HTTP_200_OK)
 class AttendanceViewSet(viewsets.ModelViewSet):
     """
     출석 조회 API (읽기 전용)

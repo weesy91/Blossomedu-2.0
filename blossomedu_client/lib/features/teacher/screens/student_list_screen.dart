@@ -100,50 +100,101 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                     color: Colors.redAccent, width: 1)),
                             child: Padding(
                               padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        item['student_name'] ?? '학생',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade50,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              item['student_name'] ?? '학생',
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.shade50,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                item['d_day_label'] ??
+                                                    'Overdue',
+                                                style: TextStyle(
+                                                    color: Colors.red.shade700,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        child: Text(
-                                          item['d_day_label'] ?? 'Overdue',
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          item['task_title'] ?? '과제명 없음',
+                                          style: const TextStyle(fontSize: 14),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '~ ${item['due_date']}',
                                           style: TextStyle(
-                                              color: Colors.red.shade700,
-                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey.shade600,
                                               fontSize: 12),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    item['task_title'] ?? '과제명 없음',
-                                    style: const TextStyle(fontSize: 14),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '~ ${item['due_date']}',
-                                    style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12),
+                                  IconButton(
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('과제 완료 처리'),
+                                          content: const Text(
+                                              '선생님 권한으로 과제를 완료/제출 처리하시겠습니까?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => context.pop(),
+                                              child: const Text('취소'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                context.pop(); // Close Dialog
+                                                try {
+                                                  await _academyService
+                                                      .completeAssignment(
+                                                          item['id']);
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(const SnackBar(
+                                                          content: Text(
+                                                              '완료 처리되었습니다.')));
+                                                  _fetchDashboardData();
+                                                } catch (e) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(SnackBar(
+                                                          content: Text(
+                                                              '오류 발생: $e')));
+                                                }
+                                              },
+                                              child: const Text('확인'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.check_circle_outline,
+                                        color: Colors.green, size: 28),
+                                    tooltip: '제출 완료 처리',
                                   ),
                                 ],
                               ),
