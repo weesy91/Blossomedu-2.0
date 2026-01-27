@@ -95,30 +95,12 @@ class _TeacherMainScaffoldState extends State<TeacherMainScaffold> {
             icon: SizedBox.shrink(), // FAB Space
             label: '',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: '학생'),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: '관리현황'),
           BottomNavigationBarItem(
               icon: Icon(Icons.grid_view_rounded), label: '더보기'),
         ],
         onTap: (index) {
           if (index == 2) return; // FAB Space - skip
-
-          // [NEW] Student Menu Disabled temporarily
-          if (index == 3) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('준비중'),
-                content: const Text('다른 메뉴로 대체될 예정입니다.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('확인'),
-                  ),
-                ],
-              ),
-            );
-            return;
-          }
 
           _onTap(index);
         },

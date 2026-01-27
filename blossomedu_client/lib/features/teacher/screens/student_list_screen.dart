@@ -23,11 +23,34 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   String _searchQuery = '';
 
+  // Dashboard Data
+  List<Map<String, dynamic>> _actionItems = [];
+  List<Map<String, dynamic>> _overdueItems = [];
+  bool _isDashboardLoading = false;
+
   @override
   void initState() {
     super.initState();
     _initializeDates();
     _fetchStudents();
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    setState(() => _isDashboardLoading = true);
+    try {
+      final data = await _academyService.getTeacherDashboard();
+      if (!mounted) return;
+      setState(() {
+        _actionItems = List<Map<String, dynamic>>.from(data['action_required']);
+        _overdueItems =
+            List<Map<String, dynamic>>.from(data['overdue_assignments']);
+        _isDashboardLoading = false;
+      });
+    } catch (e) {
+      print('Dashboard Error: $e');
+      if (mounted) setState(() => _isDashboardLoading = false);
+    }
   }
 
   void _initializeDates() {
@@ -263,6 +286,174 @@ class _StudentListScreenState extends State<StudentListScreen> {
       ),
       body: Column(
         children: [
+          // 0. Dashboard Stuff
+          if (_actionItems.isNotEmpty || _overdueItems.isNotEmpty)
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_overdueItems.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: Colors.red),
+                        const SizedBox(width: 8),
+                        Text(
+                          '미제출 과제 (Total: ${_overdueItems.length})',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 140, // Height for cards
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _overdueItems.length,
+                        separatorBuilder: (c, i) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final item = _overdueItems[index];
+                          return SizedBox(
+                            width: 280,
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: const BorderSide(
+                                      color: Colors.redAccent, width: 1)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          item['student_name'] ?? '학생',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            item['d_day_label'] ?? 'Overdue',
+                                            style: TextStyle(
+                                                color: Colors.red.shade700,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      item['task_title'] ?? '과제명 없음',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '~ ${item['due_date']}',
+                                      style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  if (_actionItems.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.notifications_active,
+                            color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Text(
+                          '확인 필요 (Log/Absence)',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _actionItems.length,
+                      separatorBuilder: (c, i) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final item = _actionItems[index];
+                        final isError = item['type'] == 'ERROR';
+                        return Card(
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                  color: isError
+                                      ? Colors.red
+                                      : Colors.orange.shade200)),
+                          child: ListTile(
+                            leading: Icon(
+                                isError
+                                    ? Icons.error_outline
+                                    : Icons.note_alt_outlined,
+                                color: isError ? Colors.red : Colors.orange),
+                            title: Text(item['label'] ?? '',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            subtitle: Text(item['date'] ?? ''),
+                            trailing: ElevatedButton(
+                              onPressed: () {
+                                if (isError) return;
+                                // Navigate to Log Create
+                                context.push(Uri(
+                                    path: '/teacher/class_log/create',
+                                    queryParameters: {
+                                      'studentId':
+                                          item['student_id'].toString(),
+                                      'studentName': item['student_name'],
+                                      'date': item['date'],
+                                      'subject': item['subject'] ?? 'SYNTAX',
+                                    }).toString());
+                              },
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white),
+                              child: const Text('작성하기'),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+          if (_actionItems.isNotEmpty || _overdueItems.isNotEmpty)
+            const Divider(height: 1, thickness: 8, color: Color(0xFFEEEEEE)),
+
           // 1. Date Strip (Always Visible)
           Container(
             height: 80,

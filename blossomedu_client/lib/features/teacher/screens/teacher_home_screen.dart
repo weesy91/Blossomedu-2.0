@@ -19,7 +19,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   int _wordReviewCount = 0;
   int _pendingAssignmentCount = 0;
   List<Map<String, dynamic>> _todayClasses = [];
-  Map<String, dynamic>? _dashboardData; // [NEW]
 
   @override
   void initState() {
@@ -48,8 +47,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         }
       }
 
-      // 2. Fetch Dashboard Data (Overdue & Missing Logs)
-      final dashboard = await _academyService.getTeacherDashboard();
+      // 2. Fetch Dashboard Data (Removed)
 
       // 3. Fetch Today's Classes
       final now = DateTime.now();
@@ -117,7 +115,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           _wordReviewCount = wordCount;
           _pendingAssignmentCount = assignmentCount;
           _todayClasses = todayClasses;
-          _dashboardData = dashboard;
           _isLoading = false;
         });
       }
@@ -257,160 +254,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // 3. Action Required Boards (New)
-                  _buildDashboardSection(context),
+                  // 3. Action Required Boards (Moved to Student List)
+                  // _buildDashboardSection(context),
 
                   const SizedBox(height: 40),
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildDashboardSection(BuildContext context) {
-    if (_dashboardData == null) return const SizedBox();
-
-    final overdue = _dashboardData!['overdue_assignments'] as List? ?? [];
-    final actions = _dashboardData!['action_required'] as List? ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 3.1 Overdue Assignments
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.red),
-                const SizedBox(width: 8),
-                Text('미제출 과제 (Total: ${overdue.length})',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (overdue.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child:
-                Text('미제출된 과제가 없습니다! 🎉', style: TextStyle(color: Colors.grey)),
-          )
-        else
-          Container(
-            height: 160,
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.withOpacity(0.1)),
-            ),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: overdue.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final item = overdue[index];
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(item['student_name'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                      '${item['title']} (${item['days_overdue']}일 지남)',
-                      style: const TextStyle(color: Colors.redAccent)),
-                  trailing: const Icon(Icons.chevron_right, size: 16),
-                  onTap: () {
-                    // Navigate to assignment detail? Not strictly possible teacher side easily yet without dedicated view
-                    // But maybe open student planner?
-                    // For now, simple snackbar or future TODO
-                  },
-                );
-              },
-            ),
-          ),
-
-        const SizedBox(height: 32),
-
-        // 3.2 Action Required (Missing Logs / Unscheduled)
-        Row(
-          children: [
-            const Icon(Icons.notification_important, color: Colors.orange),
-            const SizedBox(width: 8),
-            Text('확인 필요 (Log/Absence)',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (actions.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child:
-                Text('조치할 항목이 없습니다! 👍', style: TextStyle(color: Colors.grey)),
-          )
-        else
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2))
-              ],
-            ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: actions.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final item = actions[index];
-                final isMissingLog = item['type'] == 'MISSING_LOG';
-
-                return ListTile(
-                  leading: Icon(
-                    isMissingLog ? Icons.edit_document : Icons.event_busy,
-                    color: isMissingLog ? Colors.orange : Colors.red,
-                  ),
-                  title: Text(item['label'] ?? '',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13)),
-                  subtitle: Text(item['date'] ?? ''),
-                  trailing: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isMissingLog ? Colors.blue : Colors.green,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(isMissingLog ? '작성하기' : '보강잡기',
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 11)),
-                  ),
-                  onTap: () {
-                    if (isMissingLog) {
-                      context
-                          .push(
-                            '/teacher/class_log/create?studentId=${item['student_id']}&date=${item['date']}&subject=${item['subject'] ?? 'SYNTAX'}',
-                          )
-                          .then((_) => _fetchStats());
-                    } else {
-                      // Navigate to Student Detail? Or Temp Schedule Create?
-                      // We don't have a direct link to create temp schedule easily with pre-filled.
-                      // Go to student detail is safest.
-                      context.push('/teacher/student/${item['student_id']}');
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-      ],
     );
   }
 
