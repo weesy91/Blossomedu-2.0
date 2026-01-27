@@ -711,89 +711,106 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                   const SizedBox(height: 12),
                   // Actions - Moved here for mobile layout safety
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildActionButton(Icons.edit_note, '일지', Colors.green,
-                          () async {
-                        final studentId = student['id']?.toString();
-                        final dateStr =
-                            DateFormat('yyyy-MM-dd').format(_selectedDate);
+                      // Action Buttons
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildActionButton(
+                                Icons.edit_note, '일지', Colors.green, () async {
+                              final studentId = student['id']?.toString();
+                              final dateStr = DateFormat('yyyy-MM-dd')
+                                  .format(_selectedDate);
 
-                        // [NEW] Future Log Restriction
-                        final now = DateTime.now();
-                        final today = DateTime(now.year, now.month, now.day);
-                        if (_selectedDate.isAfter(today)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('아직 수업이 없는 날짜는 일지를 작성할 수 없습니다.')));
-                          return;
-                        }
+                              // [NEW] Future Log Restriction
+                              final now = DateTime.now();
+                              final today =
+                                  DateTime(now.year, now.month, now.day);
+                              if (_selectedDate.isAfter(today)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            '아직 수업이 없는 날짜는 일지를 작성할 수 없습니다.')));
+                                return;
+                              }
 
-                        // [NEW] Absent Restriction
-                        if (isAbsent) {
-                          _showAbsentDialog(student);
-                          return;
-                        }
+                              // [NEW] Absent Restriction
+                              if (isAbsent) {
+                                _showAbsentDialog(student);
+                                return;
+                              }
 
-                        if (studentId != null) {
-                          // [FIX] Pass `type` instead of `subject` to ensure correct matching (SYNTAX/READING)
-                          final subjectParam = type.isNotEmpty ? type : subject;
-                          await context.push(
-                              '/teacher/class_log/create?studentId=$studentId&date=$dateStr&subject=$subjectParam');
-                          // [FIX] Refresh data after returning from Class Log
-                          _fetchData();
-                        }
-                      }),
-                      // [NEW] Log Completion Indicator
+                              if (studentId != null) {
+                                // [FIX] Pass `type` instead of `subject` to ensure correct matching (SYNTAX/READING)
+                                final subjectParam =
+                                    type.isNotEmpty ? type : subject;
+                                await context.push(
+                                    '/teacher/class_log/create?studentId=$studentId&date=$dateStr&subject=$subjectParam');
+                                // [FIX] Refresh data after returning from Class Log
+                                _fetchData();
+                              }
+                            }),
+                            // [NEW] Make-up Class Button
+                            _buildActionButton(
+                                Icons.access_time_filled,
+                                canEditSchedule ? '이동' : '보강',
+                                Colors.orange, () {
+                              if (canEditSchedule) {
+                                _showMakeUpEditDialog(student, tempSchedule);
+                              } else {
+                                // Pass current date as potentially the "Original Date" for rescheduling
+                                _showMakeUpDialog(student, _selectedDate);
+                              }
+                            }),
+                            // [NEW] Student Planner Button
+                            _buildActionButton(
+                                Icons.calendar_month, '학생', Colors.indigo,
+                                () async {
+                              final studentId = student['id']?.toString();
+                              if (studentId != null) {
+                                await context
+                                    .push('/teacher/student/$studentId');
+                                _fetchData(); // [FIX] Refresh data after return
+                              }
+                            }),
+                          ],
+                        ),
+                      ),
+                      // [NEW] Log Completion Indicator (Right Aligned)
                       if ((student['log_history'] as List?)?.contains(
                               DateFormat('yyyy-MM-dd').format(_selectedDate)) ??
                           false)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.check_circle,
-                                  size: 14, color: Colors.green.shade700),
-                              const SizedBox(width: 4),
-                              Text(
-                                '일지작성완료',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade700),
-                              ),
-                            ],
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade500),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle,
+                                    size: 14, color: Colors.green.shade600),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '일지작성완료',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      // [NEW] Make-up Class Button
-                      _buildActionButton(Icons.access_time_filled,
-                          canEditSchedule ? '이동' : '보강', Colors.orange, () {
-                        if (canEditSchedule) {
-                          _showMakeUpEditDialog(student, tempSchedule);
-                        } else {
-                          // Pass current date as potentially the "Original Date" for rescheduling
-                          _showMakeUpDialog(student, _selectedDate);
-                        }
-                      }),
-                      // [NEW] Student Planner Button
-                      _buildActionButton(
-                          Icons.calendar_month, '학생', Colors.indigo, () async {
-                        final studentId = student['id']?.toString();
-                        if (studentId != null) {
-                          await context.push('/teacher/student/$studentId');
-                          _fetchData(); // [FIX] Refresh data after return
-                        }
-                      }),
                     ],
                   ),
                 ],
