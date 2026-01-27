@@ -226,6 +226,68 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
 
+        # (5) Textbook Progress (Aggregated)
+        textbook_progress = {} 
+        # Structure: { textbook_id: { 'title': str, 'total_units': int, 'history': { unit_num: score } } }
+
+        try:
+            # Re-iterate logs to extract textbook progress
+            # Logs are already ordered by -date (latest first), so we process them in reverse order 
+            # effectively (if we want overwrite) OR process normally and only set if not present?
+            # Requirement: "If same lecture studied multiple times, use LATEST".
+            # So if we iterate logs (Desc date), the first time we see a unit, that is the latest.
+            
+            for l in logs_qs:
+                for e in l.entries.all():
+                    if not e.textbook:
+                        continue
+                    
+                    tb = e.textbook
+                    if tb.id not in textbook_progress:
+                        textbook_progress[tb.id] = {
+                            'title': tb.title,
+                            'total_units': tb.total_units,
+                            'history': {}
+                        }
+                    
+                    # Parse Range (e.g., "1", "1-3", "p.10-20"(ignore), "1, 2")
+                    # User said "1-4" style for lectures.
+                    raw_range = str(e.progress_range).strip()
+                    target_units = []
+
+                    # Generic Parsing Logic
+                    import re
+                    # Check for "num - num" pattern
+                    range_match = re.match(r'^(\d+)\s*-\s*(\d+)$', raw_range)
+                    if range_match:
+                        start_u, end_u = map(int, range_match.groups())
+                        target_units = list(range(start_u, end_u + 1))
+                    elif raw_range.isdigit():
+                        target_units = [int(raw_range)]
+                    else:
+                        # Try comma separation
+                        try:
+                            parts = raw_range.split(',')
+                            for p in parts:
+                                if p.strip().isdigit():
+                                    target_units.append(int(p.strip()))
+                        except:
+                            pass
+                    
+                    # Apply to history if not exists (Since logs are Latest -> Oldest, we want the FIRST one we encounter)
+                    # Wait, user said "Most recent one". 
+                    # logs_qs is ordered by '-date'. So the first time we encounter unit X, it is the most recent one.
+                    # So we set it ONLY IF it's not already set.
+                    
+                    current_hist = textbook_progress[tb.id]['history']
+                    for u in target_units:
+                        if u not in current_hist:
+                             current_hist[u] = e.score
+
+        except Exception as e:
+            # print(f"Textbook Progress Error: {e}")
+            pass
+
         # Stats
         try:
             total_days = len(attendances)
@@ -271,4 +333,5 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             'vocab': recursive_serialize(vocab_tests),
             'assignments': recursive_serialize(assignments),
             'logs': recursive_serialize(logs),
+            'textbook_progress': recursive_serialize(textbook_progress),
         }

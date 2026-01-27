@@ -249,25 +249,13 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   // --- Helpers for New Features ---
 
   Widget _buildTextbookProgress(Map<String, dynamic> data) {
-    // Placeholder logic: Extract unique textbooks from logs or vocab
-    // Since snapshot might not have explicit progress, we'll mock or infer it.
-    // Ideally update backend to send 'textbook_progress'.
-    // For now, let's display a generic progress section if we can find textbook names.
-
-    final logs = data['logs'] as List;
-    final Set<String> books = {};
-    for (var l in logs) {
-      if (l['details'] != null) {
-        for (var d in l['details']) {
-          if (d['text'] != null && d['text'].toString().contains('p.')) {
-            // Try to extract book name or just use subject
-            books.add(_getSubjectName(l['subject_code'] ?? ''));
-          }
-        }
-      }
+    final tpMap = data['textbook_progress']; // New field from backend
+    if (tpMap == null || (tpMap is Map && tpMap.isEmpty)) {
+      return const SizedBox();
     }
 
-    if (books.isEmpty) return const SizedBox();
+    // Convert map values to list for iteration
+    final books = (tpMap as Map).values.toList();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -284,24 +272,67 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           const Text('📚 교재 진도율',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 16),
-          ...books.map((b) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(b, style: const TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value:
-                        0.7, // Mock value as we don't have real progress data in snapshot yet
-                    backgroundColor: Colors.grey.shade100,
-                    color: Colors.blueAccent,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              )),
+          ...books.map((e) {
+            final b = e as Map;
+            final int totalUnits = (b['total_units'] is int)
+                ? b['total_units']
+                : int.tryParse(b['total_units'].toString()) ?? 20;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(b['title'] ?? '교재',
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                _buildSegmentedProgressBar(
+                  totalUnits: totalUnits,
+                  history: b['history'] ?? {},
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
+          }),
         ],
       ),
     );
+  }
+
+  Widget _buildSegmentedProgressBar(
+      {required int totalUnits, required Map history}) {
+    if (totalUnits <= 0) return const SizedBox();
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final double totalWidth = constraints.maxWidth;
+      // Spacing between blocks
+      final double spacing = 2.0;
+      // Calculate individual block width
+      // formula: (totalWidth - (spacing * (count - 1))) / count
+      final double blockWidth =
+          (totalWidth - (spacing * (totalUnits - 1))) / totalUnits;
+
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(totalUnits, (index) {
+          final unitNum = index + 1;
+          final score = history[unitNum.toString()]; // Key is string from JSON
+
+          Color color = Colors.grey.shade200; // Default empty
+          if (score == 'A') color = Colors.blue;
+          if (score == 'B') color = Colors.green;
+          if (score == 'C') color = Colors.orange;
+          if (score == 'F') color = Colors.red;
+
+          return Container(
+            width: blockWidth < 2 ? 2 : blockWidth, // Minimum visibility
+            height: 12,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          );
+        }),
+      );
+    });
   }
 
   Widget _buildVocabHeatmap(List vocab) {
