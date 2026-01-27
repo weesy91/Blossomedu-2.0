@@ -428,15 +428,54 @@ class TeacherDashboardView(APIView):
                 student = att.student
                 subjects_today = []
                 
-                # Check Regular Schedule matching this teacher
+                # 1. Regular Schedule Checking
+                # (1) Syntax
                 if student.syntax_class and student.syntax_class.day == day_str and student.syntax_teacher == user:
-                    subjects_today.append('SYNTAX')
+                    # Check if moved away
+                    is_moved_away = TemporarySchedule.objects.filter(
+                        student=student, 
+                        original_date=att.date, 
+                        subject='SYNTAX',
+                        is_extra_class=False
+                    ).exists()
+                    if not is_moved_away:
+                        subjects_today.append('SYNTAX')
+
+                # (2) Reading
                 if student.reading_class and student.reading_class.day == day_str and student.reading_teacher == user:
-                    subjects_today.append('READING')
-                # Extra/Grammar
+                    is_moved_away = TemporarySchedule.objects.filter(
+                        student=student, 
+                        original_date=att.date, 
+                        subject='READING',
+                        is_extra_class=False
+                    ).exists()
+                    if not is_moved_away:
+                        subjects_today.append('READING')
+
+                # (3) Extra
                 if student.extra_class and student.extra_class.day == day_str and student.extra_class_teacher == user:
+                    # Extra class check simplified (usually fixed, but consistent with others)
                      if student.extra_class_type:
                         subjects_today.append(student.extra_class_type)
+
+                # 2. Temporary/Makeup Schedule Checking (Added to Today)
+                today_temps = TemporarySchedule.objects.filter(
+                    student=student,
+                    new_date=att.date
+                )
+                
+                for temp in today_temps:
+                    # If I am the teacher for this subject
+                    is_my_subject = False
+                    if temp.subject == 'SYNTAX' and student.syntax_teacher == user: is_my_subject = True
+                    elif temp.subject == 'READING' and student.reading_teacher == user: is_my_subject = True
+                    # Extra handling if needed
+                    
+                    if is_my_subject:
+                        subjects_today.append(temp.subject)
+
+                # Remove duplicates just in case
+                subjects_today = list(set(subjects_today))
 
                 for subj in subjects_today:
                     exists = ClassLog.objects.filter(
