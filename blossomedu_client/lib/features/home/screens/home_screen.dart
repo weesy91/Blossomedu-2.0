@@ -146,8 +146,27 @@ class _HomeScreenState extends State<HomeScreen> {
           'is_completed': status == 'PASS', // For UI check
           'status': status,
           'score': score,
+          'total': totalCount, // [NEW] Total Questions
           'is_self_study': r['assignment'] == null,
           'sort_date': r['created_at'] ?? '',
+          // [NEW] Details for Result Screen
+          'test_id': r['test_id'] ?? r['id'], // Ensure testId is passed
+          'answers': details.map((d) {
+            return {
+              'question': d['word']?.toString() ?? '',
+              'user_input': d['user_input']?.toString() ?? '',
+              'answer': d['answer']?.toString() ?? '',
+              'is_correct': d['is_correct']?.toString() ?? 'false',
+            };
+          }).toList(),
+          'wrongWords': details
+              .where((d) => d['is_correct'] != true)
+              .map((d) => {
+                    'id': d['word_id'] ?? 0,
+                    'word': d['word'] ?? '',
+                    'meaning': d['answer'] ?? '',
+                  })
+              .toList(),
         };
       }).toList();
 
@@ -447,52 +466,69 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    return Container(
-      width: 140,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2))
-          ]),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                type == 'VOCAB_TEST' ? Icons.text_fields : Icons.camera_alt,
-                size: 16,
-                color: iconColor,
-              ),
-              const Spacer(),
-              Container(
-                width: 8,
-                height: 8,
-                decoration:
-                    BoxDecoration(shape: BoxShape.circle, color: iconColor),
-              )
-            ],
-          ),
-          const Spacer(),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            statusText,
-            style: TextStyle(
-                color: iconColor, fontSize: 11, fontWeight: FontWeight.bold),
-          )
-        ],
+    return InkWell(
+      onTap: () {
+        if (type == 'VOCAB_TEST') {
+          // Navigate to Word Result Screen
+          context.push('/student/test/result', extra: {
+            'score': item['score'] ?? 0,
+            'totalCount': item['total'] ?? 0,
+            'answers': item['answers'] ?? [],
+            'wrongWords': item['wrongWords'] ?? [],
+            'testId': item['test_id'] ?? 0,
+          });
+        } else {
+          // Navigate to Assignment Detail
+          context.push('/assignment/${item['id']}');
+        }
+      },
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2))
+            ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  type == 'VOCAB_TEST' ? Icons.text_fields : Icons.camera_alt,
+                  size: 16,
+                  color: iconColor,
+                ),
+                const Spacer(),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration:
+                      BoxDecoration(shape: BoxShape.circle, color: iconColor),
+                )
+              ],
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              statusText,
+              style: TextStyle(
+                  color: iconColor, fontSize: 11, fontWeight: FontWeight.bold),
+            )
+          ],
+        ),
       ),
     );
   }
