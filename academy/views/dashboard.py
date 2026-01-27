@@ -435,7 +435,8 @@ class TeacherDashboardView(APIView):
                     subjects_today.append('READING')
                 # Extra/Grammar
                 if student.extra_class and student.extra_class.day == day_str and student.extra_class_teacher == user:
-                    subjects_today.append('GRAMMAR')
+                     if student.extra_class_type:
+                        subjects_today.append(student.extra_class_type)
 
                 for subj in subjects_today:
                     exists = ClassLog.objects.filter(
