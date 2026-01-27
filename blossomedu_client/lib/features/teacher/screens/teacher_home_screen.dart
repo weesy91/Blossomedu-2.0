@@ -5,6 +5,7 @@ import '../../../core/providers/user_provider.dart';
 import '../../../core/services/vocab_service.dart';
 import '../../../core/services/academy_service.dart'; // [NEW]
 import 'package:intl/intl.dart'; // [NEW]
+import '../widgets/projector_test_config_dialog.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   @override
@@ -203,7 +204,44 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // 2. Today's Classes
+                  // 2. Quick Menus (Restored)
+                  const Text('퀵 메뉴',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          context,
+                          title: '단어 시험 실행',
+                          icon: Icons.connected_tv,
+                          color: Colors.indigo,
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) =>
+                                  const ProjectorTestConfigDialog(),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          context,
+                          title: '학생 로그 검색',
+                          icon: Icons.history,
+                          color: Colors.teal,
+                          onTap: () =>
+                              context.push('/teacher/management/log-search'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 3. Today's Classes
                   const Text('오늘의 수업',
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -389,6 +427,47 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         TextStyle(fontSize: 12, color: Colors.grey.shade700)),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard(BuildContext context,
+      {required String title,
+      required IconData icon,
+      required Color color,
+      required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Text(title,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
