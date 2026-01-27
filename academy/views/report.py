@@ -366,13 +366,45 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         try:
             total_days = len(attendances)
             present_days = sum(1 for a in attendances if a['status'] == 'PRESENT')
+            
+            # [FIX] Percentage-based Vocab Average & Total Tested Words
             vocab_avg = 0
             if vocab_tests:
-                vocab_avg = sum(t['score'] for t in vocab_tests) / len(vocab_tests)
+                # Calculate percentage for each test: (score / total_count) * 100
+                percentages = []
+                for t in vocab_tests:
+                    total = t.get('total_count') or 30 # Default to 30 if 0
+                    if total > 0:
+                        percentages.append((t['score'] / total) * 100)
+                    else:
+                        percentages.append(0)
+                        
+                if percentages:
+                    vocab_avg = sum(percentages) / len(percentages)
+
+            # [FIX] Assignment Breakdown
+            assign_on_time = 0
+            assign_late = 0
+            assign_missing = 0
+            
+            for a in assignments:
+                status = a.get('status', '미제출')
+                if status == '제출완료': # On-time
+                    assign_on_time += 1
+                elif status == '지각제출': # Late
+                    assign_late += 1
+                elif status == '완료': # Auto-completed or manually marked
+                    assign_on_time += 1
+                else:
+                    assign_missing += 1
+
         except Exception:
             total_days = 0
             present_days = 0
             vocab_avg = 0
+            assign_on_time = 0
+            assign_late = 0
+            assign_missing = 0
 
         # Safe Serializer
         def recursive_serialize(data):
@@ -400,7 +432,12 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 'attendance_rate': (present_days / total_days * 100) if total_days > 0 else 0,
                 'vocab_avg': round(vocab_avg, 1),
                 'assignment_count': len(assignments),
-                'assignment_completed': sum(1 for a in assignments if a['is_completed']),
+                'assignment_completed': (assign_on_time + assign_late), 
+                'assignment_breakdown': {
+                    'on_time': assign_on_time,
+                    'late': assign_late,
+                    'missing': assign_missing
+                },
                 'total_passed_words': cumulative_passed, 
             },
             'attendance': recursive_serialize(list(attendances)),

@@ -302,19 +302,17 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                 categoryName = '구문';
                 break;
               case 'GRAMMAR':
-                categoryName = '어법';
+                categoryName = '문법';
                 break;
               case 'READING':
                 categoryName = '독해';
                 break;
-              case 'LISTENING':
-                categoryName = '듣기';
-                break;
               case 'SCHOOL_EXAM':
                 categoryName = '내신';
                 break;
-              case 'MOCK_EXAM':
-                return const SizedBox(); // Explicitly hide here too just in case
+              case 'LISTENING':
+                categoryName = '듣기';
+                break;
               case 'OTHER':
                 categoryName = '기타';
                 break;
@@ -323,30 +321,21 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (tpMap.length >
-                    1) // Only show headers if multiple categories exist (or always?) User asked for grouping.
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: 4),
-                    child: Row(children: [
-                      Container(
-                        width: 4,
-                        height: 14,
-                        color: Colors.indigoAccent,
-                        margin: const EdgeInsets.only(right: 8),
-                      ),
-                      Text(categoryName,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.indigo.shade800)),
-                    ]),
-                  ),
-                ...booksList.map((e) {
-                  final b = e as Map;
-                  final int totalUnits = (b['total_units'] is int)
-                      ? b['total_units']
-                      : int.tryParse(b['total_units'].toString()) ?? 20;
-
+                Container(
+                  padding: const EdgeInsets.only(
+                      left: 4, top: 4, bottom: 4, right: 0),
+                  decoration: const BoxDecoration(
+                      border: Border(
+                          left: BorderSide(color: Colors.blue, width: 3))),
+                  child: Text('  $categoryName',
+                      style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                ),
+                const SizedBox(height: 12),
+                ...booksList.map((b) {
+                  final totalUnits = b['total_units'] ?? 0;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -375,8 +364,52 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
               ],
             );
           }).toList(),
+          const SizedBox(height: 16),
+          // Legend
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                _buildLegendItem(
+                    'A (100점)', const Color(0xFF2962FF)), // Blue A700
+                _buildLegendItem(
+                    'B (95점~)', const Color(0xFF00C853)), // Green A700
+                _buildLegendItem(
+                    'C (90점~)', const Color(0xFFFFAB00)), // Amber A700
+                _buildLegendItem(
+                    'F (~89점)', const Color(0xFFD50000)), // Red A700
+                _buildLegendItem('수업/완료', const Color(0xFF00B8D4)), // Cyan A700
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
     );
   }
 
@@ -511,7 +544,30 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
         }),
         const SizedBox(width: 12),
         _buildStatBox('과제 수행',
-            '${stats['assignment_completed']}/${stats['assignment_count']}'),
+            '${stats['assignment_completed']}/${stats['assignment_count']}',
+            onTap: () {
+          final bd = stats['assignment_breakdown'];
+          if (bd != null) {
+            showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                      title: const Text('과제 수행 상세'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _statusRow('🟢 정시 제출', '${bd['on_time']}회'),
+                          _statusRow('🟡 지각 제출', '${bd['late']}회'),
+                          _statusRow('🔴 미제출', '${bd['missing']}회'),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('닫기'))
+                      ],
+                    ));
+          }
+        }),
         const SizedBox(width: 12),
         _buildStatBox('단어 평균', '${stats['vocab_avg']}점'),
       ],
