@@ -472,7 +472,8 @@ class _HomeScreenState extends State<HomeScreen> {
           // [MODIFIED] Show Popup Dialog instead of Navigation
           showDialog(
             context: context,
-            builder: (context) => _buildVocabResultDialog(item),
+            builder: (dialogContext) =>
+                _buildVocabResultDialog(dialogContext, item),
           );
         } else {
           // Navigate to Assignment Detail
@@ -531,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // [NEW] Vocab Result Popup
-  Widget _buildVocabResultDialog(dynamic item) {
+  Widget _buildVocabResultDialog(BuildContext context, dynamic item) {
     final int score = item['score'] ?? 0;
     final int total = item['total'] ?? 0;
     final String status = item['status'] ?? 'COMPLETED';
