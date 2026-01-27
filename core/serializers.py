@@ -68,7 +68,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'extra_class_teacher', 'extra_class', 'extra_class_category',
             'is_active',
             'class_times', # [NEW]
-            'temp_schedules' # [NEW]
+            'temp_schedules', # [NEW]
+            'log_history' # [NEW]
         ]
         # StudentProfile has start_date.
         extra_kwargs = {
@@ -174,6 +175,18 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'id', 'subject', 'is_extra_class', 'original_date', 
             'new_date', 'new_start_time', 'note'
         ))
+
+    # [NEW] Log History for Planner Indicator
+    log_history = serializers.SerializerMethodField()
+
+    def get_log_history(self, obj):
+        # Return list of dates (YYYY-MM-DD) where a class log exists
+        # Optimize: Filter only recent logs (e.g. last 3 months) if needed, 
+        # but for now all logs or last 30 days might be enough for planner view.
+        # Let's get all distinct dates for simplicity ensuring planner sees them.
+        from academy.models import ClassLog
+        logs = ClassLog.objects.filter(student__profile=obj).values_list('date', flat=True).distinct()
+        return [d.strftime('%Y-%m-%d') for d in logs]
 
 from .models.users import StaffProfile
 

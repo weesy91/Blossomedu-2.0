@@ -747,6 +747,34 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
                           _fetchData();
                         }
                       }),
+                      // [NEW] Log Completion Indicator
+                      if ((student['log_history'] as List?)?.contains(
+                              DateFormat('yyyy-MM-dd').format(_selectedDate)) ??
+                          false)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle,
+                                  size: 14, color: Colors.green.shade700),
+                              const SizedBox(width: 4),
+                              Text(
+                                '일지작성완료',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade700),
+                              ),
+                            ],
+                          ),
+                        ),
                       // [NEW] Make-up Class Button
                       _buildActionButton(Icons.access_time_filled,
                           canEditSchedule ? '이동' : '보강', Colors.orange, () {
