@@ -366,28 +366,32 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           }).toList(),
           const SizedBox(height: 16),
           // Legend
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem(
-                    'A (100점)', const Color(0xFF2962FF)), // Blue A700
-                _buildLegendItem(
-                    'B (95점~)', const Color(0xFF00C853)), // Green A700
-                _buildLegendItem(
-                    'C (90점~)', const Color(0xFFFFAB00)), // Amber A700
-                _buildLegendItem(
-                    'F (~89점)', const Color(0xFFD50000)), // Red A700
-                _buildLegendItem('수업/완료', const Color(0xFF00B8D4)), // Cyan A700
-              ],
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                alignment: WrapAlignment.end,
+                children: [
+                  _buildLegendItem(
+                      'A (100점)', const Color(0xFF2962FF)), // Blue A700
+                  _buildLegendItem(
+                      'B (95점~)', const Color(0xFF00C853)), // Green A700
+                  _buildLegendItem(
+                      'C (90점~)', const Color(0xFFFFAB00)), // Amber A700
+                  _buildLegendItem(
+                      'F (~89점)', const Color(0xFFD50000)), // Red A700
+                  _buildLegendItem(
+                      '수업/완료', const Color(0xFF00B8D4)), // Cyan A700
+                ],
+              ),
             ),
           ),
         ],
@@ -569,7 +573,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           }
         }),
         const SizedBox(width: 12),
-        _buildStatBox('단어 평균', '${stats['vocab_avg']}점'),
+        _buildStatBox('단어 평균', '${stats['vocab_avg']}%'),
       ],
     );
   }
