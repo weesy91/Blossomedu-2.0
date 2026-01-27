@@ -185,7 +185,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         # but for now all logs or last 30 days might be enough for planner view.
         # Let's get all distinct dates for simplicity ensuring planner sees them.
         from academy.models import ClassLog
-        logs = ClassLog.objects.filter(student__profile=obj).values_list('date', flat=True).distinct()
+        logs = ClassLog.objects.filter(student=obj).values_list('date', flat=True).distinct()
         return [d.strftime('%Y-%m-%d') for d in logs]
 
 from .models.users import StaffProfile
