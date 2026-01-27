@@ -150,8 +150,6 @@ class AcademyService {
                   'branch_name': s['branch_name'] ?? '',
                   'class_times': s['class_times'] ?? [],
                   'temp_schedules': s['temp_schedules'] ?? [],
-                  'log_history':
-                      s['log_history'] ?? [], // [NEW] fix missing field
                 })
             .toList();
       } else {
