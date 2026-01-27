@@ -558,18 +558,46 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             ],
           ],
         ),
-        if (isRejected &&
-            teacherComment != null &&
-            teacherComment.isNotEmpty) ...[
+        if (teacherComment != null && teacherComment.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.red.shade50,
+              color: isRejected ? Colors.red.shade50 : Colors.green.shade50,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red.shade100),
+              border: Border.all(
+                  color:
+                      isRejected ? Colors.red.shade100 : Colors.green.shade100),
             ),
-            child: Text(teacherComment, style: const TextStyle(fontSize: 13)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isRejected
+                          ? Icons.error_outline
+                          : Icons.check_circle_outline,
+                      size: 16,
+                      color: isRejected ? Colors.red : Colors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '선생님 코멘트',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isRejected
+                            ? Colors.red.shade900
+                            : Colors.green.shade900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(teacherComment, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
           ),
         ],
         const SizedBox(height: 16),
