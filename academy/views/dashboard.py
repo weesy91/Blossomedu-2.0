@@ -389,7 +389,8 @@ class TeacherDashboardView(APIView):
             my_students = StudentProfile.objects.filter(
                 Q(syntax_teacher=user) | 
                 Q(reading_teacher=user) | 
-                Q(extra_class_teacher=user)
+                Q(extra_class_teacher=user),
+                user__is_active=True
             ).distinct()
 
             # 2. Overdue Assignments
