@@ -668,73 +668,95 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
       child: Text('데이터가 없습니다.', style: TextStyle(color: Colors.grey)));
 
   Widget _buildVocabList(List list) {
-    return Column(
-      children: list
-          .map((v) => ExpansionTile(
-                title: Text(v['book__title'] ?? '단어장'),
-                trailing: Text('${v['score']} / ${v['total_count'] ?? 0}점',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                    '${v['created_at'].toString().substring(0, 10)} | 범위: ${v['test_range'] ?? '전체'} | 오답: ${v['wrong_count']}'),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('📝 상세 기록',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 16),
+          Column(
+            children: list
+                .map((v) => ExpansionTile(
+                      title: Text(v['book__title'] ?? '단어장'),
+                      trailing: Text(
+                          '${v['score']} / ${v['total_count'] ?? 0}점',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                          '${v['created_at'].toString().substring(0, 10)} | 범위: ${v['test_range'] ?? '전체'} | 오답: ${v['wrong_count']}'),
                       children: [
-                        if (v['wrong_words'] != null &&
-                            (v['wrong_words'] as List).isNotEmpty) ...[
-                          const Text('오답 노트',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red)),
-                          const SizedBox(height: 8),
-                          Table(
-                            border:
-                                TableBorder.all(color: Colors.grey.shade200),
-                            columnWidths: const {
-                              0: FlexColumnWidth(1),
-                              1: FlexColumnWidth(1)
-                            },
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              TableRow(
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey.shade100),
-                                  children: const [
-                                    Padding(
-                                        padding: EdgeInsets.all(8),
-                                        child: Text('문제',
-                                            style: TextStyle(fontSize: 12))),
-                                    Padding(
-                                        padding: EdgeInsets.all(8),
-                                        child: Text('정답',
-                                            style: TextStyle(fontSize: 12))),
-                                  ]),
-                              ...(v['wrong_words'] as List).map((w) =>
-                                  TableRow(children: [
-                                    Padding(
-                                        padding: const EdgeInsets.all(8),
-                                        child: Text(w['word'] ?? '',
-                                            style:
-                                                const TextStyle(fontSize: 12))),
-                                    Padding(
-                                        padding: const EdgeInsets.all(8),
-                                        child: Text(w['answer'] ?? '',
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold))),
-                                  ])),
+                              if (v['wrong_words'] != null &&
+                                  (v['wrong_words'] as List).isNotEmpty) ...[
+                                const Text('오답 노트',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red)),
+                                const SizedBox(height: 8),
+                                Table(
+                                  border: TableBorder.all(
+                                      color: Colors.grey.shade200),
+                                  columnWidths: const {
+                                    0: FlexColumnWidth(1),
+                                    1: FlexColumnWidth(1)
+                                  },
+                                  children: [
+                                    TableRow(
+                                        decoration: BoxDecoration(
+                                            color: Colors.grey.shade100),
+                                        children: const [
+                                          Padding(
+                                              padding: EdgeInsets.all(8),
+                                              child: Text('문제',
+                                                  style:
+                                                      TextStyle(fontSize: 12))),
+                                          Padding(
+                                              padding: EdgeInsets.all(8),
+                                              child: Text('정답',
+                                                  style:
+                                                      TextStyle(fontSize: 12))),
+                                        ]),
+                                    ...(v['wrong_words'] as List).map((w) =>
+                                        TableRow(children: [
+                                          Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Text(w['word'] ?? '',
+                                                  style: const TextStyle(
+                                                      fontSize: 12))),
+                                          Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Text(w['answer'] ?? '',
+                                                  style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold))),
+                                        ])),
+                                  ],
+                                )
+                              ] else
+                                const Text('틀린 단어가 없습니다! 🎉',
+                                    style: TextStyle(color: Colors.blue)),
                             ],
-                          )
-                        ] else
-                          const Text('틀린 단어가 없습니다! 🎉',
-                              style: TextStyle(color: Colors.blue)),
+                          ),
+                        )
                       ],
-                    ),
-                  )
-                ],
-              ))
-          .toList(),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -841,7 +863,12 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
