@@ -323,6 +323,20 @@ class AcademyService {
     }
   }
 
+  // [NEW] Teacher Dashboard
+  Future<Map<String, dynamic>> getTeacherDashboard() async {
+    final url =
+        Uri.parse('${AppConfig.baseUrl}/academy/api/v1/teacher/dashboard/');
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load dashboard: ${response.body}');
+    }
+  }
+
   // [NEW] Staff Management Search
   Future<List<dynamic>> searchStaff({String query = ''}) async {
     final url = Uri.parse(

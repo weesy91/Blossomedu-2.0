@@ -12,6 +12,7 @@ router.register(r'textbooks', TextbookViewSet, basename='textbook')
 from .views.log_search import StudentLogSearchView
 from .views.management import DailyStudentStatusView
 from .views.report import StudentReportViewSet
+from .views.dashboard import TeacherDashboardView
 
 report_router = DefaultRouter()
 report_router.register(r'reports', StudentReportViewSet, basename='report')
@@ -20,5 +21,6 @@ urlpatterns = [
     path('api/v1/', include(router.urls)),
     path('api/v1/logs/search/', StudentLogSearchView.as_view(), name='log-search'),
     path('api/v1/daily-status/', DailyStudentStatusView.as_view(), name='daily-status'),
+    path('api/v1/teacher/dashboard/', TeacherDashboardView.as_view(), name='teacher-dashboard'),
     path('api/v1/', include(report_router.urls)),
 ]

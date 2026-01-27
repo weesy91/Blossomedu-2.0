@@ -5,7 +5,6 @@ import '../../../core/providers/user_provider.dart';
 import '../../../core/services/vocab_service.dart';
 import '../../../core/services/academy_service.dart'; // [NEW]
 import 'package:intl/intl.dart'; // [NEW]
-import '../widgets/projector_test_config_dialog.dart'; // [NEW]
 
 class TeacherHomeScreen extends StatefulWidget {
   @override
@@ -15,9 +14,12 @@ class TeacherHomeScreen extends StatefulWidget {
 class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   final AcademyService _academyService = AcademyService();
   final VocabService _vocabService = VocabService();
+
+  bool _isLoading = false;
   int _wordReviewCount = 0;
-  int _pendingAssignmentCount = 0; // [NEW] Status
-  List<Map<String, dynamic>> _todayClasses = []; // [NEW] Status
+  int _pendingAssignmentCount = 0;
+  List<Map<String, dynamic>> _todayClasses = [];
+  Map<String, dynamic>? _dashboardData; // [NEW]
 
   @override
   void initState() {
@@ -26,31 +28,28 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   }
 
   Future<void> _fetchStats() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
     try {
-      // 1. Fetch Word Requests (Pending Corrections)
+      // 1. Fetch Existing Stats (Keep them for top cards)
       final requests = await _vocabService.getTeacherTestRequests(
         pendingOnly: true,
         includeDetails: false,
       );
       final wordCount = requests.length;
 
-      // 2. Fetch Pending Assignments
-      // Definition: Assignments that are submitted but not yet Approved?
-      // Or Assignments that are incomplete?
-      // Let's assume 'Unapproved' means 'Submitted (Pending Review)'.
-      // If 'submission' field is not available, we might need to check 'is_completed'.
-      // For now, let's fetch all assignments and check logic.
       final assignments = await _academyService.getTeacherAssignments();
-      // Filter for submissions with status 'PENDING' if available, otherwise incomplete tasks.
-      // Based on typical Serializer, let's look for 'submission' object.
       int assignmentCount = 0;
       for (var task in assignments) {
-        // [FIX] Only count submitted but pending review
         final submission = task['submission'];
         if (submission is Map && submission['status'] == 'PENDING') {
           assignmentCount++;
         }
       }
+
+      // 2. Fetch Dashboard Data (Overdue & Missing Logs)
+      final dashboard = await _academyService.getTeacherDashboard();
 
       // 3. Fetch Today's Classes
       final now = DateTime.now();
@@ -79,7 +78,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               }
               if (!isCancelled) {
                 todayClasses.add({
-                  'studentId': s['id'], // [NEW] for navigation
+                  'studentId': s['id'],
                   'name': s['name'],
                   'subject': t['subject'] ?? '수업',
                   'time': t['start_time'] ?? '',
@@ -101,7 +100,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             final isExtra = ts['is_extra_class'] == true;
 
             todayClasses.add({
-              'studentId': s['id'], // [NEW] for navigation
+              'studentId': s['id'],
               'name': s['name'],
               'subject': '$subjectLabel ${isExtra ? "(보강)" : "(이동)"}',
               'time': startTime,
@@ -111,7 +110,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         }
       }
 
-      // Sort by time
       todayClasses.sort((a, b) => (a['time'] as String).compareTo(b['time']));
 
       if (mounted) {
@@ -119,11 +117,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           _wordReviewCount = wordCount;
           _pendingAssignmentCount = assignmentCount;
           _todayClasses = todayClasses;
+          _dashboardData = dashboard;
+          _isLoading = false;
         });
       }
     } catch (e) {
       print('Stats Load Error: $e');
-      if (mounted) setState(() {});
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -142,9 +142,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _fetchStats();
-            },
+            onPressed: _fetchStats,
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -155,160 +153,265 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Teacher Welcome
-            Text(
-              '$displayName님, 안녕하세요! 👨‍🏫',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-
-            // 1. Stats Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    title: '미승인 과제',
-                    count: '$_pendingAssignmentCount',
-                    color: Colors.redAccent,
-                    icon: Icons.assignment_late_outlined,
-                    onTap: () {
-                      context.push('/teacher/assignments/pending').then((_) {
-                        _fetchStats();
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    title: '단어 채점 대기',
-                    count: '$_wordReviewCount',
-                    color: Colors.orange,
-                    icon: Icons.spellcheck,
-                    onTap: () {
-                      // Navigate and refresh on return
-                      context
-                          .push('/teacher/word/requests')
-                          .then((_) => _fetchStats());
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // 2. Today's Schedule (Horizontal List)
-            const Text('오늘의 수업',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 140, // Height for the horizontal cards
-              child: ListView(
-                scrollDirection: Axis.horizontal,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_todayClasses.isEmpty)
-                    Container(
-                      width: 200,
-                      alignment: Alignment.center,
-                      child: Text('오늘 예정된 수업이 없습니다.',
-                          style: TextStyle(color: Colors.grey.shade500)),
-                    )
-                  else
-                    ..._todayClasses.map((cls) {
-                      Color color;
-                      switch (cls['type']) {
-                        case 'SYNTAX':
-                          color = Colors.blue;
-                          break;
-                        case 'READING':
-                          color = Colors.purple;
-                          break;
-                        default:
-                          color = Colors.green;
-                      }
-                      return _buildClassCard(
-                        name: cls['name'],
-                        subject: cls['subject'],
-                        time: cls['time'],
-                        color: color,
-                        onTap: () {
-                          // Navigate to class log creation with student info
-                          final studentId = cls['studentId'];
-                          final subjectType = cls['type'] ?? 'SYNTAX';
-                          // [FIX] Match planner format - include date
-                          final dateStr =
-                              DateFormat('yyyy-MM-dd').format(DateTime.now());
-                          context.push(
-                            '/teacher/class_log/create?studentId=$studentId&date=$dateStr&subject=$subjectType',
-                          );
-                        },
-                      );
-                    }),
-                  // Placeholder for 'add class' removed as it's auto-synced
+                  // Welcome Message
+                  Text(
+                    '$displayName님, 안녕하세요! 👨‍🏫',
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // 1. Stats Row (Pending / Review)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          context,
+                          title: '미승인 과제',
+                          count: '$_pendingAssignmentCount',
+                          color: Colors.redAccent,
+                          icon: Icons.assignment_late_outlined,
+                          onTap: () {
+                            context
+                                .push('/teacher/assignments/pending')
+                                .then((_) {
+                              _fetchStats();
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildStatCard(
+                          context,
+                          title: '단어 채점 대기',
+                          count: '$_wordReviewCount',
+                          color: Colors.orange,
+                          icon: Icons.spellcheck,
+                          onTap: () {
+                            context
+                                .push('/teacher/word/requests')
+                                .then((_) => _fetchStats());
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 2. Today's Classes
+                  const Text('오늘의 수업',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 140,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        if (_todayClasses.isEmpty)
+                          Container(
+                            width: 200,
+                            alignment: Alignment.center,
+                            child: Text('오늘 예정된 수업이 없습니다.',
+                                style: TextStyle(color: Colors.grey.shade500)),
+                          )
+                        else
+                          ..._todayClasses.map((cls) {
+                            Color color;
+                            switch (cls['type']) {
+                              case 'SYNTAX':
+                                color = Colors.blue;
+                                break;
+                              case 'READING':
+                                color = Colors.purple;
+                                break;
+                              default:
+                                color = Colors.green;
+                            }
+                            return _buildClassCard(
+                              name: cls['name'],
+                              subject: cls['subject'],
+                              time: cls['time'],
+                              color: color,
+                              onTap: () {
+                                final studentId = cls['studentId'];
+                                final subjectType = cls['type'] ?? 'SYNTAX';
+                                final dateStr = DateFormat('yyyy-MM-dd')
+                                    .format(DateTime.now());
+                                context.push(
+                                  '/teacher/class_log/create?studentId=$studentId&date=$dateStr&subject=$subjectType',
+                                );
+                              },
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 3. Action Required Boards (New)
+                  _buildDashboardSection(context),
+
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+    );
+  }
 
-            // 3. Quick Actions
-            const Text('빠른 실행 (New)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+  Widget _buildDashboardSection(BuildContext context) {
+    if (_dashboardData == null) return const SizedBox();
 
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 1.5,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+    final overdue = _dashboardData!['overdue_assignments'] as List? ?? [];
+    final actions = _dashboardData!['action_required'] as List? ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 3.1 Overdue Assignments
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
-                _buildFeatureCard(
-                  icon: Icons.connected_tv,
-                  title: '단어 시험 실행',
-                  subtitle: '수업/시험용 듀얼 모드',
-                  color: Colors.blueAccent,
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const ProjectorTestConfigDialog(),
-                    );
-                  },
-                ),
-                _buildFeatureCard(
-                  icon: Icons.people_alt,
-                  title: '학생 목록',
-                  subtitle: '플래너 관리 및 배정',
-                  color: Colors.purple,
-                  onTap: () => context.push('/teacher/students'),
-                ),
-                _buildFeatureCard(
-                  icon: Icons.book,
-                  title: '단어장 관리',
-                  subtitle: '엑셀(CSV) 업로드',
-                  color: Colors.teal,
-                  onTap: () => context.push('/teacher/vocab'),
-                ),
-                _buildFeatureCard(
-                  icon: Icons.analytics_outlined,
-                  title: '리포트 전송',
-                  subtitle: '월말 보고서 생성',
-                  color: Colors.orange,
-                  onTap: () {},
-                ),
+                const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                const SizedBox(width: 8),
+                Text('미제출 과제 (Total: ${overdue.length})',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
           ],
         ),
-      ),
-    ); // Scaffold - BottomNav now handled by TeacherMainScaffold
+        const SizedBox(height: 12),
+        if (overdue.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child:
+                Text('미제출된 과제가 없습니다! 🎉', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red.withOpacity(0.1)),
+            ),
+            child: ListView.separated(
+              padding: const EdgeInsets.all(12),
+              itemCount: overdue.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final item = overdue[index];
+                return ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(item['student_name'] ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                      '${item['title']} (${item['days_overdue']}일 지남)',
+                      style: const TextStyle(color: Colors.redAccent)),
+                  trailing: const Icon(Icons.chevron_right, size: 16),
+                  onTap: () {
+                    // Navigate to assignment detail? Not strictly possible teacher side easily yet without dedicated view
+                    // But maybe open student planner?
+                    // For now, simple snackbar or future TODO
+                  },
+                );
+              },
+            ),
+          ),
+
+        const SizedBox(height: 32),
+
+        // 3.2 Action Required (Missing Logs / Unscheduled)
+        Row(
+          children: [
+            const Icon(Icons.notification_important, color: Colors.orange),
+            const SizedBox(width: 8),
+            Text('확인 필요 (Log/Absence)',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (actions.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child:
+                Text('조치할 항목이 없습니다! 👍', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.grey.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2))
+              ],
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: actions.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = actions[index];
+                final isMissingLog = item['type'] == 'MISSING_LOG';
+
+                return ListTile(
+                  leading: Icon(
+                    isMissingLog ? Icons.edit_document : Icons.event_busy,
+                    color: isMissingLog ? Colors.orange : Colors.red,
+                  ),
+                  title: Text(item['label'] ?? '',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: Text(item['date'] ?? ''),
+                  trailing: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isMissingLog ? Colors.blue : Colors.green,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(isMissingLog ? '작성하기' : '보강잡기',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 11)),
+                  ),
+                  onTap: () {
+                    if (isMissingLog) {
+                      context
+                          .push(
+                            '/teacher/class_log/create?studentId=${item['student_id']}&date=${item['date']}&subject=${item['subject'] ?? 'SYNTAX'}',
+                          )
+                          .then((_) => _fetchStats());
+                    } else {
+                      // Navigate to Student Detail? Or Temp Schedule Create?
+                      // We don't have a direct link to create temp schedule easily with pre-filled.
+                      // Go to student detail is safest.
+                      context.push('/teacher/student/${item['student_id']}');
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+      ],
+    );
   }
 
   String _getSubjectLabel(String code) {
@@ -436,45 +539,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         TextStyle(fontSize: 12, color: Colors.grey.shade700)),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard(
-      {required IconData icon,
-      required String title,
-      required String subtitle,
-      required Color color,
-      required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 30),
-            const Spacer(),
-            Text(title,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text(subtitle,
-                style: const TextStyle(color: Colors.grey, fontSize: 11)),
           ],
         ),
       ),

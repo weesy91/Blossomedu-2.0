@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/user_provider.dart';
 
+import '../widgets/projector_test_config_dialog.dart';
+
 class TeacherMoreScreen extends StatelessWidget {
   const TeacherMoreScreen({super.key});
 
@@ -91,6 +93,17 @@ class TeacherMoreScreen extends StatelessWidget {
                     title: '이벤트 단어장 관리',
                     subtitle: '랭킹 이벤트 단어장/기간 설정',
                     onTap: () => context.push('/teacher/vocab/events'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.connected_tv,
+                    title: '단어 시험 실행',
+                    subtitle: '수업/시험용 듀얼 모드',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const ProjectorTestConfigDialog(),
+                      );
+                    },
                   ),
                 ]),
 
