@@ -469,14 +469,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return InkWell(
       onTap: () {
         if (type == 'VOCAB_TEST') {
-          // Navigate to Word Result Screen
-          context.push('/student/test/result', extra: {
-            'score': item['score'] ?? 0,
-            'totalCount': item['total'] ?? 0,
-            'answers': item['answers'] ?? [],
-            'wrongWords': item['wrongWords'] ?? [],
-            'testId': item['test_id'] ?? 0,
-          });
+          // [MODIFIED] Show Popup Dialog instead of Navigation
+          showDialog(
+            context: context,
+            builder: (context) => _buildVocabResultDialog(item),
+          );
         } else {
           // Navigate to Assignment Detail
           context.push('/assignment/${item['id']}');
@@ -527,6 +524,93 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                   color: iconColor, fontSize: 11, fontWeight: FontWeight.bold),
             )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // [NEW] Vocab Result Popup
+  Widget _buildVocabResultDialog(dynamic item) {
+    final int score = item['score'] ?? 0;
+    final int total = item['total'] ?? 0;
+    final String status = item['status'] ?? 'COMPLETED';
+    final bool isPassed = status == 'PASS';
+    final List<dynamic> answers = item['answers'] ?? [];
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(maxHeight: 500),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Icon(
+              isPassed ? Icons.emoji_events : Icons.sentiment_dissatisfied,
+              size: 48,
+              color: isPassed ? Colors.amber : Colors.grey,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isPassed ? 'Test Passed!' : 'Try Again...',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$score / $total',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isPassed ? Colors.green : Colors.red,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+
+            // List
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: answers.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final a = answers[index];
+                  final bool isCorrect =
+                      a['is_correct'] == 'true' || a['is_correct'] == true;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(
+                      isCorrect ? Icons.check_circle : Icons.cancel,
+                      color: isCorrect ? Colors.green : Colors.red,
+                      size: 20,
+                    ),
+                    title: Text(a['question'] ?? ''),
+                    subtitle: Text(
+                      '답: ${a['user_input']} / 정답: ${a['answer']}',
+                      style: TextStyle(
+                        color: isCorrect ? Colors.grey : Colors.red,
+                        fontSize: 12,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('닫기'),
+              ),
+            ),
           ],
         ),
       ),
