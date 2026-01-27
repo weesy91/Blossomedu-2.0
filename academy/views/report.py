@@ -288,36 +288,31 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                             if u not in bucket[tb.id]['history']:
                                 bucket[tb.id]['history'][u] = e.score or '완료'
 
-            # 2. Process Vocabulary
-            # 2a. From Logs (Studied)
+            # 2. Process Vocabulary (Chronological Merge)
             vocab_bucket = progress_by_category['VOCABULARY']
-            
+            vocab_events = []
+
+            # 2a. Collect from Logs
             for l in logs_qs:
+                # Use created_at for sorting if available, else date end-of-day?
+                # ClassLog has created_at.
+                dt = l.created_at
                 for e in l.entries.all():
                     if e.wordbook:
                         wb = e.wordbook
-                        if wb.id not in vocab_bucket:
-                             vocab_bucket[wb.id] = {
-                                'title': wb.title,
-                                'total_units': 0, 
-                                'history': {}
-                            }
-                        
                         target_units = self._parse_range(e.progress_range)
-                        # [FIX] Use score from log if available, converted to Grade
                         grade = _convert_score_to_grade(e.score)
-                        
-                        for u in target_units:
-                             # Only set if not already present (Tests will override later if we wanted, 
-                             # but here we process logs first. Actually tests should override logs.)
-                             if u not in vocab_bucket[wb.id]['history']:
-                                 vocab_bucket[wb.id]['history'][u] = grade
+                        vocab_events.append({
+                            'dt': dt,
+                            'book': wb,
+                            'units': target_units,
+                            'grade': grade
+                        })
 
-            # 2b. From Tests (Tested)
+            # 2b. Collect from Tests
             from vocab.models import TestResult, Word
             from django.db.models import Max
             
-            # Re-fetch specific to this logic
             tr_qs = TestResult.objects.filter(
                 student_id=student_id,
                 created_at__date__range=[start, end]
@@ -325,20 +320,32 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             
             for tr in tr_qs:
                 wb = tr.book
-                if wb.id not in vocab_bucket:
-                     vocab_bucket[wb.id] = {
-                        'title': wb.title,
-                        'total_units': 0,
-                        'history': {}
-                    }
-                
                 target_units = self._parse_range(tr.test_range)
                 grade = _convert_score_to_grade(tr.score)
-                for u in target_units:
-                    # Test score overrides Class log
-                    vocab_bucket[wb.id]['history'][u] = grade
+                vocab_events.append({
+                    'dt': tr.created_at,
+                    'book': wb,
+                    'units': target_units,
+                    'grade': grade
+                })
 
-            # 2c. Calculate Total Units for Vocab Books
+            # 2c. Sort by Date
+            # Ensure dt is aware/naive consistent. Django models usually return aware datetimes.
+            vocab_events.sort(key=lambda x: x['dt'])
+
+            # 2d. Apply in Order
+            for event in vocab_events:
+                 wb = event['book']
+                 if wb.id not in vocab_bucket:
+                     vocab_bucket[wb.id] = {
+                        'title': wb.title,
+                        'total_units': 0, 
+                        'history': {}
+                    }
+                 for u in event['units']:
+                     vocab_bucket[wb.id]['history'][u] = event['grade']
+
+            # 2e. Calculate Total Units for Vocab Books
             for wb_id, data in vocab_bucket.items():
                 max_day = Word.objects.filter(book_id=wb_id).aggregate(m=Max('number'))['m'] or 0
                 data['total_units'] = max_day
