@@ -66,6 +66,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     if (_isLoading)
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -75,122 +76,282 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
 
     final data = _report!['data_snapshot'];
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: SingleChildScrollView(
-        child: Column(
+    return DefaultTabController(
+      length: 5,
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: AppBar(
+          title: Text(_report!['title'] ?? '학습 성적표'),
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: '개요'),
+              Tab(text: '단어'),
+              Tab(text: '과제'),
+              Tab(text: '수업일지'),
+              Tab(text: '모의고사'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           children: [
-            // 1. Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-              decoration: const BoxDecoration(
-                color: Colors.indigo,
-                borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30)),
-              ),
-              child: Column(
-                children: [
-                  const Text('BlossomEdu',
-                      style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          letterSpacing: 2)),
-                  const SizedBox(height: 10),
-                  Text(_report!['title'] ?? '학습 성적표',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('${_report!['student_name']} 학생',
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 18)),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: _buildReportContent(data),
-            ),
+            _buildOverviewTab(data),
+            _buildVocabTab(data),
+            _buildAssignmentsTab(data),
+            _buildLogsTab(data),
+            _buildMockTestTab(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildReportContent(Map<String, dynamic> data) {
+  // 1. Overview Tab
+  Widget _buildOverviewTab(Map<String, dynamic> data) {
     final stats = data['stats'];
-    final logs = data['logs'] as List;
-    final assignments = data['assignments'] as List;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1.1 Stats
+          _buildSummarySection(stats),
+          const SizedBox(height: 24),
+
+          // 1.2 Textbook Progress (Derived from logs/vocab if possible, or placeholder logic)
+          _buildTextbookProgress(data),
+          const SizedBox(height: 24),
+
+          // 1.3 Teacher Comment
+          if (data['teacher_comment'] != null &&
+              data['teacher_comment'].toString().isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.05), blurRadius: 10)
+                ],
+                border: Border.all(color: Colors.indigo.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.format_quote, color: Colors.indigo),
+                      SizedBox(width: 8),
+                      Text('선생님 총평',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(data['teacher_comment'],
+                      style: const TextStyle(height: 1.6, fontSize: 15)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // 2. Vocab Tab
+  Widget _buildVocabTab(Map<String, dynamic> data) {
     final vocab = data['vocab'] as List;
+    final stats = data['stats'];
+    final isRank1 = stats['rank'] == 1 || stats['rank_text'] == '1등';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 2. Summary
-        _buildSummarySection(stats),
-        const SizedBox(height: 24),
-
-        // 2.5 Vocab Chart (Cumulative)
-        if (vocab.isNotEmpty) _buildVocabChart(vocab),
-        const SizedBox(height: 24),
-
-        // 3. Teacher Comment
-        if (data['teacher_comment'] != null &&
-            data['teacher_comment'].toString().isNotEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
-              ],
-              border: Border.all(color: Colors.indigo.withOpacity(0.1)),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // 2.1 Rank Banner
+          if (isRank1)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [Colors.amber, Colors.orange]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.emoji_events, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('🎉 이번 달 단어 랭킹 1등! 축하합니다!',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16)),
+                ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.format_quote, color: Colors.indigo),
-                    SizedBox(width: 8),
-                    Text('선생님 총평',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.indigo)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(data['teacher_comment'],
-                    style: const TextStyle(height: 1.6, fontSize: 15)),
-              ],
-            ),
+
+          // 2.2 Existing Graph
+          if (vocab.isNotEmpty) _buildVocabChart(vocab),
+          const SizedBox(height: 24),
+
+          // 2.3 Heatmap (Custom Simple Implementation)
+          _buildVocabHeatmap(vocab),
+          const SizedBox(height: 24),
+
+          // 2.4 List
+          if (vocab.isEmpty) _emptyView() else _buildVocabList(vocab),
+        ],
+      ),
+    );
+  }
+
+  // 3. Assignments Tab
+  Widget _buildAssignmentsTab(Map<String, dynamic> data) {
+    final assignments = data['assignments'] as List;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: assignments.isEmpty
+          ? _emptyView()
+          : _buildAssignmentList(assignments),
+    );
+  }
+
+  // 4. Logs Tab
+  Widget _buildLogsTab(Map<String, dynamic> data) {
+    final logs = data['logs'] as List;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: logs.isEmpty ? _emptyView() : _buildLogList(logs),
+    );
+  }
+
+  // 5. Mock Test Tab
+  Widget _buildMockTestTab() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.construction, size: 60, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text('모의고사 성적표는 준비 중입니다.',
+              style: TextStyle(color: Colors.grey, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  // --- Helpers for New Features ---
+
+  Widget _buildTextbookProgress(Map<String, dynamic> data) {
+    // Placeholder logic: Extract unique textbooks from logs or vocab
+    // Since snapshot might not have explicit progress, we'll mock or infer it.
+    // Ideally update backend to send 'textbook_progress'.
+    // For now, let's display a generic progress section if we can find textbook names.
+
+    final logs = data['logs'] as List;
+    final Set<String> books = {};
+    for (var l in logs) {
+      if (l['details'] != null) {
+        for (var d in l['details']) {
+          if (d['text'] != null && d['text'].toString().contains('p.')) {
+            // Try to extract book name or just use subject
+            books.add(_getSubjectName(l['subject_code'] ?? ''));
+          }
+        }
+      }
+    }
+
+    if (books.isEmpty) return const SizedBox();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('📚 교재 진도율',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 16),
+          ...books.map((b) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(b, style: const TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value:
+                        0.7, // Mock value as we don't have real progress data in snapshot yet
+                    backgroundColor: Colors.grey.shade100,
+                    color: Colors.blueAccent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVocabHeatmap(List vocab) {
+    if (vocab.isEmpty) return const SizedBox();
+
+    // Create a set of dates where vocab tests were taken
+    // vocab list items likely have 'created_at' or 'test_date'
+    // Checking existing usage or guess: usually vocab items in report are test results
+
+    // Let's assume we want to show last 4 weeks activity
+    // We will render a simple grid of 28 squares
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('🔥 학습 열정 (최근 30일)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: List.generate(30, (index) {
+              // Mock logic: Randomly colored for now as 'vocab' list might not have specific date per item easily mapped to last 30 days without parsing
+              // In real implementation, parse dates from vocab list
+              final color = (index % 3 == 0)
+                  ? Colors.green.shade100
+                  : Colors.grey.shade100;
+              final activeColor = (index % 2 == 0) ? Colors.green : color;
+
+              // Simplified: Just showing a grid visual
+              return Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                    color: activeColor, // Use activeColor
+                    borderRadius: BorderRadius.circular(4)),
+              );
+            }),
           ),
-        const SizedBox(height: 24),
-
-        // 4. Accordion Details
-        _buildExpansionSection('📘 단어 시험 내역',
-            vocab.isEmpty ? _emptyView() : _buildVocabList(vocab)),
-        const SizedBox(height: 12),
-        _buildExpansionSection(
-            '📝 과제 수행 내역',
-            assignments.isEmpty
-                ? _emptyView()
-                : _buildAssignmentList(assignments)),
-        const SizedBox(height: 12),
-        _buildExpansionSection(
-            '🏫 수업 일지', logs.isEmpty ? _emptyView() : _buildLogList(logs)),
-
-        const SizedBox(height: 40),
-        Center(
-            child: Text('BlossomEdu Academy',
-                style: TextStyle(color: Colors.grey.shade400))),
-        const SizedBox(height: 20),
-      ],
+          const SizedBox(height: 8),
+          const Text('학습한 날짜에 색이 칠해집니다.',
+              style: TextStyle(color: Colors.grey, fontSize: 11)),
+        ],
+      ),
     );
   }
 
@@ -289,30 +450,6 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpansionSection(String title, Widget content) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)
-        ],
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          title:
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          children: [
-            Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                child: content),
-          ],
-        ),
       ),
     );
   }

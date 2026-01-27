@@ -88,7 +88,7 @@ class _ReportListScreenState extends State<ReportListScreen>
       setState(() {
         _filteredStudents = _students.where((s) {
           final name = s['name'].toString().toLowerCase();
-          final school = (s['school_name'] ?? '').toString().toLowerCase();
+          final school = (s['school'] ?? '').toString().toLowerCase();
           return name.contains(query.toLowerCase()) ||
               school.contains(query.toLowerCase());
         }).toList();
@@ -148,8 +148,8 @@ class _ReportListScreenState extends State<ReportListScreen>
                         child: Text(s['name'][0]),
                       ),
                       title: Text(s['name']),
-                      subtitle: Text(
-                          '${s['school_name'] ?? '-'} | ${s['grade'] ?? '-'}'),
+                      subtitle:
+                          Text('${s['school'] ?? '-'} | ${s['grade'] ?? '-'}'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         // Go to Create Screen
