@@ -44,13 +44,17 @@ class Command(BaseCommand):
 
             overdue_data = []
             for a in overdue_qs:
-                overdue_data.append({
+                days_late = (now - a.due_date).days
+                item = {
                     'id': a.id,
                     'student_name': a.student.name,
                     'title': a.title,
-                    'due_date': a.due_date.isoformat(),
-                    'days_overdue': (now - a.due_date).days
-                })
+                    'task_title': a.title,
+                    'due_date': a.due_date.strftime('%Y-%m-%d %H:%M'),
+                    'd_day_label': f"{days_late}일 지남"
+                }
+                overdue_data.append(item)
+                print(f"Item: {item['student_name']} - {item['task_title']} ({item['d_day_label']})")
             print(f"Overdue Processed: {len(overdue_data)}")
         except Exception as e:
             print(f"ERROR in Overdue: {e}")

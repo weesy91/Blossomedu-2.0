@@ -402,12 +402,14 @@ class TeacherDashboardView(APIView):
 
             overdue_data = []
             for a in overdue_qs:
+                days_late = (now - a.due_date).days
                 overdue_data.append({
                     'id': a.id,
                     'student_name': a.student.name,
                     'title': a.title,
-                    'due_date': a.due_date.isoformat(),
-                    'days_overdue': (now - a.due_date).days
+                    'task_title': a.title,
+                    'due_date': a.due_date.strftime('%Y-%m-%d %H:%M'),
+                    'd_day_label': f"{days_late}일 지남"
                 })
 
             # 3. Missing Class Logs (Last 14 days)
