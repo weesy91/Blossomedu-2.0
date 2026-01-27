@@ -400,10 +400,19 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           final score = history[unitNum.toString()]; // Key is string from JSON
 
           Color color = Colors.grey.shade200; // Default empty
-          if (score == 'A') color = Colors.blue;
-          if (score == 'B') color = Colors.green;
-          if (score == 'C') color = Colors.orange;
-          if (score == 'F') color = Colors.red;
+          final s = score?.toString().toUpperCase();
+
+          if (s == 'A') {
+            color = const Color(0xFF2962FF); // Blue A700
+          } else if (s == 'B') {
+            color = const Color(0xFF00C853); // Green A700
+          } else if (s == 'C') {
+            color = const Color(0xFFFFAB00); // Amber A700
+          } else if (s == 'F') {
+            color = const Color(0xFFD50000); // Red A700
+          } else if (s == 'P' || s == '수업' || s == '완료') {
+            color = const Color(0xFF00B8D4); // Cyan A700 (Completed)
+          }
 
           return Container(
             width: blockWidth < 2 ? 2 : blockWidth, // Minimum visibility

@@ -243,6 +243,31 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         def get_bucket(cat):
             return progress_by_category.get(cat, progress_by_category['OTHER'])
 
+        # Helper to convert score to grade
+        def _convert_score_to_grade(val):
+            if val is None:
+                return 'P' # Default to Pass if unknown but entry exists
+            
+            # If already a grade letter
+            s_val = str(val).strip().upper()
+            if s_val in ['A', 'B', 'C', 'F']:
+                return s_val
+            
+            # Try parsing as number
+            try:
+                score = float(s_val)
+                if score == 100:
+                    return 'A'
+                elif score >= 95:
+                    return 'B'
+                elif score >= 90:
+                    return 'C'
+                else:
+                    return 'F'
+            except ValueError:
+                # Not a number and not a grade (e.g. '완료', 'Pass')
+                return 'P'
+
         try:
             # 1. Process Textbooks from Logs
             for l in logs_qs:
@@ -260,8 +285,6 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                         
                         target_units = self._parse_range(e.progress_range)
                         for u in target_units:
-                            # Log Logic: If multiple entries, keep first encountered (Latest due to logs_qs order)
-                            # But wait, user said "Most recent one". 
                             if u not in bucket[tb.id]['history']:
                                 bucket[tb.id]['history'][u] = e.score or '완료'
 
@@ -276,14 +299,19 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                         if wb.id not in vocab_bucket:
                              vocab_bucket[wb.id] = {
                                 'title': wb.title,
-                                'total_units': 0, # Calculate later
+                                'total_units': 0, 
                                 'history': {}
                             }
                         
                         target_units = self._parse_range(e.progress_range)
+                        # [FIX] Use score from log if available, converted to Grade
+                        grade = _convert_score_to_grade(e.score)
+                        
                         for u in target_units:
+                             # Only set if not already present (Tests will override later if we wanted, 
+                             # but here we process logs first. Actually tests should override logs.)
                              if u not in vocab_bucket[wb.id]['history']:
-                                 vocab_bucket[wb.id]['history'][u] = '수업' 
+                                 vocab_bucket[wb.id]['history'][u] = grade
 
             # 2b. From Tests (Tested)
             from vocab.models import TestResult, Word
@@ -293,7 +321,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             tr_qs = TestResult.objects.filter(
                 student_id=student_id,
                 created_at__date__range=[start, end]
-            ).select_related('book').order_by('created_at') # Oldest to Latest
+            ).select_related('book').order_by('created_at') 
             
             for tr in tr_qs:
                 wb = tr.book
@@ -305,10 +333,10 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                     }
                 
                 target_units = self._parse_range(tr.test_range)
+                grade = _convert_score_to_grade(tr.score)
                 for u in target_units:
-                    # Test score overrides Class log ('수업')
-                    # Ordered by created_at, so later tests overwrite earlier scores (Desirable)
-                    vocab_bucket[wb.id]['history'][u] = tr.score
+                    # Test score overrides Class log
+                    vocab_bucket[wb.id]['history'][u] = grade
 
             # 2c. Calculate Total Units for Vocab Books
             for wb_id, data in vocab_bucket.items():
