@@ -83,75 +83,73 @@ class _StudentListScreenState extends State<StudentListScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        height: 140, // Height for cards
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _overdueItems.length,
-                          separatorBuilder: (c, i) => const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            final item = _overdueItems[index];
-                            return SizedBox(
-                              width: 280,
-                              child: Card(
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: const BorderSide(
-                                        color: Colors.redAccent, width: 1)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                      const SizedBox(height: 12),
+                      ListView.separated(
+                        shrinkWrap: true, // Allow it to perform inside Column
+                        physics:
+                            const NeverScrollableScrollPhysics(), // Scroll with whole page
+                        itemCount: _overdueItems.length,
+                        separatorBuilder: (c, i) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final item = _overdueItems[index];
+                          return Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(
+                                    color: Colors.redAccent, width: 1)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            item['student_name'] ?? '학생',
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.shade50,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              item['d_day_label'] ?? 'Overdue',
-                                              style: TextStyle(
-                                                  color: Colors.red.shade700,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const Spacer(),
                                       Text(
-                                        item['task_title'] ?? '과제명 없음',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        item['student_name'] ?? '학생',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16),
                                       ),
-                                      Text(
-                                        '~ ${item['due_date']}',
-                                        style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade50,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          item['d_day_label'] ?? 'Overdue',
+                                          style: TextStyle(
+                                              color: Colors.red.shade700,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12),
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    item['task_title'] ?? '과제명 없음',
+                                    style: const TextStyle(fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '~ ${item['due_date']}',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 12),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 32),
                     ] else ...[
