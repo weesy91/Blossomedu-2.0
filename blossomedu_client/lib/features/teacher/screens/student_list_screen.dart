@@ -154,14 +154,14 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                       ],
                                     ),
                                   ),
-                                  IconButton(
+                                  ElevatedButton(
                                     onPressed: () {
                                       showDialog(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                          title: const Text('과제 완료 처리'),
+                                          title: const Text('과제 제출 인정'),
                                           content: const Text(
-                                              '선생님 권한으로 과제를 완료/제출 처리하시겠습니까?'),
+                                              '해당 과제를 선생님 권한으로\n[제출 완료] 처리하시겠습니까?'),
                                           actions: [
                                             TextButton(
                                               onPressed: () => context.pop(),
@@ -174,16 +174,23 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                                   await _academyService
                                                       .completeAssignment(
                                                           item['id']);
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(const SnackBar(
-                                                          content: Text(
-                                                              '완료 처리되었습니다.')));
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                            const SnackBar(
+                                                                content: Text(
+                                                                    '완료 처리되었습니다.')));
+                                                  }
                                                   _fetchDashboardData();
                                                 } catch (e) {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(SnackBar(
-                                                          content: Text(
-                                                              '오류 발생: $e')));
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(SnackBar(
+                                                            content: Text(
+                                                                '오류 발생: $e')));
+                                                  }
                                                 }
                                               },
                                               child: const Text('확인'),
@@ -192,9 +199,19 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                         ),
                                       );
                                     },
-                                    icon: const Icon(Icons.check_circle_outline,
-                                        color: Colors.green, size: 28),
-                                    tooltip: '제출 완료 처리',
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.amber,
+                                      foregroundColor: Colors.black87,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text('제출인정',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13)),
                                   ),
                                 ],
                               ),
