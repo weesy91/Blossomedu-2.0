@@ -268,13 +268,10 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   // --- Helpers for New Features ---
 
   Widget _buildTextbookProgress(Map<String, dynamic> data) {
-    final tpMap = data['textbook_progress']; // New field from backend
-    if (tpMap == null || (tpMap is Map && tpMap.isEmpty)) {
+    final tpMap = data['textbook_progress'];
+    if (tpMap == null || (tpMap is! Map) || tpMap.isEmpty) {
       return const SizedBox();
     }
-
-    // Convert map values to list for iteration
-    final books = (tpMap as Map).values.toList();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -291,35 +288,93 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           const Text('📚 교재 진도율',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 16),
-          ...books.map((e) {
-            final b = e as Map;
-            final int totalUnits = (b['total_units'] is int)
-                ? b['total_units']
-                : int.tryParse(b['total_units'].toString()) ?? 20;
+          ...tpMap.entries.map((entry) {
+            final categoryKey = entry.key;
+            final booksList = entry.value as List;
+            if (booksList.isEmpty) return const SizedBox();
+
+            String categoryName = categoryKey;
+            switch (categoryKey) {
+              case 'VOCABULARY':
+                categoryName = '단어';
+                break;
+              case 'SYNTAX':
+                categoryName = '구문';
+                break;
+              case 'GRAMMAR':
+                categoryName = '어법';
+                break;
+              case 'READING':
+                categoryName = '독해';
+                break;
+              case 'LISTENING':
+                categoryName = '듣기';
+                break;
+              case 'SCHOOL_EXAM':
+                categoryName = '내신';
+                break;
+              case 'MOCK_EXAM':
+                return const SizedBox(); // Explicitly hide here too just in case
+              case 'OTHER':
+                categoryName = '기타';
+                break;
+            }
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(b['title'] ?? '교재',
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                if (tpMap.length >
+                    1) // Only show headers if multiple categories exist (or always?) User asked for grouping.
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12, top: 4),
+                    child: Row(children: [
+                      Container(
+                        width: 4,
+                        height: 14,
+                        color: Colors.indigoAccent,
+                        margin: const EdgeInsets.only(right: 8),
+                      ),
+                      Text(categoryName,
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.indigo.shade800)),
+                    ]),
+                  ),
+                ...booksList.map((e) {
+                  final b = e as Map;
+                  final int totalUnits = (b['total_units'] is int)
+                      ? b['total_units']
+                      : int.tryParse(b['total_units'].toString()) ?? 20;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(b['title'] ?? '교재',
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 8),
+                      _buildSegmentedProgressBar(
+                        totalUnits: totalUnits,
+                        history: b['history'] ?? {},
+                      ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                            '${(b['history'] as Map).length} / $totalUnits 강',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 8),
-                _buildSegmentedProgressBar(
-                  totalUnits: totalUnits,
-                  history: b['history'] ?? {},
-                ),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('${(b['history'] as Map).length} / $totalUnits 강',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 16),
               ],
             );
-          }),
+          }).toList(),
         ],
       ),
     );

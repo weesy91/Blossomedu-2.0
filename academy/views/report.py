@@ -226,67 +226,106 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
 
-        # (5) Textbook Progress (Aggregated)
-        textbook_progress = {} 
-        # Structure: { textbook_id: { 'title': str, 'total_units': int, 'history': { unit_num: score } } }
+        # (5) Textbook Progress (Aggregated & Grouped)
+        # Structure: { 'CATEGORY': [ { 'title': ..., 'total_units': ..., 'history': { unit: score } } ] }
+        progress_by_category = {
+            'VOCABULARY': {}, # book_id -> data
+            'SYNTAX': {},
+            'READING': {},
+            'GRAMMAR': {},
+            'LISTENING': {},
+            'SCHOOL_EXAM': {},
+            'MOCK_EXAM': {},
+            'OTHER': {}
+        }
+
+        # Helper to get bucket
+        def get_bucket(cat):
+            return progress_by_category.get(cat, progress_by_category['OTHER'])
 
         try:
-            # Re-iterate logs to extract textbook progress
-            # Logs are already ordered by -date (latest first), so we process them in reverse order 
-            # effectively (if we want overwrite) OR process normally and only set if not present?
-            # Requirement: "If same lecture studied multiple times, use LATEST".
-            # So if we iterate logs (Desc date), the first time we see a unit, that is the latest.
+            # 1. Process Textbooks from Logs
+            for l in logs_qs:
+                for e in l.entries.all():
+                    if e.textbook:
+                        tb = e.textbook
+                        bucket = get_bucket(tb.category)
+                        
+                        if tb.id not in bucket:
+                            bucket[tb.id] = {
+                                'title': tb.title,
+                                'total_units': tb.total_units,
+                                'history': {}
+                            }
+                        
+                        target_units = self._parse_range(e.progress_range)
+                        for u in target_units:
+                            # Log Logic: If multiple entries, keep first encountered (Latest due to logs_qs order)
+                            # But wait, user said "Most recent one". 
+                            if u not in bucket[tb.id]['history']:
+                                bucket[tb.id]['history'][u] = e.score or '완료'
+
+            # 2. Process Vocabulary
+            # 2a. From Logs (Studied)
+            vocab_bucket = progress_by_category['VOCABULARY']
             
             for l in logs_qs:
                 for e in l.entries.all():
-                    if not e.textbook:
-                        continue
-                    
-                    tb = e.textbook
-                    if tb.id not in textbook_progress:
-                        textbook_progress[tb.id] = {
-                            'title': tb.title,
-                            'total_units': tb.total_units,
-                            'history': {}
-                        }
-                    
-                    # Parse Range (e.g., "1", "1-3", "p.10-20"(ignore), "1, 2")
-                    # User said "1-4" style for lectures.
-                    raw_range = str(e.progress_range).strip()
-                    target_units = []
+                    if e.wordbook:
+                        wb = e.wordbook
+                        if wb.id not in vocab_bucket:
+                             vocab_bucket[wb.id] = {
+                                'title': wb.title,
+                                'total_units': 0, # Calculate later
+                                'history': {}
+                            }
+                        
+                        target_units = self._parse_range(e.progress_range)
+                        for u in target_units:
+                             if u not in vocab_bucket[wb.id]['history']:
+                                 vocab_bucket[wb.id]['history'][u] = '수업' 
 
-                    # Generic Parsing Logic
-                    import re
-                    # Check for "num - num" pattern
-                    range_match = re.match(r'^(\d+)\s*-\s*(\d+)$', raw_range)
-                    if range_match:
-                        start_u, end_u = map(int, range_match.groups())
-                        target_units = list(range(start_u, end_u + 1))
-                    elif raw_range.isdigit():
-                        target_units = [int(raw_range)]
-                    else:
-                        # Try comma separation
-                        try:
-                            parts = raw_range.split(',')
-                            for p in parts:
-                                if p.strip().isdigit():
-                                    target_units.append(int(p.strip()))
-                        except:
-                            pass
-                    
-                    # Apply to history if not exists (Since logs are Latest -> Oldest, we want the FIRST one we encounter)
-                    # Wait, user said "Most recent one". 
-                    # logs_qs is ordered by '-date'. So the first time we encounter unit X, it is the most recent one.
-                    # So we set it ONLY IF it's not already set.
-                    
-                    current_hist = textbook_progress[tb.id]['history']
-                    for u in target_units:
-                        if u not in current_hist:
-                             current_hist[u] = e.score
+            # 2b. From Tests (Tested)
+            from vocab.models import TestResult, Word
+            from django.db.models import Max
+            
+            # Re-fetch specific to this logic
+            tr_qs = TestResult.objects.filter(
+                student_id=student_id,
+                created_at__date__range=[start, end]
+            ).select_related('book').order_by('created_at') # Oldest to Latest
+            
+            for tr in tr_qs:
+                wb = tr.book
+                if wb.id not in vocab_bucket:
+                     vocab_bucket[wb.id] = {
+                        'title': wb.title,
+                        'total_units': 0,
+                        'history': {}
+                    }
+                
+                target_units = self._parse_range(tr.test_range)
+                for u in target_units:
+                    # Test score overrides Class log ('수업')
+                    # Ordered by created_at, so later tests overwrite earlier scores (Desirable)
+                    vocab_bucket[wb.id]['history'][u] = tr.score
+
+            # 2c. Calculate Total Units for Vocab Books
+            for wb_id, data in vocab_bucket.items():
+                max_day = Word.objects.filter(book_id=wb_id).aggregate(m=Max('number'))['m'] or 0
+                data['total_units'] = max_day
 
         except Exception as e:
             # print(f"Textbook Progress Error: {e}")
             pass
+
+        # 3. Flatten Dicts to Lists
+        textbook_progress = {}
+        # Enforce Order (Exclude MOCK_EXAM as requested)
+        ordered_keys = ['VOCABULARY', 'SYNTAX', 'GRAMMAR', 'READING', 'SCHOOL_EXAM', 'LISTENING', 'OTHER']
+        for cat in ordered_keys:
+             if cat in progress_by_category and progress_by_category[cat]:
+                textbook_progress[cat] = list(progress_by_category[cat].values())
 
         # Stats
         try:
@@ -335,3 +374,27 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             'logs': recursive_serialize(logs),
             'textbook_progress': recursive_serialize(textbook_progress),
         }
+
+    def _parse_range(self, range_str):
+        targets = []
+        if not range_str:
+            return targets
+        raw = str(range_str).strip()
+        import re
+        try:
+            # Check for "num - num" pattern
+            range_match = re.match(r'^(\d+)\s*-\s*(\d+)$', raw)
+            if range_match:
+                start_u, end_u = map(int, range_match.groups())
+                if start_u <= end_u:
+                    return list(range(start_u, end_u + 1))
+            
+            # Check for comma list
+            parts = raw.split(',')
+            for p in parts:
+                p_clean = p.strip()
+                if p_clean.isdigit():
+                    targets.append(int(p_clean))
+        except:
+            pass
+        return targets
