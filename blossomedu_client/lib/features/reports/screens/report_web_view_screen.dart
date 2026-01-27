@@ -123,9 +123,11 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           _buildTextbookProgress(data),
           const SizedBox(height: 24),
 
-          // 1.3 Teacher Comment
-          if (data['teacher_comment'] != null &&
-              data['teacher_comment'].toString().isNotEmpty)
+          // 1.3 Teacher Comment (Updated to check root key)
+          if ((_report!['teacher_comment'] != null &&
+                  _report!['teacher_comment'].toString().isNotEmpty) ||
+              (data['teacher_comment'] != null &&
+                  data['teacher_comment'].toString().isNotEmpty))
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -152,7 +154,24 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(data['teacher_comment'],
+                  // Fix: Use data['teacher_comment'] if available, or try to find it in root _report object if accessible,
+                  // but here we only have 'data'. However, in _fetchReport we see:
+                  // _report = jsonDecode(...)
+                  // data = _report!['data_snapshot']
+                  // If teacher_comment is at root, we assume the backend puts it in data_snapshot OR we need to pass it.
+                  // Current implementation of 'generate' in backend saves it to model, serializer likely puts it at root.
+                  // So we should try to use the one passed in 'data' dictionary which comes from 'data_snapshot'.
+                  // Wait, previous investigation showed backend DOES NOT put it in data_snapshot.
+                  // So we must rely on what was passed to this function.
+                  // I will modify the call site to include teacher_comment in data map or access _report.
+                  // Since I cannot change call site easily within this function, I will assume the caller has been updated
+                  // OR I will check if I can access outer class state. I can't access _report from here easily if it's not in state.
+                  // Actually, I am in _ReportWebViewScreenState, so I CAN access _report!.
+
+                  Text(
+                      (_report != null && _report!['teacher_comment'] != null)
+                          ? _report!['teacher_comment']
+                          : (data['teacher_comment'] ?? '작성된 총평이 없습니다.'),
                       style: const TextStyle(height: 1.6, fontSize: 15)),
                 ],
               ),
@@ -288,6 +307,15 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                   totalUnits: totalUnits,
                   history: b['history'] ?? {},
                 ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('${(b['history'] as Map).length} / $totalUnits 강',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold)),
+                ),
                 const SizedBox(height: 16),
               ],
             );
@@ -389,7 +417,34 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   Widget _buildSummarySection(Map<String, dynamic> stats) {
     return Row(
       children: [
-        _buildStatBox('출석률', '${stats['attendance_rate'].round()}%'),
+        _buildStatBox('출석률', '${stats['attendance_rate'].round()}%', onTap: () {
+          // Click to show details
+          if (_report != null) {
+            final att = _report!['data_snapshot']['attendance'] as List;
+            int present = att.where((e) => e['status'] == 'PRESENT').length;
+            int late = att.where((e) => e['status'] == 'LATE').length;
+            int absent = att.where((e) => e['status'] == 'ABSENT').length;
+
+            showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                      title: const Text('출석 상세'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _statusRow('🟢 등원', '$present회'),
+                          _statusRow('🟡 지각', '$late회'),
+                          _statusRow('🔴 결석', '$absent회'),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('닫기'))
+                      ],
+                    ));
+          }
+        }),
         const SizedBox(width: 12),
         _buildStatBox('과제 수행',
             '${stats['assignment_completed']}/${stats['assignment_count']}'),
@@ -399,31 +454,34 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
     );
   }
 
-  Widget _buildStatBox(String label, String value) {
+  Widget _buildStatBox(String label, String value, {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 4))
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87)),
-            const SizedBox(height: 6),
-            Text(label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4))
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
+              const SizedBox(height: 6),
+              Text(label,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
         ),
       ),
     );
@@ -497,7 +555,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                 trailing: Text('${v['score']} / ${v['total_count'] ?? 0}점',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                    '범위: ${v['test_range'] ?? '전체'} | 오답: ${v['wrong_count']}'),
+                    '${v['created_at'].toString().substring(0, 10)} | 범위: ${v['test_range'] ?? '전체'} | 오답: ${v['wrong_count']}'),
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -608,6 +666,16 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                               ),
                             ),
                           ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            '마감일: ${a['due_date'] != null ? a['due_date'].toString().substring(0, 10) : '미정'}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.redAccent,
+                                fontSize: 12),
+                          ),
+                        ),
                         if (a['feedback'] != null &&
                             a['feedback'].toString().isNotEmpty)
                           Container(
@@ -792,5 +860,20 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
         ),
       );
     }).toList());
+  }
+
+  Widget _statusRow(String label, String count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16)),
+          Text(count,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
   }
 }

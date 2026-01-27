@@ -115,7 +115,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             vocab_qs = TestResult.objects.filter(
                 student_id=student_id,
                 created_at__date__range=[start, end]
-            ).select_related('book').prefetch_related('details').order_by('created_at')
+            ).select_related('book').prefetch_related('details').order_by('-created_at')
             
             for v in vocab_qs:
                 try:
@@ -150,7 +150,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             assignments_qs = AssignmentTask.objects.filter(
                 student_id=student_id,
                 due_date__date__range=[start, end]
-            ).select_related('related_textbook', 'related_vocab_book').prefetch_related('submission').order_by('due_date')
+            ).select_related('related_textbook', 'related_vocab_book').prefetch_related('submission').order_by('-due_date')
             
             for a in assignments_qs:
                 try:
