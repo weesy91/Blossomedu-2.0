@@ -40,8 +40,8 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
 
   Future<void> _fetchDetail() async {
     try {
-      final data =
-          await _academyService.getAssignmentDetail(int.parse(widget.assignmentId));
+      final data = await _academyService
+          .getAssignmentDetail(int.parse(widget.assignmentId));
       if (mounted) {
         setState(() {
           _assignmentData = data;
@@ -141,7 +141,8 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text('재제출 기한',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 InkWell(
                   onTap: () async {
@@ -156,8 +157,8 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
                     }
                   },
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(8),
@@ -218,8 +219,7 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(isApproved ? '승인 처리되었습니다.' : '재제출 요청을 보냈습니다.')),
+        SnackBar(content: Text(isApproved ? '승인 처리되었습니다.' : '재제출 요청을 보냈습니다.')),
       );
       context.pop();
     } catch (e) {
@@ -268,8 +268,7 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            studentName.isNotEmpty ? '$studentName 과제 검토' : '과제 검토'),
+        title: Text(studentName.isNotEmpty ? '$studentName 과제 검토' : '과제 검토'),
       ),
       body: Column(
         children: [
@@ -286,11 +285,12 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 4),
-                      Text(submittedAt.isNotEmpty
-                          ? '제출: $submittedAt'
-                          : '제출 내역 없음',
-                          style: TextStyle(
-                              color: Colors.grey[700], fontSize: 12)),
+                      Text(
+                          submittedAt.isNotEmpty
+                              ? '제출: $submittedAt'
+                              : '제출 내역 없음',
+                          style:
+                              TextStyle(color: Colors.grey[700], fontSize: 12)),
                     ],
                   ),
                 ),
@@ -432,7 +432,8 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
-                  maxLines: 1,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -447,7 +448,8 @@ class _AssignmentReviewScreenState extends State<AssignmentReviewScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: Colors.orange),
                         ),
-                        onPressed: canReview ? () => _submitReview(false) : null,
+                        onPressed:
+                            canReview ? () => _submitReview(false) : null,
                       ),
                     ),
                     const SizedBox(width: 12),
