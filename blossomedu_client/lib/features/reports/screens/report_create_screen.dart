@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
+
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -254,7 +254,11 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
         _buildSummarySection(stats),
         const SizedBox(height: 24),
 
-        // 2.5 Vocab Chart (Cumulative)
+        // 2.5 Heatmap (Added)
+        _buildVocabHeatmap(vocab),
+        const SizedBox(height: 24),
+
+        // 2.6 Vocab Chart (Cumulative)
         if (vocab.isNotEmpty) _buildVocabChart(vocab),
         const SizedBox(height: 24),
 
@@ -341,7 +345,7 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
         _buildSectionHeader('과제 내역 (${assignments.length}건)'),
         ...assignments.map((a) => ExpansionTile(
               leading: Icon(
-                a['is_completed'] ? Icons.check_circle : Icons.cancel,
+                a['is_completed'] ? Icons.check_circle : Icons.circle_outlined,
                 color: a['is_completed'] ? Colors.green : Colors.red,
               ),
               title: Text(a['title']),
@@ -585,51 +589,176 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
     );
   }
 
+  // New Summary Section with Detailed Stats
   Widget _buildSummarySection(Map<String, dynamic> stats) {
-    return Row(
-      children: [
-        _buildStatCard('출석률', '${stats['attendance_rate'].round()}%',
-            Icons.calendar_today, Colors.blue),
-        const SizedBox(width: 12),
-        _buildStatCard(
+    // Attendance
+    final attRaw = stats['attendance_breakdown'] ?? {};
+    int present = int.tryParse(attRaw['present']?.toString() ?? '0') ?? 0;
+    int late = int.tryParse(attRaw['late']?.toString() ?? '0') ?? 0;
+    int absent = int.tryParse(attRaw['absent']?.toString() ?? '0') ?? 0;
+    int totalAtt = present + late + absent;
+
+    // Assignment
+    final assignRaw = stats['assignment_breakdown'] ?? {};
+    int assignOnTime =
+        int.tryParse(assignRaw['on_time']?.toString() ?? '0') ?? 0;
+    int assignLate = int.tryParse(assignRaw['late']?.toString() ?? '0') ?? 0;
+    int assignMissing =
+        int.tryParse(assignRaw['missing']?.toString() ?? '0') ?? 0;
+
+    String vocabAvg = stats['vocab_avg']?.toString() ?? '0';
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildStatBox(
+            '출석률',
+            '$present / $totalAtt', // Fraction Format
+            subWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _miniLabel('등원 $present', Colors.green),
+                const SizedBox(width: 8),
+                _miniLabel('지각 $late', Colors.orange),
+                const SizedBox(width: 8),
+                _miniLabel('결석 $absent', Colors.red),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _buildStatBox(
             '과제 수행',
             '${stats['assignment_completed']}/${stats['assignment_count']}',
-            Icons.assignment_turned_in,
-            Colors.green),
-        const SizedBox(width: 12),
-        _buildStatCard(
-            '단어 평균', '${stats['vocab_avg']}', Icons.translate, Colors.orange),
-      ],
+            subWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _miniLabel('정시 $assignOnTime', Colors.green),
+                const SizedBox(width: 8),
+                _miniLabel('지각 $assignLate', Colors.orange),
+                const SizedBox(width: 8),
+                _miniLabel('미제출 $assignMissing', Colors.red),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _buildStatBox(
+            '단어 평균',
+            '$vocabAvg%',
+            subWidget: const SizedBox(height: 14),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatCard(
-      String title, String value, IconData icon, Color color) {
+  Widget _miniLabel(String text, Color color) {
+    return Text(text,
+        style:
+            TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold));
+  }
+
+  Widget _buildStatBox(String label, String value, {Widget? subWidget}) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: color.withOpacity(0.1),
-                blurRadius: 10,
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
                 offset: const Offset(0, 4))
           ],
-          border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
             Text(value,
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-            Text(title,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87)),
+            const SizedBox(height: 4),
+            Text(label,
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            if (subWidget != null) ...[
+              const SizedBox(height: 8),
+              subWidget,
+            ]
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVocabHeatmap(List vocab) {
+    if (vocab.isEmpty) return const SizedBox();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('🔥 학습 열정 (최근 30일)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 10,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: 30,
+            itemBuilder: (context, index) {
+              final today = DateTime.now();
+              final now = DateTime(today.year, today.month, today.day);
+              final targetDate = now.subtract(Duration(days: 29 - index));
+
+              bool hasActivity = false;
+              for (var v in vocab) {
+                if (v['created_at'] != null) {
+                  DateTime? d = DateTime.tryParse(v['created_at'].toString());
+                  if (d != null) {
+                    final localD = d.toLocal();
+                    if (localD.year == targetDate.year &&
+                        localD.month == targetDate.month &&
+                        localD.day == targetDate.day) {
+                      hasActivity = true;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: hasActivity ? Colors.green : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${targetDate.day}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: hasActivity ? Colors.white : Colors.grey.shade400,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          const Text('학습한 날짜에 색이 칠해집니다.',
+              style: TextStyle(color: Colors.grey, fontSize: 11)),
+        ],
       ),
     );
   }
@@ -638,9 +767,10 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
     if (vocab.isEmpty) return const SizedBox();
     List<FlSpot> spots = [];
 
-    // Use 'cumulative_passed' from backend (ensure it exists or fallback)
-    for (int i = 0; i < vocab.length; i++) {
-      double val = (vocab[i]['cumulative_passed'] ?? 0).toDouble();
+    // [FIX] Reverse list to plot Chronologically
+    final reversedVocab = vocab.reversed.toList();
+    for (int i = 0; i < reversedVocab.length; i++) {
+      double val = (reversedVocab[i]['cumulative_passed'] ?? 0).toDouble();
       spots.add(FlSpot(i.toDouble(), val));
     }
 

@@ -500,13 +500,6 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   Widget _buildVocabHeatmap(List vocab) {
     if (vocab.isEmpty) return const SizedBox();
 
-    // Create a set of dates where vocab tests were taken
-    // vocab list items likely have 'created_at' or 'test_date'
-    // Checking existing usage or guess: usually vocab items in report are test results
-
-    // Let's assume we want to show last 4 weeks activity
-    // We will render a simple grid of 28 squares
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -519,24 +512,27 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
           const Text('🔥 학습 열정 (최근 30일)',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: List.generate(30, (index) {
-              // Calculate date for this cell (Today - 29 + index)
-              // Wait, usually heatmap is ordered [Day-29, ..., Today]
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 10,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: 30,
+            itemBuilder: (context, index) {
               final today = DateTime.now();
-              // Normalize today to start of day
               final now = DateTime(today.year, today.month, today.day);
               final targetDate = now.subtract(Duration(days: 29 - index));
 
-              // Check if activity exists on targetDate
               bool hasActivity = false;
               for (var v in vocab) {
                 if (v['created_at'] != null) {
                   DateTime? d = DateTime.tryParse(v['created_at'].toString());
                   if (d != null) {
-                    final localD = d.toLocal(); // [FIX] Timezone match
+                    final localD = d.toLocal();
                     if (localD.year == targetDate.year &&
                         localD.month == targetDate.month &&
                         localD.day == targetDate.day) {
@@ -548,13 +544,21 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
               }
 
               return Container(
-                width: 20,
-                height: 20,
                 decoration: BoxDecoration(
-                    color: hasActivity ? Colors.green : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(4)),
+                  color: hasActivity ? Colors.green : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${targetDate.day}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: hasActivity ? Colors.white : Colors.grey.shade400,
+                  ),
+                ),
               );
-            }),
+            },
           ),
           const SizedBox(height: 8),
           const Text('학습한 날짜에 색이 칠해집니다.',
