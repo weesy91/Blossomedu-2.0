@@ -20,7 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final VocabService _vocabService = VocabService(); // [NEW]
   final AnnouncementService _announcementService = AnnouncementService();
 
-  List<dynamic> _assignments = [];
+  List<dynamic> _vocabTodos = []; // [NEW]
+  List<dynamic> _certTodos = []; // [NEW]
   List<dynamic> _recentHistory = []; // [NEW] Recent submitted/completed
   List<Announcement> _announcements = [];
   bool _isLoading = true;
@@ -42,22 +43,29 @@ class _HomeScreenState extends State<HomeScreen> {
       final todayStr =
           '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-      final todayTasks = assignData.where((a) {
-        final dueStr = a['due_date']?.toString();
-        if (dueStr == null || dueStr.isEmpty) return false;
+      // 1. Vocab To-Do (Standard Logic: Today or Overdue < 7 days)
+      final vocabTodos = assignData.where((a) {
+        final type = a['assignment_type'];
+        if (type != 'VOCAB_TEST') return false;
 
+        final dueStr = a['due_date']?.toString();
+        if (dueStr == null) return false;
         final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(dueStr);
         if (match == null) return false;
         final datePart = match.group(0)!;
-        // 1. Due Today
-        if (datePart == todayStr) return true;
 
-        // 2. Overdue AND Incomplete
-        // (If submitted, it's not "To-Do" anymore usually, unless rejected?)
-        // [MODIFIED] Filter out "Makeup Tasks" (older than 7 days)
         final isCompleted = a['is_completed'] == true;
-        if (datePart.compareTo(todayStr) < 0 && !isCompleted) {
-          // Check if it's a makeup task (Day 8+)
+        // Check submission
+        final submission = a['submission'];
+        if (submission != null && submission['status'] == 'APPROVED')
+          return false;
+        if (isCompleted) return false;
+
+        // Date Logic
+        if (datePart == todayStr) return true; // Due Today
+
+        // Overdue Check
+        if (datePart.compareTo(todayStr) < 0) {
           String? originDateStr =
               a['origin_log_date'] ?? a['start_date'] ?? a['due_date'];
           if (originDateStr != null) {
@@ -66,22 +74,38 @@ class _HomeScreenState extends State<HomeScreen> {
               final cutoff = baseDate.add(const Duration(days: 7));
               final cutoffDate =
                   DateTime(cutoff.year, cutoff.month, cutoff.day);
-
-              // If today >= cutoffDate (Day 8+), it's a makeup task -> HIDE from Home
               if (today.isAfter(cutoffDate) ||
                   today.isAtSameMomentAs(cutoffDate)) {
-                return false;
+                return false; // Too old (Makeup)
               }
             } catch (_) {}
           }
-          return true; // Overdue but recent (Day 2~7)
+          return true; // Recent Overdue
         }
-
         return false;
       }).toList();
 
-      // Sort by Due Date Ascending (Oldest/Overdue first)
-      todayTasks
+      vocabTodos
+          .sort((a, b) => (a['due_date'] ?? '').compareTo(b['due_date'] ?? ''));
+
+      // 2. Certification To-Do (All Incomplete, regardless of date)
+      final certTodos = assignData.where((a) {
+        final type = a['assignment_type'];
+        if (type == 'VOCAB_TEST') return false;
+
+        final isCompleted = a['is_completed'] == true;
+        final submission = a['submission'];
+        final status = submission != null ? submission['status'] : null;
+
+        if (isCompleted) return false;
+        if (status == 'APPROVED') return false;
+        if (status == 'PENDING')
+          return false; // Hide Pending from To-Do? Usually yes.
+
+        return true;
+      }).toList();
+
+      certTodos
           .sort((a, b) => (a['due_date'] ?? '').compareTo(b['due_date'] ?? ''));
 
       // 2. Fetch Announcements
@@ -210,7 +234,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         setState(() {
-          _assignments = todayTasks;
+          _vocabTodos = vocabTodos;
+          _certTodos = certTodos;
           _recentHistory = topRecent;
           _announcements = topAnnounce;
           _isLoading = false;
@@ -318,49 +343,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildRecentHistorySection(),
                     const SizedBox(height: 24),
 
-                    // 3. Today's Tasks
-                    const Text(
-                      '오늘의 과제 (To-Do)',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
+                    // 3. Certification Tasks (To-Do)
+                    _buildTodoSection('인증 과제 (To-Do)', _certTodos),
+                    const SizedBox(height: 24),
 
-                    Container(
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: AppColors.primary.withOpacity(0.2),
-                              width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2))
-                          ]),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: _assignments.isEmpty
-                            ? [
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 32),
-                                  child: Column(
-                                    children: [
-                                      Icon(Icons.check_circle_outline,
-                                          size: 48, color: Colors.grey),
-                                      SizedBox(height: 12),
-                                      Text('오늘 예정된 과제가 없습니다! 🎉',
-                                          style: TextStyle(color: Colors.grey)),
-                                    ],
-                                  ),
-                                )
-                              ]
-                            : _assignments
-                                .map((a) => _buildTodoItem(a))
-                                .toList(),
-                      ),
-                    ),
+                    // 4. Vocab Tasks (To-Do)
+                    _buildTodoSection('단어 과제 (To-Do)', _vocabTodos),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -682,6 +670,51 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildTodoSection(String title, List<dynamic> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: AppColors.primary.withOpacity(0.2), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2))
+              ]),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: items.isEmpty
+                ? [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Column(
+                        children: [
+                          Icon(Icons.check_circle_outline,
+                              size: 32, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text('예정된 과제가 없습니다! 🎉',
+                              style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    )
+                  ]
+                : items.map((a) => _buildTodoItem(a)).toList(),
+          ),
+        ),
+      ],
     );
   }
 
