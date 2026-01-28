@@ -241,7 +241,10 @@ class _WordTestScreenState extends State<WordTestScreen>
     // [NEW] 딜레이 중에는 입력 무시 (엔터 연타 방지)
     if (_isProcessing) return;
 
-    if (!isTimeOver && _answerController.text.trim().isEmpty) {
+    // [FIX] Practice mode allows empty answers (skip), test mode requires input
+    if (!isTimeOver &&
+        widget.testMode == 'test' &&
+        _answerController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('답을 입력해주세요! (모르면 7초 기다리세요)')));
       _focusNode.requestFocus(); // Keep focus
