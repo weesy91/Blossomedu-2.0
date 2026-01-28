@@ -162,6 +162,15 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                         submission = a.submission
                         feedback = submission.teacher_comment
                         status = submission.get_status_display()
+                        
+                        # [FIX] Check for Late Submission
+                        # If submitted_at > due_date, mark as Late
+                        if submission.submitted_at and a.due_date:
+                            # submission.submitted_at is usually auto_now_add=True (DateTimeField)
+                            # Ensure both are comparable (timezone awareness)
+                            if submission.submitted_at > a.due_date:
+                                status = '지각제출'
+
                         if submission.image and submission.image.name:
                             try: submission_image = submission.image.url
                             except: pass
