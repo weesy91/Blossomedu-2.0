@@ -675,7 +675,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTodoSection(String title, List<dynamic> items) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           title,
