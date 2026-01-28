@@ -291,7 +291,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                      pass
 
             progress_logs_qs = ClassLog.objects.filter(
-                student_id=student.id,
+                student_id=student_id,
                 date__lte=filter_date
             ).prefetch_related('entries', 'entries__textbook', 'entries__wordbook')
 
