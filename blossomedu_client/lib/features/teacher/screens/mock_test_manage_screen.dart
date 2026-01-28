@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/services/academy_service.dart';
+import 'package:blossomedu_client/core/services/academy_service.dart';
 
 class MockTestManageScreen extends StatefulWidget {
   const MockTestManageScreen({Key? key}) : super(key: key);
