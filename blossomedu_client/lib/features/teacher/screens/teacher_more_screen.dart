@@ -105,6 +105,12 @@ class TeacherMoreScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  _MenuItem(
+                    icon: Icons.scanner,
+                    title: '모의고사 OMR 채점',
+                    subtitle: '스캔 파일 업로드 및 결과 저장',
+                    onTap: () => context.push('/teacher/mock-test/upload'),
+                  ),
                 ]),
 
               if (hasAdminAccess())

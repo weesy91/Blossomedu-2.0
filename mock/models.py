@@ -30,6 +30,10 @@ class MockExam(models.Model):
     wrong_grammar = models.IntegerField(default=0, verbose_name="어법 오답 수")
     wrong_reading = models.IntegerField(default=0, verbose_name="독해 오답 수")
 
+    # [NEW] 상세 유형별 오답 분석 
+    # 예: {'BLANK': 2, 'ORDER': 1, 'TOPIC': 3}
+    wrong_type_breakdown = models.JSONField(default=dict, verbose_name="유형별 오답 분석", blank=True)
+
     # 관리 정보
     note = models.TextField(blank=True, verbose_name="비고/피드백")
     recorded_by = models.ForeignKey(

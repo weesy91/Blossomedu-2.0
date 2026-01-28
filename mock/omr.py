@@ -221,11 +221,18 @@ def scan_omr(image_bytes, debug_mode=False):
 
 def calculate_score(student_answers, exam_info):
     """
-    [Logic] 채점 및 통계 계산 함수 (views.py에서 중복 제거됨)
+    [Logic] 채점 및 통계 계산 함수
+    - [Updated] 상세 유형별(wrong_type_breakdown) 분석 추가
     """
     questions = exam_info.questions.all().order_by('number')
     total_score = 0
+    
+    # 1. Backward Compatibility (Aggregated)
     wrong_counts = {'LISTENING': 0, 'VOCAB': 0, 'GRAMMAR': 0, 'READING': 0}
+    
+    # 2. Detailed Breakdown
+    wrong_type_breakdown = {}
+    
     wrong_question_numbers = [] 
     student_answers_dict = {}
 
@@ -240,10 +247,21 @@ def calculate_score(student_answers, exam_info):
             total_score += question_obj.score
         else:
             cat = question_obj.category
-            if cat == 'LISTENING': wrong_counts['LISTENING'] += 1
-            elif cat in ['VOCAB', 'MEANING']: wrong_counts['VOCAB'] += 1
-            elif cat == 'GRAMMAR': wrong_counts['GRAMMAR'] += 1
-            else: wrong_counts['READING'] += 1
+            
+            # [A] Detailed Breakdown
+            wrong_type_breakdown[cat] = wrong_type_breakdown.get(cat, 0) + 1
+            
+            # [B] Aggregated Counts (Legacy)
+            if cat == 'LISTENING': 
+                wrong_counts['LISTENING'] += 1
+            elif cat == 'VOCAB': 
+                wrong_counts['VOCAB'] += 1
+            elif cat == 'GRAMMAR': 
+                wrong_counts['GRAMMAR'] += 1
+            else: 
+                # PURPOSE, TOPIC, DATA, MEANING, BLANK, FLOW, ORDER, INSERT, SUMMARY, LONG
+                wrong_counts['READING'] += 1
+            
             wrong_question_numbers.append(question_obj.number)
     
     grade = 9
@@ -260,6 +278,7 @@ def calculate_score(student_answers, exam_info):
         'score': total_score,
         'grade': grade,
         'wrong_counts': wrong_counts,
+        'wrong_type_breakdown': wrong_type_breakdown, # [NEW]
         'wrong_question_numbers': wrong_question_numbers,
         'student_answers_dict': student_answers_dict
     }

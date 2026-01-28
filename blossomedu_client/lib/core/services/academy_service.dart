@@ -799,17 +799,82 @@ class AcademyService {
     final uri = Uri.parse(
         '${AppConfig.baseUrl}/messaging/conversations/get_or_create/');
     final headers = await _getHeaders();
-    final response = await http.post(
-      uri,
-      headers: headers,
-      body: jsonEncode({'other_user_id': otherUserId}),
-    );
+    final body = {'other_user_id': otherUserId};
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    final response =
+        await http.post(uri, headers: headers, body: jsonEncode(body));
+
+    if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes));
     } else {
       throw Exception(
           'Failed to get/create conversation: ${response.statusCode}');
+    }
+  }
+
+  // ============ MOCK EXAM API ============
+
+  // 1. Get Exam Infos (Active Templates)
+  Future<List<dynamic>> getMockExamInfos() async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/');
+    final headers = await _getHeaders();
+    final response = await http.get(uri, headers: headers);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load exam infos');
+    }
+  }
+
+  // 2. Scan OMR (Upload File)
+  Future<List<dynamic>> scanOMR(
+      int examId, List<int> fileBytes, String fileName) async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/scan/');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Token $token';
+    request.fields['exam_info_id'] = examId.toString();
+
+    request.files.add(http.MultipartFile.fromBytes('omr_file', fileBytes,
+        filename: fileName));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data['results'];
+    } else {
+      throw Exception('Scan Failed: ${response.body}');
+    }
+  }
+
+  // 3. Confirm Results
+  Future<Map<String, dynamic>> confirmMockExamResults(
+      int examId, List<dynamic> results) async {
+    final uri = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/confirm/');
+    final headers = await _getHeaders();
+
+    // Filter results to only include valid/checked ones if needed,
+    // but the Screen will likely pass only the ones to save.
+    // Ensure the structure matches MockExamConfirmSerializer
+    /*
+      Serializer expects:
+      exam_id: int
+      results: List of { student_id, score, grade, wrong_counts, wrong_type_breakdown, wrong_question_numbers, student_answers }
+    */
+    final body = {'exam_id': examId, 'results': results};
+
+    final response =
+        await http.post(uri, headers: headers, body: jsonEncode(body));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Confirm Failed: ${response.body}');
     }
   }
 
