@@ -279,10 +279,21 @@ class StudentReportViewSet(viewsets.ModelViewSet):
 
         try:
             # [FIX] Use Cumulative Queries for Progress (Up to report end date)
+            from academy.models import ClassLog
+            
+            # Defensive date handling
+            filter_date = end
+            if isinstance(end, str):
+                 from datetime import datetime
+                 try:
+                     filter_date = datetime.strptime(end, '%Y-%m-%d').date()
+                 except:
+                     pass
+
             progress_logs_qs = ClassLog.objects.filter(
-                student=student,
-                date__lte=end
-            ).prefetch_related('entries__textbook', 'entries__wordbook')
+                student_id=student.id,
+                date__lte=filter_date
+            ).prefetch_related('entries', 'entries__textbook', 'entries__wordbook')
 
             # 1. Process Textbooks from Logs (Cumulative)
             for l in progress_logs_qs:
@@ -367,7 +378,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 data['total_units'] = max_day
 
         except Exception as e:
-            # print(f"Textbook Progress Error: {e}")
+            print(f"Textbook Progress Error: {e}")
             pass
 
         # 3. Flatten Dicts to Lists
