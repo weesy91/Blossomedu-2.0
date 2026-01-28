@@ -2537,6 +2537,14 @@ class _TeacherClassLogCreateScreenState
     // [FIX] Capture parent context safe for async usage after dialog pop
     final parentContext = context;
 
+    // [FIX] Construct effective range if using units
+    String effectiveRange = row['range']?.toString() ?? '';
+    if (effectiveRange.isEmpty &&
+        row['startUnit'] != null &&
+        row['endUnit'] != null) {
+      effectiveRange = '${row['startUnit']}-${row['endUnit']}';
+    }
+
     int duration = 3;
     String mode = 'eng_kor'; // eng_kor, kor_eng
 
@@ -2559,7 +2567,7 @@ class _TeacherClassLogCreateScreenState
               Text(
                   '교재: ${_findBook(row['bookId'], type: row['type'])?['title'] ?? '알 수 없음'}'),
               const SizedBox(height: 8),
-              Text('범위: ${row['range']}'),
+              Text('범위: $effectiveRange'),
               const Divider(height: 24),
               const Text('단어 노출 시간 (초)',
                   style: TextStyle(fontWeight: FontWeight.bold)),
@@ -2628,7 +2636,7 @@ class _TeacherClassLogCreateScreenState
                 final params = {
                   'duration': duration.toString(),
                   'bookId': row['bookId'].toString(),
-                  'range': row['range'].toString(),
+                  'range': effectiveRange, // Use effectiveRange
                   'studentId': widget.studentId,
                   'mode': mode,
                 };
@@ -2669,7 +2677,8 @@ class _TeacherClassLogCreateScreenState
                     final vocabService = VocabService();
                     final result = await vocabService.getWords(
                       row['bookId'],
-                      dayRange: row['range'],
+                      dayRange: effectiveRange, // Use effectiveRange
+
                       shuffle: true,
                     );
                     var testWords = result.cast<Map<String, dynamic>>();
