@@ -384,6 +384,7 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
       child: Row(
         children: [
           Expanded(
+            flex: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -397,19 +398,24 @@ class _WordTestReviewScreenState extends State<WordTestReviewScreen> {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(q['studentAnswer'],
-                  style: TextStyle(
-                      color: q['isCorrect'] ? Colors.green : Colors.red,
-                      decoration: q['isCorrect']
-                          ? TextDecoration.none
-                          : TextDecoration.lineThrough)),
-              Text(
-                  '${q['correctAnswer']} ${q['pos'] != null ? '(${q['pos']})' : ''}',
-                  style: const TextStyle(color: Colors.blue)),
-            ],
+          Expanded(
+            flex: 6,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(q['studentAnswer'],
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        color: q['isCorrect'] ? Colors.green : Colors.red,
+                        decoration: q['isCorrect']
+                            ? TextDecoration.none
+                            : TextDecoration.lineThrough)),
+                Text(
+                    '${q['correctAnswer']} ${q['pos'] != null ? '(${q['pos']})' : ''}',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(color: Colors.blue)),
+              ],
+            ),
           )
         ],
       ),

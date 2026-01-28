@@ -266,6 +266,19 @@ class _TeacherClassLogCreateScreenState
                 final book = _findBook(bookId);
                 if (book != null) {
                   type = book['type'];
+                  publisher =
+                      _normalizePublisher(book['publisher']?.toString());
+                }
+              }
+
+              int? startUnit;
+              int? endUnit;
+              final rng = entry['progress_range']?.toString() ?? '';
+              if (rng.contains('-')) {
+                final parts = rng.split('-');
+                if (parts.length == 2) {
+                  startUnit = int.tryParse(parts[0].trim());
+                  endUnit = int.tryParse(parts[1].trim());
                 }
               }
 
@@ -273,7 +286,9 @@ class _TeacherClassLogCreateScreenState
                 'type': type,
                 'publisher': publisher,
                 'bookId': bookId,
-                'range': entry['progress_range'] ?? '',
+                'range': rng,
+                'startUnit': startUnit,
+                'endUnit': endUnit,
                 'score': entry['score'] ?? 'B',
                 'isOt': false,
               });
