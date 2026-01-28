@@ -47,6 +47,7 @@ import '../features/reports/screens/report_create_screen.dart'; // [NEW]
 import '../features/reports/screens/report_web_view_screen.dart'; // [NEW]
 import '../features/attendance/screens/attendance_kiosk_screen.dart'; // [NEW]
 import '../features/teacher/screens/mock_test_upload_screen.dart'; // [NEW]
+import '../features/teacher/screens/mock_test_manage_screen.dart'; // [NEW]
 
 final router = GoRouter(
   initialLocation: '/login',
@@ -429,6 +430,11 @@ final router = GoRouter(
     GoRoute(
       path: '/teacher/mock-test/upload',
       builder: (context, state) => const MockTestUploadScreen(),
+    ),
+    // [NEW] Mock Test Management (Answers)
+    GoRoute(
+      path: '/teacher/mock-test/manage',
+      builder: (context, state) => const MockTestManageScreen(),
     ),
   ],
 );

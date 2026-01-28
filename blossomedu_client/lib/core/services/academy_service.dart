@@ -1001,4 +1001,66 @@ class AcademyService {
       throw Exception('Excel Upload Failed: $e');
     }
   }
+
+  // [NEW] Mock Exam Info CRUD
+
+  Future<void> createMockExamInfo(Map<String, dynamic> data) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/');
+    final headers = await _getHeaders();
+    final response =
+        await http.post(url, headers: headers, body: jsonEncode(data));
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to create mock exam info: ${response.body}');
+    }
+  }
+
+  Future<void> updateMockExamInfo(int id, Map<String, dynamic> data) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/$id/');
+    final headers = await _getHeaders();
+    final response =
+        await http.patch(url, headers: headers, body: jsonEncode(data));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update mock exam info: ${response.body}');
+    }
+  }
+
+  Future<void> deleteMockExamInfo(int id) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/$id/');
+    final headers = await _getHeaders();
+    final response = await http.delete(url, headers: headers);
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete mock exam info');
+    }
+  }
+
+  // [NEW] Mock Exam Answer Key Upload
+  Future<void> uploadMockExamAnswers(
+      int id, List<int> fileBytes, String filename) async {
+    final url =
+        Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/$id/upload_answers/');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
+    try {
+      final request = http.MultipartRequest('POST', url);
+      request.headers['Authorization'] = 'Token $token';
+
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: filename),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Upload Failed: ${response.statusCode} - ${utf8.decode(response.bodyBytes)}');
+      }
+    } catch (e) {
+      throw Exception('Error uploading answers: $e');
+    }
+  }
 }

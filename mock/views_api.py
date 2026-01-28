@@ -21,10 +21,68 @@ def get_poppler_path():
     else:
         return None
 
-class MockExamInfoViewSet(viewsets.ReadOnlyModelViewSet):
+class MockExamInfoViewSet(viewsets.ModelViewSet):
+    """
+    모의고사 정답지(회차) 관리 API
+    - 목록/생성/수정/삭제
+    """
     queryset = MockExamInfo.objects.filter(is_active=True).order_by('-year', '-month')
     serializer_class = MockExamInfoSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=True, methods=['post'])
+    def upload_answers(self, request, pk=None):
+        """
+        정답지 엑셀 업로드
+        형식: 번호, 정답, 배점(선택), 유형(선택)
+        """
+        exam_info = self.get_object()
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': '파일이 제공되지 않았습니다.'}, status=400)
+            
+        try:
+            import pandas as pd
+            df = pd.read_excel(file, engine='openpyxl')
+            
+            # Clean headers (strip spaces)
+            df.columns = df.columns.astype(str).str.strip()
+            
+            updated_count = 0
+            
+            # Map headers
+            # Expected: '번호' or 'Number', '정답' or 'Answer', ...
+            col_num = next((c for c in df.columns if '번호' in c or 'No' in c), None)
+            col_ans = next((c for c in df.columns if '정답' in c or 'Answer' in c), None)
+            col_score = next((c for c in df.columns if '배점' in c or 'Score' in c), None)
+            
+            if not col_num or not col_ans:
+                return Response({'error': '엑셀에 [번호], [정답] 컬럼이 필수입니다.'}, status=400)
+                
+            questions = {q.number: q for q in exam_info.questions.all()}
+            
+            for _, row in df.iterrows():
+                try:
+                    num = int(row[col_num])
+                    ans = int(row[col_ans])
+                    
+                    if num in questions:
+                        q = questions[num]
+                        q.correct_answer = ans
+                        
+                        # Score update optional
+                        if col_score and pd.notnull(row[col_score]):
+                            q.score = int(row[col_score])
+                            
+                        q.save()
+                        updated_count += 1
+                except Exception:
+                    continue # Skip invalid rows
+            
+            return Response({'message': f'{updated_count}개 문항 정답 업데이트 완료'})
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 class MockExamViewSet(viewsets.ReadOnlyModelViewSet):
     """

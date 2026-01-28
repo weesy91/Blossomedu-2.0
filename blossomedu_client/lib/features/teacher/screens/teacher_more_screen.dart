@@ -111,6 +111,12 @@ class TeacherMoreScreen extends StatelessWidget {
                     subtitle: '스캔 파일 업로드 및 결과 저장',
                     onTap: () => context.push('/teacher/mock-test/upload'),
                   ),
+                  _MenuItem(
+                    icon: Icons.playlist_add_check,
+                    title: '모의고사 정답 관리', // [NEW]
+                    subtitle: '회차 등록 및 정답 엑셀 업로드',
+                    onTap: () => context.push('/teacher/mock-test/manage'),
+                  ),
                 ]),
 
               if (hasAdminAccess())
