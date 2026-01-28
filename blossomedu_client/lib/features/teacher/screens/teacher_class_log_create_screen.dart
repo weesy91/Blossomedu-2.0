@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // [NEW]
 import '../../../core/services/academy_service.dart';
 import '../../../core/services/vocab_service.dart';
 import 'package:url_launcher/url_launcher.dart'; // [NEW] For Projector Window
@@ -2624,90 +2626,140 @@ class _TeacherClassLogCreateScreenState
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('취소', style: TextStyle(color: Colors.grey)),
             ),
-            // [NEW] Projector Mode (New Window)
+            // [NEW] Projector Mode (New Window) - With Shared Prefs Sync
             OutlinedButton.icon(
               icon: const Icon(Icons.open_in_new, size: 16),
               label: const Text('프로젝터 실행'),
               style: OutlinedButton.styleFrom(foregroundColor: Colors.teal),
               onPressed: () async {
-                Navigator.pop(dialogContext);
+                // 1. Fetch Words First (Shuffle Here)
+                try {
+                  final vocabService = VocabService();
+                  final result = await vocabService.getWords(
+                    row['bookId'],
+                    dayRange: effectiveRange,
+                    shuffle: true, // Shuffle ONCE here
+                  );
 
-                // 1. Launch Projection in New Window
-                final params = {
-                  'duration': duration.toString(),
-                  'bookId': row['bookId'].toString(),
-                  'range': effectiveRange, // Use effectiveRange
-                  'studentId': widget.studentId,
-                  'mode': mode,
-                };
-                final uri = Uri(
-                  path: '/teacher/offline-test/projection',
-                  queryParameters: params,
-                );
-                // Need absolute URL or path? standard url_launcher with web can handle relative path if handled correctly,
-                // but typically it expects absolute or scheme. Open internal route in new tab?
-                // GoRouter doesn't easily expose full href.
-                // We can use '#' strategy manually if we know base.
-                // Assuming Hash Strategy (typical for Flutter Web): /#/teacher/...
-                final fullPath = '/#${uri.toString()}';
+                  var testWords = result
+                      .map((w) {
+                        // Normalize format
+                        if (w is! Map) return <String, dynamic>{};
+                        return {
+                          'id': w['id'],
+                          'wordId': w['word_id'] ?? 0,
+                          'english': w['english'] ?? '',
+                          'korean':
+                              w['korean'] ?? '', // Specific meaning for the POS
+                          'pos': w['pos']?.toString() ??
+                              '', // Specific POS (String)
+                        };
+                      })
+                      .where((w) => w.isNotEmpty)
+                      .toList()
+                      .cast<Map<String, dynamic>>();
 
-                // [NEW] Try Auto-Projection to Secondary Screen (Web Only)
-                bool launched = await WebMonitorHelper.openProjectorWindow(
-                    fullPath,
-                    title: 'Blossomedu Projector');
+                  if (testWords.length > 30) {
+                    testWords = testWords.sublist(0, 30);
+                  }
 
-                if (!launched) {
-                  // Fallback to standard new window
-                  if (await canLaunchUrl(Uri.parse(fullPath))) {
-                    await launchUrl(Uri.parse(fullPath),
-                        webOnlyWindowName: '_blank');
-                  } else {
-                    try {
+                  if (testWords.isEmpty) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('출제할 단어가 없습니다. 범위를 확인해주세요.')),
+                      );
+                    }
+                    return;
+                  }
+
+                  // 2. Save to SharedPreferences (For Projector)
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString(
+                      'offline_test_data', jsonEncode(testWords));
+
+                  Navigator.pop(dialogContext);
+
+                  // 3. Launch Projector with 'local' source
+                  final params = {
+                    'dataSource': 'local', // [NEW] Read from Prefs
+                    'duration': duration.toString(),
+                    'bookId': row['bookId'].toString(),
+                    'range': effectiveRange,
+                    'studentId': widget.studentId,
+                    'mode': mode,
+                  };
+                  final uri = Uri(
+                    path: '/teacher/offline-test/projection',
+                    queryParameters: params,
+                  );
+                  final fullPath = '/#${uri.toString()}';
+
+                  bool launched = await WebMonitorHelper.openProjectorWindow(
+                      fullPath,
+                      title: 'Blossomedu Projector');
+
+                  if (!launched) {
+                    if (await canLaunchUrl(Uri.parse(fullPath))) {
                       await launchUrl(Uri.parse(fullPath),
                           webOnlyWindowName: '_blank');
-                    } catch (e) {
-                      print('Launch Error: $e');
                     }
                   }
-                }
 
-                // 2. Main Window -> Grading Screen
-                if (parentContext.mounted) {
-                  try {
-                    final vocabService = VocabService();
-                    final result = await vocabService.getWords(
-                      row['bookId'],
-                      dayRange: effectiveRange, // Use effectiveRange
-
-                      shuffle: true,
-                    );
-                    var testWords = result.cast<Map<String, dynamic>>();
-                    if (testWords.length > 30)
-                      testWords = testWords.sublist(0, 30);
-
-                    final grade = await parentContext
-                        .push('/teacher/offline-test/grading', extra: {
-                      'words': testWords,
-                      'bookId': row['bookId'],
-                      'range': row['range'],
+                  // 4. Main Window -> Grading Screen (Pass EXACT words)
+                  if (parentContext.mounted) {
+                    parentContext.push('/teacher/offline-test/grading', extra: {
+                      'words': testWords, // Passed directly
                       'studentId': widget.studentId,
+                      'bookId': row['bookId'],
+                      'range': effectiveRange,
                     });
-
-                    if (grade != null && grade is String) {
-                      if (mounted) {
-                        this.setState(() {
-                          row['score'] = grade;
-                        });
-                      }
-                    }
-                  } catch (e) {
-                    print('Grading nav error: $e');
+                  }
+                } catch (e) {
+                  print('Error initializing test: $e');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('오류 발생: $e')),
+                    );
                   }
                 }
               },
             ),
             ElevatedButton(
               onPressed: () async {
+                // Main "Start Test" Button - (Kept for compatibility or remove?
+                // The user's request specifically mentioned "Test Screen" mismatch.
+                // The previous code path for "Projector" was the one being fixed.
+                // However, the user might click "Start Test" (Test Immediately) which is this button.
+                // Wait, the "Projector" button launches the projector.
+                // This "Test Start" button seems to be the "Grading Only" or "Old Flow"?
+                // Let's check the Label.
+                // Ah, the previous code had "Projector Run" and "Start Test".
+                // "Start Test" usually means Grading on this device?
+                // But the user complained about "Projector vs Grading" mismatch.
+                // Meaning they are using the Projector flow.
+                // So I will keep this button but ensure it ALSO uses the new Logic if they want Projector?
+                // actually, let's just clean up the syntax error first. The `testWords` variable
+                // and the `bookId` etc lines (2727-2731) are definitely leftovers from a bad merge.
+
+                // Logic:
+                // 1. Remove the garbage lines 2727-2742 (orphaned code).
+                // 2. Keep the "Start Test" (blue button) logic intact or update it?
+                //    The blue button (formerly line 2746) does `vocabService.getWords` and pushes `.push('/teacher/offline-test/projection' ...`?
+                //    Wait, line 2768 in original (now around 2800) pushes `offline-test/projection`?
+                //    That seems wrong. The blue button usually is for "Grading" or "Start".
+                //    Let's look at the original code again.
+                //    Original 2679: push('/teacher/offline-test/grading' ...
+                //    Wait, the previous `replace` messily pasted the NEW `OutlinedButton` logic
+                //    BUT left the tail end of the OLD `OutlinedButton` logic (orphaned `testWords` map)
+                //    AND the `ElevatedButton`.
+
+                // I will simply DELETE the orphaned code between the end of my new `OutlinedButton`
+                // and the start of the `ElevatedButton`.
+
+                // Oops, I can't write comments in `replace_file`.
+                // I will just execute the clean up.
+
                 Navigator.pop(dialogContext); // Close dialog first
 
                 try {
@@ -2715,7 +2767,7 @@ class _TeacherClassLogCreateScreenState
                   final vocabService = VocabService();
                   final result = await vocabService.getWords(
                     row['bookId'],
-                    dayRange: row['range'],
+                    dayRange: effectiveRange, // [FIX] Use effectiveRange
                     shuffle: true,
                   );
 
@@ -2725,26 +2777,24 @@ class _TeacherClassLogCreateScreenState
                     testWords = testWords.sublist(0, 30);
                   }
 
-                  // [FIX] Use parentContext for navigation
+                  // [FIX] Use parentContext for navigation to Grading
                   if (parentContext.mounted) {
+                    // Note: The original code pushed to 'projection' here? (line 2768 in dump).
+                    // That seems odd for a "Start Test" button if there is a separate "Run Projector" button.
+                    // A check of line 2679 in the FIRST view_file showed:
+                    // `push('/teacher/offline-test/grading', extra: {`
+                    // So the Blue Button is for GRADING (Offline Test on Tablet/Phone).
+
                     final grade = await parentContext
-                        .push('/teacher/offline-test/projection', extra: {
+                        .push('/teacher/offline-test/grading', extra: {
                       'words': testWords,
-                      'duration': duration, // int
-                      'mode': mode,
-                      'bookId': row['bookId'], // int
-                      'range': row['range'],
                       'studentId': widget.studentId, // String
+                      'bookId': row['bookId'], // int
+                      'range': effectiveRange, // String
                     });
 
                     // If grade returned, update row
                     if (grade != null && grade is String) {
-                      // Note: 'setState' here refers to the DIALOG'S setState if inside this block?
-                      // Actually, this async block closes over the outer 'this.setState' because
-                      // 'StatefulBuilder' provides 'setState' as argument, but we are in listener.
-                      // Ideally we want to update the SCREEN state.
-                      // Since we are in the State class method, direct call to 'setState' updates the screen.
-                      // But we must check 'mounted' for the Screen.
                       if (mounted) {
                         this.setState(() {
                           row['score'] = grade; // Auto-fill grade (A/B/C/F)
