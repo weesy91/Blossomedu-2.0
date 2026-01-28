@@ -1153,7 +1153,7 @@ class _StudyScreenState extends State<StudyScreen>
                                           ? Colors.red
                                           : Colors.grey),
                                   const SizedBox(height: 8),
-                                  Text('\uC2E4\uC804 \uC2E4\uD5D8',
+                                  Text('실전 시험',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: testMode == 'test'
@@ -1268,7 +1268,7 @@ class _StudyScreenState extends State<StudyScreen>
                         child: Text(
                             testMode == 'study'
                                 ? '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30'
-                                : '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30',
+                                : '시험 \uC2DC\uC791\uD558\uAE30',
                             style: const TextStyle(
                                 fontSize: 18,
                                 color: Colors.white,
@@ -1569,7 +1569,7 @@ class _StudyScreenState extends State<StudyScreen>
                                       fontWeight: FontWeight.bold)),
                               SizedBox(height: 8),
                               Text(
-                                  '\uC544\uB798\uC5D0\uC11C \uB2E8\uC5B4\uC7A5\uC744 \uD559\uC2B5\uD558\uAC70\uB098 \uC2E4\uD5D8\uC744 \uBD10\uBCF4\uC138\uC694.',
+                                  '\uC544\uB798\uC5D0\uC11C \uB2E8\uC5B4\uC7A5\uC744 \uD559\uC2B5\uD558\uAC70\uB098 시험\uC744 \uBD10\uBCF4\uC138\uC694.',
                                   style: TextStyle(color: Colors.grey)),
                             ],
                           ),
@@ -1703,7 +1703,7 @@ class _StudyScreenState extends State<StudyScreen>
                                             ? Colors.red
                                             : Colors.grey),
                                     const SizedBox(height: 8),
-                                    Text('\uC2E4\uC804 \uC2E4\uD5D8',
+                                    Text('\uC2E4\uC804 시험',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: testMode == 'test'
@@ -1806,7 +1806,7 @@ class _StudyScreenState extends State<StudyScreen>
                           ),
                           child: Text(
                               testMode == 'test'
-                                  ? '\uC2E4\uD5D8 \uC2DC\uC791\uD558\uAE30'
+                                  ? '시험 \uC2DC\uC791\uD558\uAE30'
                                   : '\uD559\uC2B5 \uC2DC\uC791\uD558\uAE30',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -1823,4 +1823,3 @@ class _StudyScreenState extends State<StudyScreen>
         });
   }
 }
-
