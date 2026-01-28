@@ -1091,7 +1091,46 @@ class _StudyScreenState extends State<StudyScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
+                        // [NEW] Practice Mode Button
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => testMode = 'practice'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: testMode == 'practice'
+                                    ? Colors.orange.withOpacity(0.1)
+                                    : Colors.white,
+                                border: Border.all(
+                                    color: testMode == 'practice'
+                                        ? Colors.orange
+                                        : Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.edit_note,
+                                      color: testMode == 'practice'
+                                          ? Colors.orange
+                                          : Colors.grey),
+                                  const SizedBox(height: 8),
+                                  Text('연습 모드',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: testMode == 'practice'
+                                              ? Colors.orange
+                                              : Colors.black)),
+                                  const SizedBox(height: 4),
+                                  const Text('기록 X',
+                                      style: TextStyle(
+                                          fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: GestureDetector(
                             onTap: () => setState(() => testMode = 'test'),
@@ -1133,8 +1172,8 @@ class _StudyScreenState extends State<StudyScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // 3. Question Type
-                    if (testMode == 'test') ...[
+                    // 3. Question Type (show for test AND practice)
+                    if (testMode == 'test' || testMode == 'practice') ...[
                       const Text('\uBB38\uC81C \uC720\uD615',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),

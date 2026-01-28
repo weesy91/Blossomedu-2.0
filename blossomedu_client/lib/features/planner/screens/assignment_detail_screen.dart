@@ -271,6 +271,28 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
     }
   }
 
+  /// [NEW] 연습 모드로 진입 (타이머 없이 입력 연습)
+  void _startPracticeMode() {
+    if (_assignmentData == null) return;
+
+    final bookId = _assignmentData!['related_vocab_book'];
+    final start = _assignmentData!['vocab_range_start'];
+    final end = _assignmentData!['vocab_range_end'];
+
+    if (bookId != null && start != null && end != null) {
+      context.push('/student/test/start', extra: {
+        'bookId': bookId,
+        'range': '$start-$end',
+        'assignmentId': '',
+        'testMode': 'practice', // 연습 모드
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('단어장 정보가 올바르지 않습니다.')),
+      );
+    }
+  }
+
   /// [NEW] 강의 링크 열기 (Safe Launcher 사용)
   void _openLectureLink(String? url) {
     if (url == null || url.isEmpty) return;
@@ -405,6 +427,26 @@ class _AssignmentDetailScreenState extends State<AssignmentDetailScreen> {
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // [NEW] 연습 먼저 하기 버튼
+        SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _startPracticeMode,
+            icon: const Icon(Icons.edit_note),
+            label: const Text(
+              '✏️ 연습 먼저 하기',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.orange,
+              side: BorderSide(color: Colors.orange.withOpacity(0.5)),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),

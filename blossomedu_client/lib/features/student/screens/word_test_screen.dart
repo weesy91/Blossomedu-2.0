@@ -9,7 +9,7 @@ class WordTestScreen extends StatefulWidget {
   final int bookId;
   final String testRange;
   final String assignmentId;
-  final String testMode; // 'study' or 'test'
+  final String testMode; // 'study', 'test', or 'practice'
   final String questionType; // 'word_to_meaning' or 'meaning_to_word'
 
   final List<Map<String, String>>?
@@ -149,8 +149,7 @@ class _WordTestScreenState extends State<WordTestScreen>
       }
     }
 
-    // 3. Check Penalty (only in Test Mode)
-    // 3. Check Penalty (only in Test Mode)
+    // 3. Check Penalty (only in Test Mode, NOT practice)
     if (widget.testMode == 'test' && !_isLoading && _words.isNotEmpty) {
       final allowed = await _checkPenalty();
       if (allowed) {
@@ -162,7 +161,7 @@ class _WordTestScreenState extends State<WordTestScreen>
         if (mounted) _showPenaltyDialog();
       }
     } else {
-      // If study mode, just focus
+      // Study or Practice mode - just focus (no timer, no penalty)
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _focusNode.requestFocus();
       });
@@ -411,6 +410,54 @@ class _WordTestScreenState extends State<WordTestScreen>
           );
         }
       }
+    } else if (widget.testMode == 'practice') {
+      // [NEW] Practice Mode - Local Score Calculation, No Server, No Wrong Word Tracking
+      int correctCount = 0;
+      final List<Map<String, dynamic>> wrongWords = [];
+      final List<Map<String, String>> answersHistory = [];
+
+      for (int i = 0; i < _words.length; i++) {
+        final word = _words[i];
+        final userInput =
+            i < _userAnswers.length ? _userAnswers[i].trim().toLowerCase() : '';
+        final correctAnswer =
+            (word['meaning'] ?? '').toString().trim().toLowerCase();
+
+        // Simple exact match for practice (can be enhanced)
+        final isCorrect =
+            userInput.isNotEmpty && correctAnswer.contains(userInput);
+
+        if (isCorrect) {
+          correctCount++;
+        } else {
+          wrongWords.add(word);
+        }
+
+        answersHistory.add({
+          'question': word['word'] ?? '',
+          'answer': word['meaning'] ?? '',
+          'user_input': i < _userAnswers.length ? _userAnswers[i] : '',
+          'is_correct': isCorrect.toString(),
+        });
+      }
+
+      final int totalCount = _words.length;
+      final int score =
+          totalCount > 0 ? ((correctCount / totalCount) * 100).round() : 0;
+
+      if (mounted) {
+        _hasFinishedTest = true;
+        context.pushReplacement('/student/test/result', extra: {
+          'score': score,
+          'totalCount': totalCount,
+          'correctCount': correctCount,
+          'elapsedTime': 0,
+          'wrongWords': wrongWords,
+          'answers': answersHistory,
+          'testId': 0, // No server test ID
+          'isPractice': true, // [NEW] Flag for result screen
+        });
+      }
     } else {
       // Study Mode Finish
       showDialog(
@@ -464,11 +511,13 @@ class _WordTestScreenState extends State<WordTestScreen>
     }
 
     final currentWord = _words[_currentIndex];
-    final bool isStudy = widget.testMode == 'study';
+    final bool isStudy = widget.testMode ==
+        'study'; // Only study = cards, test/practice = typing
+    final bool isPractice = widget.testMode == 'practice';
     final double totalProgress = (_currentIndex + 1) / _words.length;
 
     return PopScope(
-      canPop: _canPop || widget.testMode != 'test' || _hasFinishedTest,
+      canPop: _canPop || (widget.testMode != 'test') || _hasFinishedTest,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
@@ -483,7 +532,7 @@ class _WordTestScreenState extends State<WordTestScreen>
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
         appBar: AppBar(
-          title: Text(isStudy ? '카드 학습' : '실전 시험'),
+          title: Text(isStudy ? '카드 학습' : (isPractice ? '연습 모드' : '실전 시험')),
           centerTitle: true,
           elevation: 0,
           backgroundColor: Colors.white,
@@ -529,8 +578,8 @@ class _WordTestScreenState extends State<WordTestScreen>
               ),
             ),
 
-            // [NEW POSITION] Timer Bar (Test Mode Only) - Moved to Bottom
-            if (!isStudy)
+            // [NEW POSITION] Timer Bar (Test Mode Only - NOT practice) - Moved to Bottom
+            if (widget.testMode == 'test')
               AnimatedBuilder(
                 animation: _timerController,
                 builder: (context, child) {
