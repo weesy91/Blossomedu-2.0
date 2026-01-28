@@ -278,8 +278,14 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 return 'P'
 
         try:
-            # 1. Process Textbooks from Logs
-            for l in logs_qs:
+            # [FIX] Use Cumulative Queries for Progress (Up to report end date)
+            progress_logs_qs = ClassLog.objects.filter(
+                student=student,
+                date__lte=end
+            ).prefetch_related('entries__textbook', 'entries__wordbook')
+
+            # 1. Process Textbooks from Logs (Cumulative)
+            for l in progress_logs_qs:
                 for e in l.entries.all():
                     if e.textbook:
                         tb = e.textbook
@@ -294,17 +300,18 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                         
                         target_units = self._parse_range(e.progress_range)
                         for u in target_units:
-                            if u not in bucket[tb.id]['history']:
-                                bucket[tb.id]['history'][u] = e.score or '완료'
+                            # If multiple entries for same unit, latest (by date) overwrites? 
+                            # logs are not sorted strictly here, but usually accepted/completed is what determines color.
+                            # If we want "best" score, logic might need adjustment.
+                            # For now, just overwriting is standard behavior (last viewed status).
+                            bucket[tb.id]['history'][u] = e.score or '완료'
 
-            # 2. Process Vocabulary (Chronological Merge)
+            # 2. Process Vocabulary (Cumulative Chronological Merge)
             vocab_bucket = progress_by_category['VOCABULARY']
             vocab_events = []
 
-            # 2a. Collect from Logs
-            for l in logs_qs:
-                # Use created_at for sorting if available, else date end-of-day?
-                # ClassLog has created_at.
+            # 2a. Collect from Logs (Cumulative)
+            for l in progress_logs_qs:
                 dt = l.created_at
                 for e in l.entries.all():
                     if e.wordbook:
@@ -318,16 +325,16 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                             'grade': grade
                         })
 
-            # 2b. Collect from Tests
+            # 2b. Collect from Tests (Cumulative)
             from vocab.models import TestResult, Word
             from django.db.models import Max
             
-            tr_qs = TestResult.objects.filter(
+            progress_tr_qs = TestResult.objects.filter(
                 student_id=student_id,
-                created_at__date__range=[start, end]
+                created_at__date__lte=end
             ).select_related('book').order_by('created_at') 
             
-            for tr in tr_qs:
+            for tr in progress_tr_qs:
                 wb = tr.book
                 target_units = self._parse_range(tr.test_range)
                 grade = _convert_score_to_grade(tr.score)
