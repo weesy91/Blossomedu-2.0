@@ -112,10 +112,18 @@ class StudentReportViewSet(viewsets.ModelViewSet):
         cumulative_passed = 0
         try:
             from vocab.models import TestResult
+            
+            # [FIX] Cumulative Vocab: Up to report end date
+            # Sort by created_at ascending for correct history calculation
             vocab_qs = TestResult.objects.filter(
                 student_id=student_id,
-                created_at__date__range=[start, end]
-            ).select_related('book').prefetch_related('details').order_by('-created_at')
+                created_at__date__lte=end
+            ).select_related('book').prefetch_related('details').order_by('created_at')
+            
+            # [FIX] Track Best Score per Unit to avoid double counting
+            # Key: (book_id, range_str) -> Value: Max Score
+            best_scores = {}
+            current_total_score = 0
             
             for v in vocab_qs:
                 try:
@@ -127,8 +135,22 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                                 'student': d.student_answer,
                                 'answer': d.correct_answer
                             })
-                    cumulative_passed += v.score
-                    vocab_tests.append({
+                    
+                    # Update Aggregate Score Logic
+                    key = (v.book_id, v.test_range)
+                    # For safety, parse score to int/float if needed (v.score is int usually)
+                    my_score = v.score or 0
+                    prev_best = best_scores.get(key, 0)
+                    
+                    if my_score > prev_best:
+                        # Add the improvement to total
+                        diff = my_score - prev_best
+                        current_total_score += diff
+                        best_scores[key] = my_score
+                    
+                    # For the graph point, we use the CURRENT total at this point in time
+                    # Insert at 0 so the List is DESCENDING (Latest First), but the loop ran ASC.
+                    vocab_tests.insert(0, {
                         'created_at': v.created_at,
                         'score': v.score,
                         'total_count': v.total_count,
@@ -136,7 +158,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                         'book__title': v.book.title,
                         'test_range': v.test_range,
                         'wrong_words': wrong_words,
-                        'cumulative_passed': cumulative_passed, 
+                        'cumulative_passed': current_total_score, 
                     })
                 except Exception:
                     continue

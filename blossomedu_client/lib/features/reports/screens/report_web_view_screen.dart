@@ -523,19 +523,34 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
             spacing: 4,
             runSpacing: 4,
             children: List.generate(30, (index) {
-              // Mock logic: Randomly colored for now as 'vocab' list might not have specific date per item easily mapped to last 30 days without parsing
-              // In real implementation, parse dates from vocab list
-              final color = (index % 3 == 0)
-                  ? Colors.green.shade100
-                  : Colors.grey.shade100;
-              final activeColor = (index % 2 == 0) ? Colors.green : color;
+              // Calculate date for this cell (Today - 29 + index)
+              // Wait, usually heatmap is ordered [Day-29, ..., Today]
+              final today = DateTime.now();
+              // Normalize today to start of day
+              final now = DateTime(today.year, today.month, today.day);
+              final targetDate = now.subtract(Duration(days: 29 - index));
 
-              // Simplified: Just showing a grid visual
+              // Check if activity exists on targetDate
+              bool hasActivity = false;
+              for (var v in vocab) {
+                if (v['created_at'] != null) {
+                  DateTime? d = DateTime.tryParse(v['created_at'].toString());
+                  if (d != null) {
+                    if (d.year == targetDate.year &&
+                        d.month == targetDate.month &&
+                        d.day == targetDate.day) {
+                      hasActivity = true;
+                      break;
+                    }
+                  }
+                }
+              }
+
               return Container(
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                    color: activeColor, // Use activeColor
+                    color: hasActivity ? Colors.green : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(4)),
               );
             }),
