@@ -22,10 +22,10 @@ class Command(BaseCommand):
 
             if not exists:
                 # 3. Create MOCK schedule
-                # Replace '독해' or 'Reading' in name with '모의고사'
-                new_name = r.name.replace('독해', '모의고사').replace('Reading', 'Mock')
-                if '모의고사' not in new_name and 'Mock' not in new_name:
-                    new_name = f"{new_name} (모의고사)"
+                # [FIX] Standardize name: "모의고사 HH:MM"
+                # (Ignore original name to avoid "Fri 16:00" vs "16:00" inconsistency)
+                time_str = r.start_time.strftime('%H:%M')
+                new_name = f"모의고사 {time_str}"
 
                 ClassTime.objects.create(
                     branch=r.branch,
