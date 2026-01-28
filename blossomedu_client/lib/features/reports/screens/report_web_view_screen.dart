@@ -571,40 +571,49 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
     final int assignLate = bd['late'] ?? 0;
     final int assignMissing = bd['missing'] ?? 0;
 
-    return Row(
-      children: [
-        _buildStatBox(
-          '출석률',
-          '$present / $totalAtt', // Fraction Format
-          subWidget: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _miniLabel('등원 $present', Colors.green),
-              const SizedBox(width: 8),
-              _miniLabel('지각 $late', Colors.orange),
-              const SizedBox(width: 8),
-              _miniLabel('결석 $absent', Colors.red),
-            ],
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildStatBox(
+            '출석률',
+            '$present / $totalAtt', // Fraction Format
+            subWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _miniLabel('등원 $present', Colors.green),
+                const SizedBox(width: 8),
+                _miniLabel('지각 $late', Colors.orange),
+                const SizedBox(width: 8),
+                _miniLabel('결석 $absent', Colors.red),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        _buildStatBox(
-          '과제 수행',
-          '${stats['assignment_completed']}/${stats['assignment_count']}',
-          subWidget: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _miniLabel('정시 $assignOnTime', Colors.green),
-              const SizedBox(width: 8),
-              _miniLabel('지각 $assignLate', Colors.orange),
-              const SizedBox(width: 8),
-              _miniLabel('미제출 $assignMissing', Colors.red),
-            ],
+          const SizedBox(width: 12),
+          _buildStatBox(
+            '과제 수행',
+            '${stats['assignment_completed']}/${stats['assignment_count']}',
+            subWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _miniLabel('정시 $assignOnTime', Colors.green),
+                const SizedBox(width: 8),
+                _miniLabel('지각 $assignLate', Colors.orange),
+                const SizedBox(width: 8),
+                _miniLabel('미제출 $assignMissing', Colors.red),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        _buildStatBox('단어 평균', '${stats['vocab_avg']}%'),
-      ],
+          const SizedBox(width: 12),
+          _buildStatBox(
+            '단어 평균',
+            '${stats['vocab_avg']}%',
+            subWidget: const SizedBox(
+                height:
+                    14), // Spacer to match height if needed, or rely on stretch
+          ),
+        ],
+      ),
     );
   }
 
