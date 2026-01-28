@@ -316,6 +316,16 @@ class _TeacherClassLogCreateScreenState
                     return false;
                   }
 
+                  // [FIX CRITICAL] Do not pull in assignments that are already linked to ANOTHER log.
+                  final originLogId = asm['origin_log'];
+                  if (originLogId != null) {
+                    // If we are creating new log, any origin_log means it's taken.
+                    // If we are editing, only allow if it matches THIS log (though duplicates removed later)
+                    if (_editingLogId == null || originLogId != _editingLogId) {
+                      return false;
+                    }
+                  }
+
                   final dStr = asm['due_date'];
                   if (dStr == null) return false;
                   final d = DateTime.tryParse(dStr);
@@ -361,6 +371,13 @@ class _TeacherClassLogCreateScreenState
                 // [FIX] Cross-Subject Filtering
                 final originSub = asm['origin_log_subject'];
                 if (originSub != null && originSub != widget.subject) {
+                  return false;
+                }
+
+                // [FIX CRITICAL] Do not pull in assignments that are already linked to ANOTHER log.
+                final originLogId = asm['origin_log'];
+                if (originLogId != null) {
+                  // New Log mode: Discard any assignment already claimed by a log.
                   return false;
                 }
 
