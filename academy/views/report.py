@@ -120,33 +120,42 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                 created_at__date__lte=end
             ).select_related('book').prefetch_related('details').order_by('created_at')
             
-            # [FIX] Track Best Score per Unit to avoid double counting
-            # Key: (book_id, range_str) -> Value: Max Score
-            best_scores = {}
+            # [FIX] Word-Level State Tracking (User Request)
+            # Match logic with Dashboard Grid
+            word_state = {} # word_key -> boolean (is_correct)
             current_total_score = 0
             
+            def _normalize_word(t):
+                return t.strip().lower() if t else ''
+
+            def _update_state(w_key, is_correct):
+                nonlocal current_total_score
+                prev = word_state.get(w_key)
+                if prev is True and not is_correct:
+                    current_total_score -= 1
+                if prev is not True and is_correct:
+                    current_total_score += 1
+                word_state[w_key] = is_correct
+
             for v in vocab_qs:
                 try:
                     wrong_words = []
-                    for d in v.details.all():
+                    # Filter details for this test
+                    # Since we prefetched details, iterating v.details.all() is efficient
+                    current_details = v.details.all()
+                    
+                    for d in current_details:
                         if not d.is_correct:
                             wrong_words.append({
                                 'word': d.word_question,
                                 'student': d.student_answer,
                                 'answer': d.correct_answer
                             })
-                    
-                    # Update Aggregate Score Logic
-                    key = (v.book_id, v.test_range)
-                    # For safety, parse score to int/float if needed (v.score is int usually)
-                    my_score = v.score or 0
-                    prev_best = best_scores.get(key, 0)
-                    
-                    if my_score > prev_best:
-                        # Add the improvement to total
-                        diff = my_score - prev_best
-                        current_total_score += diff
-                        best_scores[key] = my_score
+                        
+                        # Update State
+                        w_key = _normalize_word(d.word_question)
+                        if w_key:
+                            _update_state(w_key, d.is_correct)
                     
                     # For the graph point, we use the CURRENT total at this point in time
                     # Insert at 0 so the List is DESCENDING (Latest First), but the loop ran ASC.
@@ -162,6 +171,10 @@ class StudentReportViewSet(viewsets.ModelViewSet):
                     })
                 except Exception:
                     continue
+            
+            # Sync final score to outer variable
+            cumulative_passed = current_total_score
+            
         except Exception:
             pass
 
