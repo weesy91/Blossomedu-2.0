@@ -279,7 +279,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
 
         try:
             # [FIX] Use Cumulative Queries for Progress (Up to report end date)
-            from academy.models import ClassLog
+            # from academy.models import ClassLog (Removed to avoid UnboundLocalError masking global)
             
             # Defensive date handling
             filter_date = end
