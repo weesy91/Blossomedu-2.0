@@ -66,8 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Overdue Check
         if (datePart.compareTo(todayStr) < 0) {
-          String? originDateStr =
-              a['origin_log_date'] ?? a['start_date'] ?? a['due_date'];
+          // [FIX] Use due_date as base for 7-day makeup window
+          String? originDateStr = a['due_date'];
           if (originDateStr != null) {
             try {
               final baseDate = DateTime.parse(originDateStr);
