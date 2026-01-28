@@ -421,47 +421,80 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
       {required int totalUnits, required Map history}) {
     if (totalUnits <= 0) return const SizedBox();
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final double totalWidth = constraints.maxWidth;
-      // Spacing between blocks
-      final double spacing = 2.0;
-      // Calculate individual block width
-      // formula: (totalWidth - (spacing * (count - 1))) / count
-      final double blockWidth =
-          (totalWidth - (spacing * (totalUnits - 1))) / totalUnits;
+    if (totalUnits <= 0) return const SizedBox();
 
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(totalUnits, (index) {
-          final unitNum = index + 1;
-          final score = history[unitNum.toString()]; // Key is string from JSON
+    const int itemsPerRow = 10;
+    final int rowCount = (totalUnits / itemsPerRow).ceil();
 
-          Color color = Colors.grey.shade200; // Default empty
-          final s = score?.toString().toUpperCase();
+    return Column(
+      children: List.generate(rowCount, (rowIndex) {
+        final int start = rowIndex * itemsPerRow;
+        final int end = (start + itemsPerRow) > totalUnits
+            ? totalUnits
+            : start + itemsPerRow;
+        final int itemsInThisRow = end - start;
 
-          if (s == 'A') {
-            color = const Color(0xFF2962FF); // Blue A700
-          } else if (s == 'B') {
-            color = const Color(0xFF00C853); // Green A700
-          } else if (s == 'C') {
-            color = const Color(0xFFFFAB00); // Amber A700
-          } else if (s == 'F') {
-            color = const Color(0xFFD50000); // Red A700
-          } else if (s == 'P' || s == '수업' || s == '완료') {
-            color = const Color(0xFF00B8D4); // Cyan A700 (Completed)
-          }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 4), // Line spacing
+          child: Row(
+            children: [
+              // True Items
+              ...List.generate(itemsInThisRow, (index) {
+                final globalIndex = start + index;
+                final unitNum = globalIndex + 1;
+                final score = history[unitNum.toString()];
 
-          return Container(
-            width: blockWidth < 2 ? 2 : blockWidth, // Minimum visibility
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          );
-        }),
-      );
-    });
+                Color color = Colors.grey.shade200;
+                Color textColor = Colors.grey.shade600;
+
+                final s = score?.toString().toUpperCase();
+                if (s == 'A') {
+                  color = const Color(0xFF2962FF);
+                  textColor = Colors.white;
+                } else if (s == 'B') {
+                  color = const Color(0xFF00C853);
+                  textColor = Colors.white;
+                } else if (s == 'C') {
+                  color = const Color(0xFFFFAB00);
+                  textColor = Colors.white;
+                } else if (s == 'F') {
+                  color = const Color(0xFFD50000);
+                  textColor = Colors.white;
+                } else if (s == 'P' || s == '수업' || s == '완료') {
+                  color = const Color(0xFF00B8D4);
+                  textColor = Colors.white;
+                }
+
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: Container(
+                      height: 18, // Slightly taller for text
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$unitNum',
+                        style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: textColor),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              // Spacer Items (to keep alignment in last row)
+              ...List.generate(itemsPerRow - itemsInThisRow, (_) {
+                return const Expanded(child: SizedBox());
+              }),
+            ],
+          ),
+        );
+      }),
+    );
   }
 
   Widget _buildVocabHeatmap(List vocab) {
@@ -516,69 +549,73 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
   }
 
   Widget _buildSummarySection(Map<String, dynamic> stats) {
+    // [FIX] Calculate Attendance Counts locally
+    int present = 0;
+    int late = 0;
+    int absent = 0;
+    int totalAtt = 0;
+
+    if (_report != null && _report!['data_snapshot'] != null) {
+      final att = _report!['data_snapshot']['attendance'] as List?;
+      if (att != null) {
+        present = att.where((e) => e['status'] == 'PRESENT').length;
+        late = att.where((e) => e['status'] == 'LATE').length;
+        absent = att.where((e) => e['status'] == 'ABSENT').length;
+        totalAtt = present + late + absent; // Total scheduled days
+      }
+    }
+
+    // Assignment Breakdown
+    final bd = stats['assignment_breakdown'] ?? {};
+    final int assignOnTime = bd['on_time'] ?? 0;
+    final int assignLate = bd['late'] ?? 0;
+    final int assignMissing = bd['missing'] ?? 0;
+
     return Row(
       children: [
-        _buildStatBox('출석률', '${stats['attendance_rate'].round()}%', onTap: () {
-          // Click to show details
-          if (_report != null) {
-            final att = _report!['data_snapshot']['attendance'] as List;
-            int present = att.where((e) => e['status'] == 'PRESENT').length;
-            int late = att.where((e) => e['status'] == 'LATE').length;
-            int absent = att.where((e) => e['status'] == 'ABSENT').length;
-
-            showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                      title: const Text('출석 상세'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _statusRow('🟢 등원', '$present회'),
-                          _statusRow('🟡 지각', '$late회'),
-                          _statusRow('🔴 결석', '$absent회'),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('닫기'))
-                      ],
-                    ));
-          }
-        }),
+        _buildStatBox(
+          '출석률',
+          '$present / $totalAtt', // Fraction Format
+          subWidget: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _miniLabel('등원 $present', Colors.green),
+              const SizedBox(width: 8),
+              _miniLabel('지각 $late', Colors.orange),
+              const SizedBox(width: 8),
+              _miniLabel('결석 $absent', Colors.red),
+            ],
+          ),
+        ),
         const SizedBox(width: 12),
-        _buildStatBox('과제 수행',
-            '${stats['assignment_completed']}/${stats['assignment_count']}',
-            onTap: () {
-          final bd = stats['assignment_breakdown'];
-          if (bd != null) {
-            showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                      title: const Text('과제 수행 상세'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _statusRow('🟢 정시 제출', '${bd['on_time']}회'),
-                          _statusRow('🟡 지각 제출', '${bd['late']}회'),
-                          _statusRow('🔴 미제출', '${bd['missing']}회'),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('닫기'))
-                      ],
-                    ));
-          }
-        }),
+        _buildStatBox(
+          '과제 수행',
+          '${stats['assignment_completed']}/${stats['assignment_count']}',
+          subWidget: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _miniLabel('정시 $assignOnTime', Colors.green),
+              const SizedBox(width: 8),
+              _miniLabel('지각 $assignLate', Colors.orange),
+              const SizedBox(width: 8),
+              _miniLabel('미제출 $assignMissing', Colors.red),
+            ],
+          ),
+        ),
         const SizedBox(width: 12),
         _buildStatBox('단어 평균', '${stats['vocab_avg']}%'),
       ],
     );
   }
 
-  Widget _buildStatBox(String label, String value, {VoidCallback? onTap}) {
+  Widget _miniLabel(String text, Color color) {
+    return Text(text,
+        style:
+            TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold));
+  }
+
+  Widget _buildStatBox(String label, String value,
+      {VoidCallback? onTap, Widget? subWidget}) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -598,12 +635,16 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
             children: [
               Text(value,
                   style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(label,
                   style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              if (subWidget != null) ...[
+                const SizedBox(height: 8),
+                subWidget,
+              ]
             ],
           ),
         ),
@@ -1011,20 +1052,5 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
         ),
       );
     }).toList());
-  }
-
-  Widget _statusRow(String label, String count) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 16)),
-          Text(count,
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
   }
 }
