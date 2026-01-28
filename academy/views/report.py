@@ -398,7 +398,7 @@ class StudentReportViewSet(viewsets.ModelViewSet):
             
             for a in assignments:
                 status = a.get('status', '미제출')
-                if status == '제출완료': # On-time
+                if status == '제출완료' or status == '승인(완료)' or status == '검사 대기': # On-time
                     assign_on_time += 1
                 elif status == '지각제출': # Late
                     assign_late += 1
