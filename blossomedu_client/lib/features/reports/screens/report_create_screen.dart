@@ -242,41 +242,366 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
   }
 
   Widget _buildReportContent() {
-    final stats = _previewData!['stats'];
-    final logs = _previewData!['logs'] as List;
-    final assignments = _previewData!['assignments'] as List;
-    final vocab = _previewData!['vocab'] as List;
+    return DefaultTabController(
+      length: 5,
+      child: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            child: const TabBar(
+              isScrollable: true,
+              labelColor: Colors.blue,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Colors.blue,
+              tabs: [
+                Tab(text: '개요'),
+                Tab(text: '단어'),
+                Tab(text: '과제'),
+                Tab(text: '수업일지'),
+                Tab(text: '모의고사'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 600, // Fixed height for tab content
+            child: TabBarView(
+              children: [
+                _buildOverviewTab(),
+                _buildVocabTab(),
+                _buildAssignmentsTab(),
+                _buildLogsTab(),
+                _buildMockTestTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildOverviewTab() {
+    final stats = _previewData!['stats'];
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSummarySection(stats),
+          const SizedBox(height: 24),
+          const Text('선생님 총평',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _commentController,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: '이번 달 학습 태도나 성취도에 대해 작성해주세요.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('이번 달 진도',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          // Textbook progress is usually part of overview, keeping it simple for now
+          // Assuming stats might have progress data or just placeholder
+          const SizedBox(height: 100), // Spacing
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVocabTab() {
+    final vocab = _previewData!['vocab'] as List;
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildVocabHeatmap(vocab),
+          const SizedBox(height: 24),
+          if (vocab.isNotEmpty) _buildVocabChart(vocab),
+          const SizedBox(height: 24),
+          _buildVocabList(vocab),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssignmentsTab() {
+    final assignments = _previewData!['assignments'] as List;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('과제 내역 (${assignments.length}건)'),
+          ...assignments.map((a) => ExpansionTile(
+                leading: Icon(
+                  a['is_completed']
+                      ? Icons.check_circle
+                      : Icons.circle_outlined,
+                  color: a['is_completed'] ? Colors.green : Colors.red,
+                ),
+                title: Text(a['title']),
+                subtitle: Text(a['status'] ?? '-'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (a['submission_image'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: GestureDetector(
+                              onTap: () => showDialog(
+                                  context: context,
+                                  builder: (_) => Dialog(
+                                      child: Image.network(
+                                          '${AppConfig.baseUrl}${a['submission_image']}'))),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('📷 인증 사진 (탭하여 확대)',
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                        '${AppConfig.baseUrl}${a['submission_image']}',
+                                        height: 120,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const SizedBox()),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (a['feedback'] != null &&
+                            a['feedback'].toString().isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8)),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('👨‍🏫 선생님 피드백',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: Colors.blue)),
+                                  const SizedBox(height: 4),
+                                  Text(a['feedback'],
+                                      style: TextStyle(
+                                          color: Colors.blue.shade900)),
+                                ]),
+                          ),
+                        if (a['due_date'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                                '마감일: ${a['due_date'].toString().substring(0, 10)}',
+                                style: const TextStyle(color: Colors.grey)),
+                          ),
+                      ],
+                    ),
+                  )
+                ],
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogsTab() {
+    final logs = _previewData!['logs'] as List;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('수업 일지 (${logs.length}건)'),
+          ...logs.map((l) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.grey.withOpacity(0.1), blurRadius: 6)
+                  ],
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                              color: Colors.indigo.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4)),
+                          child: Text(
+                              _getSubjectName(
+                                  l['subject_code'] ?? l['subject']),
+                              style: const TextStyle(
+                                  color: Colors.indigo,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('${l['date']}',
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // 진도
+                    if (l['details'] != null &&
+                        (l['details'] as List).isNotEmpty) ...[
+                      const Text('📚 진도 및 학습 내용',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      ...(l['details'] as List).map((d) {
+                        final score = d['score'];
+                        Color badgeColor = Colors.grey;
+                        if (score == 'A') badgeColor = Colors.blue;
+                        if (score == 'B') badgeColor = Colors.green;
+                        if (score == 'C') badgeColor = Colors.orange;
+                        if (score == 'F') badgeColor = Colors.red;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                      color: badgeColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: badgeColor)),
+                                  child: Text(score,
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: badgeColor,
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                                Expanded(
+                                    child: Text(d['text'] ?? '',
+                                        style: const TextStyle(
+                                            fontSize: 13, height: 1.3))),
+                              ]),
+                        );
+                      }),
+                      const SizedBox(height: 12),
+                    ],
+                    // 과제 (Updated with Status Check)
+                    if (l['homeworks'] != null &&
+                        (l['homeworks'] as List).isNotEmpty) ...[
+                      const Text('📝 배부된 과제',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      ...(l['homeworks'] as List).map((h) {
+                        final isCompleted = h['is_completed'] == true;
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 0, top: 4),
+                          child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(top: 2, right: 6),
+                                  child: Icon(
+                                      isCompleted
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                      size: 14,
+                                      color: isCompleted
+                                          ? Colors.green
+                                          : Colors.red),
+                                ),
+                                Expanded(
+                                    child: Text('${h['title']}',
+                                        style: const TextStyle(
+                                            fontSize: 13, height: 1.3))),
+                                if (h['due_date'] != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.05),
+                                        borderRadius: BorderRadius.circular(4)),
+                                    child: Text(
+                                        '~${h['due_date'].toString().substring(5, 10)}',
+                                        style: const TextStyle(
+                                            fontSize: 11, color: Colors.red)),
+                                  ),
+                              ]),
+                        );
+                      }),
+                      const SizedBox(height: 12),
+                    ],
+                    // 코멘트 (Unified Header)
+                    if ((l['teacher_comment'] != null &&
+                            l['teacher_comment'].toString().isNotEmpty) ||
+                        (l['comment'] != null &&
+                            l['comment'].toString().isNotEmpty))
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200)),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('👨‍🏫 선생님 피드백',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.black87)),
+                              const SizedBox(height: 4),
+                              Text(
+                                  (l['teacher_comment'] != null &&
+                                          l['teacher_comment']
+                                              .toString()
+                                              .isNotEmpty)
+                                      ? l['teacher_comment']
+                                      : l[
+                                          'comment'], // Use general comment if teacher_comment is empty
+                                  style: const TextStyle(
+                                      fontSize: 13, height: 1.4)),
+                            ]),
+                      )
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMockTestTab() {
+    return const Center(child: Text('준비중입니다.'));
+  }
+
+  Widget _buildVocabList(List vocab) {
+    if (vocab.isEmpty) return const SizedBox();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 2. Summary (Pie Chart & Stats)
-        _buildSummarySection(stats),
-        const SizedBox(height: 24),
-
-        // 2.5 Heatmap (Added)
-        _buildVocabHeatmap(vocab),
-        const SizedBox(height: 24),
-
-        // 2.6 Vocab Chart (Cumulative)
-        if (vocab.isNotEmpty) _buildVocabChart(vocab),
-        const SizedBox(height: 24),
-
-        // 3. Comment Input
-        const Text('선생님 총평',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _commentController,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: '이번 달 학습 태도나 성취도에 대해 작성해주세요.',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // 4. Details
         _buildSectionHeader('단어 시험 (${vocab.length}회) - 클릭하여 상세 확인'),
         ...vocab.map((v) => ExpansionTile(
               title: Text(v['book__title'] ?? '단어장'),
@@ -341,251 +666,16 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
                 )
               ],
             )),
-
-        _buildSectionHeader('과제 내역 (${assignments.length}건)'),
-        ...assignments.map((a) => ExpansionTile(
-              leading: Icon(
-                a['is_completed'] ? Icons.check_circle : Icons.circle_outlined,
-                color: a['is_completed'] ? Colors.green : Colors.red,
-              ),
-              title: Text(a['title']),
-              subtitle: Text(a['status'] ?? '-'),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (a['submission_image'] != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: GestureDetector(
-                            onTap: () => showDialog(
-                                context: context,
-                                builder: (_) => Dialog(
-                                    child: Image.network(
-                                        '${AppConfig.baseUrl}${a['submission_image']}'))),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('📷 인증 사진 (탭하여 확대)',
-                                    style: TextStyle(
-                                        fontSize: 12, color: Colors.grey)),
-                                const SizedBox(height: 4),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                      '${AppConfig.baseUrl}${a['submission_image']}',
-                                      height: 120,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          const SizedBox()),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (a['feedback'] != null &&
-                          a['feedback'].toString().isNotEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8)),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('👨‍🏫 선생님 피드백',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: Colors.blue)),
-                                const SizedBox(height: 4),
-                                Text(a['feedback'],
-                                    style:
-                                        TextStyle(color: Colors.blue.shade900)),
-                              ]),
-                        ),
-                      if (a['due_date'] != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                              '마감일: ${a['due_date'].toString().substring(0, 10)}',
-                              style: const TextStyle(color: Colors.grey)),
-                        ),
-                    ],
-                  ),
-                )
-              ],
-            )),
-
-        _buildSectionHeader('수업 일지 (${logs.length}건)'),
-        ...logs.map((l) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 6)
-                ],
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                            color: Colors.indigo.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4)),
-                        child: Text(
-                            _getSubjectName(l['subject_code'] ?? l['subject']),
-                            style: const TextStyle(
-                                color: Colors.indigo,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12)),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('${l['date']}',
-                          style: const TextStyle(
-                              color: Colors.grey, fontSize: 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // 진도
-                  if (l['details'] != null &&
-                      (l['details'] as List).isNotEmpty) ...[
-                    const Text('📚 진도 및 학습 내용',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 8),
-                    ...(l['details'] as List).map((d) {
-                      final score = d['score'];
-                      Color badgeColor = Colors.grey;
-                      if (score == 'A') badgeColor = Colors.blue;
-                      if (score == 'B') badgeColor = Colors.green;
-                      if (score == 'C') badgeColor = Colors.orange;
-                      if (score == 'F') badgeColor = Colors.red;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                    color: badgeColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: badgeColor)),
-                                child: Text(score,
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: badgeColor,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                              Expanded(
-                                  child: Text(d['text'] ?? '',
-                                      style: const TextStyle(
-                                          fontSize: 13, height: 1.3))),
-                            ]),
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                  ],
-                  // 과제 (Updated with Status Check)
-                  if (l['homeworks'] != null &&
-                      (l['homeworks'] as List).isNotEmpty) ...[
-                    const Text('📝 배부된 과제',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    ...(l['homeworks'] as List).map((h) {
-                      final isCompleted = h['is_completed'] == true;
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 0, top: 4),
-                        child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(top: 2, right: 6),
-                                child: Icon(
-                                    isCompleted
-                                        ? Icons.check_circle
-                                        : Icons.circle_outlined,
-                                    size: 14,
-                                    color: isCompleted
-                                        ? Colors.green
-                                        : Colors.red),
-                              ),
-                              Expanded(
-                                  child: Text('${h['title']}',
-                                      style: const TextStyle(
-                                          fontSize: 13, height: 1.3))),
-                              if (h['due_date'] != null)
-                                Container(
-                                  margin: const EdgeInsets.only(left: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.05),
-                                      borderRadius: BorderRadius.circular(4)),
-                                  child: Text(
-                                      '~${h['due_date'].toString().substring(5, 10)}',
-                                      style: const TextStyle(
-                                          fontSize: 11, color: Colors.red)),
-                                ),
-                            ]),
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                  ],
-                  // 코멘트 (Unified Header)
-                  if ((l['teacher_comment'] != null &&
-                          l['teacher_comment'].toString().isNotEmpty) ||
-                      (l['comment'] != null &&
-                          l['comment'].toString().isNotEmpty))
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade200)),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('👨‍🏫 선생님 피드백',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    color: Colors.black87)),
-                            const SizedBox(height: 4),
-                            Text(
-                                (l['teacher_comment'] != null &&
-                                        l['teacher_comment']
-                                            .toString()
-                                            .isNotEmpty)
-                                    ? l['teacher_comment']
-                                    : l[
-                                        'comment'], // Use general comment if teacher_comment is empty
-                                style:
-                                    const TextStyle(fontSize: 13, height: 1.4)),
-                          ]),
-                    )
-                ],
-              ),
-            )),
       ],
+    );
+  }
+
+  // Helper for section headers
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 24),
+      child: Text(title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -817,15 +907,6 @@ class _ReportCreateScreenState extends State<ReportCreateScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Text(title,
-          style: const TextStyle(
-              fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
     );
   }
 }

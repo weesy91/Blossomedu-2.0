@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/constants.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 // Helper Function for Subject Name
 String _getSubjectName(String code) {
@@ -509,7 +510,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('🔥 학습 열정 (최근 30일)',
+          const Text('📅 시험 응시 이력', // Renamed from Learning Passion
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 16),
           GridView.builder(
@@ -527,7 +528,7 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
               final now = DateTime(today.year, today.month, today.day);
               final targetDate = now.subtract(Duration(days: 29 - index));
 
-              bool hasActivity = false;
+              List testsOnDate = [];
               for (var v in vocab) {
                 if (v['created_at'] != null) {
                   DateTime? d = DateTime.tryParse(v['created_at'].toString());
@@ -536,32 +537,71 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                     if (localD.year == targetDate.year &&
                         localD.month == targetDate.month &&
                         localD.day == targetDate.day) {
-                      hasActivity = true;
-                      break;
+                      testsOnDate.add(v);
                     }
                   }
                 }
               }
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: hasActivity ? Colors.green : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${targetDate.day}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: hasActivity ? Colors.white : Colors.grey.shade400,
+              bool hasActivity = testsOnDate.isNotEmpty;
+
+              return GestureDetector(
+                onTap: hasActivity
+                    ? () {
+                        // Show Dialog with test details
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: Text(
+                                '${DateFormat('MM/dd').format(targetDate)} 시험 기록'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: testsOnDate.map<Widget>((t) {
+                                final isPass = (t['score'] ?? 0) >=
+                                    ((t['total_count'] ?? 1) * 0.9);
+                                return ListTile(
+                                  dense: true,
+                                  leading: Icon(
+                                      isPass
+                                          ? Icons.check_circle
+                                          : Icons.cancel,
+                                      color:
+                                          isPass ? Colors.green : Colors.red),
+                                  title: Text(t['book__title'] ?? '단어장'),
+                                  subtitle: Text(
+                                      '범위: ${t['test_range'] ?? '전체'} | ${t['score']}/${t['total_count']}'),
+                                );
+                              }).toList(),
+                            ),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('닫기'))
+                            ],
+                          ),
+                        );
+                      }
+                    : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: hasActivity ? Colors.green : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${targetDate.day}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: hasActivity ? Colors.white : Colors.grey.shade400,
+                    ),
                   ),
                 ),
               );
             },
           ),
           const SizedBox(height: 8),
-          const Text('학습한 날짜에 색이 칠해집니다.',
+          const Text('날짜를 클릭하면 상세 시험 이력을 볼 수 있습니다.',
               style: TextStyle(color: Colors.grey, fontSize: 11)),
         ],
       ),
