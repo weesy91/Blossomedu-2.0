@@ -536,9 +536,10 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
                 if (v['created_at'] != null) {
                   DateTime? d = DateTime.tryParse(v['created_at'].toString());
                   if (d != null) {
-                    if (d.year == targetDate.year &&
-                        d.month == targetDate.month &&
-                        d.day == targetDate.day) {
+                    final localD = d.toLocal(); // [FIX] Timezone match
+                    if (localD.year == targetDate.year &&
+                        localD.month == targetDate.month &&
+                        localD.day == targetDate.day) {
                       hasActivity = true;
                       break;
                     }
@@ -681,8 +682,10 @@ class _ReportWebViewScreenState extends State<ReportWebViewScreen> {
     List<FlSpot> spots = [];
 
     // Cumulative Passed Words Chart
-    for (int i = 0; i < vocab.length; i++) {
-      double val = (vocab[i]['cumulative_passed'] ?? 0).toDouble();
+    // [FIX] Reverse list to plot Chronologically (Oldest -> Latest)
+    final reversedVocab = vocab.reversed.toList();
+    for (int i = 0; i < reversedVocab.length; i++) {
+      double val = (reversedVocab[i]['cumulative_passed'] ?? 0).toDouble();
       spots.add(FlSpot(i.toDouble(), val));
     }
 
