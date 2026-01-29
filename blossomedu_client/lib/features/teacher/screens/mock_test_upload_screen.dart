@@ -15,8 +15,11 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
   final AcademyService _service = AcademyService();
 
   List<dynamic> _examInfos = [];
+
   List<dynamic> _students = []; // For manual matching
   dynamic _selectedExam;
+  Map<String, dynamic>?
+      _fullExamDetails; // [NEW] Full details including questions
 
   bool _isLoading = false;
   List<dynamic> _scannedResults = [];
@@ -170,6 +173,102 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
     } else {
       _selectedExam = null;
     }
+    _fetchFullDetails();
+  }
+
+  Future<void> _fetchFullDetails() async {
+    if (_selectedExam == null) {
+      setState(() => _fullExamDetails = null);
+      return;
+    }
+    try {
+      final details = await _service.getMockExamInfoDetail(_selectedExam['id']);
+      setState(() => _fullExamDetails = details);
+    } catch (e) {
+      print('Failed to load full details: $e');
+    }
+  }
+
+  void _recalculateScore(int index) {
+    if (_fullExamDetails == null) return;
+    final item = _scannedResults[index];
+    final scoreData = item['score_data'];
+    if (scoreData == null) return;
+
+    final studentAnswers =
+        Map<String, dynamic>.from(scoreData['student_answers_dict'] ?? {});
+    final questions = _fullExamDetails!['questions'] as List<dynamic>;
+
+    int totalScore = 0;
+    Map<String, int> wrongCounts = {
+      'LISTENING': 0,
+      'VOCAB': 0,
+      'GRAMMAR': 0,
+      'READING': 0
+    };
+    Map<String, int> wrongTypeBreakdown = {};
+    List<int> wrongQuestionNumbers = [];
+
+    for (var q in questions) {
+      final qNum = q['number'];
+      final correctAns = q['correct_answer'];
+      final score = q['score'];
+      final category = q['category'];
+
+      // Check student answer
+      // studentAnswers keys are strings usually
+      final sAns = studentAnswers[qNum.toString()];
+      // If sAns is int, good.
+
+      if (sAns == correctAns) {
+        totalScore += score as int;
+      } else {
+        // Wrong
+        wrongQuestionNumbers.add(qNum);
+        wrongTypeBreakdown[category] = (wrongTypeBreakdown[category] ?? 0) + 1;
+
+        if (category == 'LISTENING') {
+          wrongCounts['LISTENING'] = (wrongCounts['LISTENING']!) + 1;
+        } else if (category == 'VOCAB') {
+          wrongCounts['VOCAB'] = (wrongCounts['VOCAB']!) + 1;
+        } else if (category == 'GRAMMAR') {
+          wrongCounts['GRAMMAR'] = (wrongCounts['GRAMMAR']!) + 1;
+        } else {
+          wrongCounts['READING'] = (wrongCounts['READING']!) + 1;
+        }
+      }
+    }
+
+    // Grade Calc
+    int grade = 9;
+    if (totalScore >= 90)
+      grade = 1;
+    else if (totalScore >= 80)
+      grade = 2;
+    else if (totalScore >= 70)
+      grade = 3;
+    else if (totalScore >= 60)
+      grade = 4;
+    else if (totalScore >= 50)
+      grade = 5;
+    else if (totalScore >= 40)
+      grade = 6;
+    else if (totalScore >= 30)
+      grade = 7;
+    else if (totalScore >= 20) grade = 8;
+
+    final newScoreData = {
+      'score': totalScore,
+      'grade': grade,
+      'wrong_counts': wrongCounts,
+      'wrong_type_breakdown': wrongTypeBreakdown,
+      'wrong_question_numbers': wrongQuestionNumbers,
+      'student_answers_dict': studentAnswers
+    };
+
+    setState(() {
+      _scannedResults[index]['score_data'] = newScoreData;
+    });
   }
 
   // [NEW] Verification Dialog
@@ -201,12 +300,18 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           Container(
+                            height: 300,
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey),
+                              color: Colors.grey.shade200,
                             ),
-                            child: Image.memory(
-                              base64Decode(imageBase64),
-                              fit: BoxFit.contain,
+                            child: InteractiveViewer(
+                              minScale: 1.0,
+                              maxScale: 5.0,
+                              child: Image.memory(
+                                base64Decode(imageBase64),
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -265,6 +370,127 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
                         });
                       },
                     ),
+
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    // 4. Answer Editing (Grid)
+                    if (scoreData != null && _fullExamDetails != null) ...[
+                      const Text('답안 수정 (채점 결과 자동 반영)',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      // Grid of 45 questions
+                      Container(
+                        height: 300,
+                        decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300)),
+                        child: GridView.builder(
+                          padding: const EdgeInsets.all(8),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 5, // 5 columns
+                            childAspectRatio: 1.5,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                          ),
+                          itemCount: 45,
+                          itemBuilder: (context, qIndex) {
+                            final qNum = qIndex + 1;
+                            final answersDict =
+                                scoreData['student_answers_dict'] ?? {};
+                            final currentAns = answersDict[qNum.toString()];
+                            final questionInfo =
+                                (_fullExamDetails!['questions'] as List)
+                                    .firstWhere((q) => q['number'] == qNum,
+                                        orElse: () => null);
+                            final isCorrect = questionInfo != null &&
+                                currentAns == questionInfo['correct_answer'];
+
+                            return InkWell(
+                              onTap: () {
+                                // Show dialog to select answer 1-5
+                                showDialog(
+                                    context: context,
+                                    builder: (_) => SimpleDialog(
+                                          title: Text('$qNum번 정답 선택'),
+                                          children: [1, 2, 3, 4, 5]
+                                              .map((ans) => SimpleDialogOption(
+                                                    child: Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          vertical: 8),
+                                                      child: Text('$ans번'),
+                                                    ),
+                                                    onPressed: () {
+                                                      // Update answer
+                                                      Navigator.pop(context);
+                                                      final newDict = Map<
+                                                          String,
+                                                          dynamic>.from(scoreData[
+                                                              'student_answers_dict'] ??
+                                                          {});
+                                                      newDict[qNum.toString()] =
+                                                          ans;
+
+                                                      // Update local state first
+                                                      this.setState(() {
+                                                        _scannedResults[index][
+                                                                    'score_data']
+                                                                [
+                                                                'student_answers_dict'] =
+                                                            newDict;
+                                                      });
+
+                                                      // Recalculate
+                                                      _recalculateScore(index);
+
+                                                      // Update Image Dialog UI
+                                                      setStateDialog(() {});
+                                                    },
+                                                  ))
+                                              .toList(),
+                                        ));
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: currentAns == null
+                                      ? Colors.grey.shade100
+                                      : (isCorrect
+                                          ? Colors.green.shade100
+                                          : Colors.red.shade100),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: currentAns == null
+                                        ? Colors.grey
+                                        : (isCorrect
+                                            ? Colors.green
+                                            : Colors.red),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('$qNum번',
+                                        style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.black54)),
+                                    Text(
+                                        currentAns == null
+                                            ? '-'
+                                            : '$currentAns',
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ]
                   ],
                 ),
               ),

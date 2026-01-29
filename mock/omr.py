@@ -84,12 +84,12 @@ def scan_omr(image_bytes, debug_mode=False):
         if debug_mode:
             # 탐색 영역 (파란 점선)
             cv2.rectangle(debug_img, (int(SEARCH_X_MIN), int(SEARCH_Y_MIN)), 
-                          (int(SEARCH_X_MAX), int(SEARCH_Y_MAX)), (255, 0, 0), 1)
+                          (int(SEARCH_X_MAX), int(SEARCH_Y_MAX)), (255, 0, 0), 3)
             
             # 빨간 그리드 선 (0~9 중앙)
             for i in range(10):
                 y_center = int(grid_top + (row_step * i))
-                cv2.line(debug_img, (int(SEARCH_X_MIN), y_center), (int(SEARCH_X_MAX), y_center), (0, 0, 255), 2)
+                cv2.line(debug_img, (int(SEARCH_X_MIN), y_center), (int(SEARCH_X_MAX), y_center), (0, 0, 255), 3)
 
         student_id = ""
         if id_cnts:
@@ -210,7 +210,7 @@ def scan_omr(image_bytes, debug_mode=False):
                     answers.append(bubbled_idx)
                     if debug_mode:
                         gx, gy, bw, bh = roi_x1 + row[bubbled_idx-1][0], roi_y_top + row[bubbled_idx-1][1], row[bubbled_idx-1][2], row[bubbled_idx-1][3]
-                        cv2.rectangle(debug_img, (gx, gy), (gx+bw, gy+bh), (0, 255, 0), 2)
+                        cv2.rectangle(debug_img, (gx, gy), (gx+bw, gy+bh), (0, 255, 0), 5)
 
         if debug_mode:
             print(f"DEBUG: Student ID: {student_id}")
