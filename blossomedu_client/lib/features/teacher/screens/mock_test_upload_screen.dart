@@ -48,7 +48,9 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
 
       setState(() {
         _examInfos = exams;
-        _students = students;
+        // [Fix] Filter inactive students client-side and sort
+        _students = students.where((s) => s['is_active'] == true).toList();
+        _students.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
 
         // Populate filter options
         final distinctInst =
@@ -358,7 +360,7 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
                               return DropdownMenuItem(
                                 value: s['id'],
                                 child: Text(
-                                    '${s['name']} (${s['school']} ${s['grade']}) [${s['attendance_code'] ?? s['phone_number'] ?? '코드없음'}]'),
+                                    '${s['name']} (${s['school']} ${s['grade']}) [${(s['attendance_code']?.toString().isNotEmpty ?? false) ? s['attendance_code'] : (s['phone_number']?.toString().isNotEmpty ?? false) ? s['phone_number'] : '코드없음'}]'),
                               );
                             }).toList(),
                             onChanged: (val) {
