@@ -3,11 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import MockExam, MockExamInfo
+from .models import MockExam, MockExamInfo, MockExamQuestion
 from core.models import StudentProfile
 from .serializers import (
     MockExamSerializer, MockExamInfoSerializer, 
-    MockExamConfirmSerializer
+    MockExamConfirmSerializer, MockExamQuestionSerializer
 )
 from .omr import scan_omr, calculate_score
 import io
