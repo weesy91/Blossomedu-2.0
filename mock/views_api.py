@@ -138,7 +138,7 @@ class OMRScanView(views.APIView):
                 pil_image.save(img_byte_arr, format='JPEG')
                 img_bytes = img_byte_arr.getvalue()
 
-                student_id_str, answers = scan_omr(img_bytes)
+                student_id_str, answers, debug_image = scan_omr(img_bytes)
                 
                 scan_status = "SUCCESS"
                 error_msg = ""
@@ -179,7 +179,8 @@ class OMRScanView(views.APIView):
                     "error_msg": error_msg,
                     "student_id_raw": student_id_str,
                     "student": student_data,
-                    "score_data": score_data
+                    "score_data": score_data,
+                    "omr_image": debug_image
                 })
 
             return Response({"results": results})

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
+import 'dart:convert';
 import '../../../core/services/academy_service.dart';
 
 class MockTestUploadScreen extends StatefulWidget {
@@ -171,6 +172,115 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
     }
   }
 
+  // [NEW] Verification Dialog
+  void _showVerificationDialog(int index, Map<String, dynamic> item) {
+    final imageBase64 = item['omr_image'];
+    final rawId = item['student_id_raw'];
+    final student = item['student'];
+    final scoreData = item['score_data'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('OMR 판독 확인 및 수정'),
+            content: SizedBox(
+              width: 500,
+              height: 600,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. OMR Image
+                    if (imageBase64 != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('판독 이미지 (수험번호 영역 확인)',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            child: Image.memory(
+                              base64Decode(imageBase64),
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      )
+                    else
+                      const Text('이미지 데이터가 없습니다.',
+                          style: TextStyle(color: Colors.grey)),
+
+                    // 2. Info
+                    Text('인식된 수험번호: $rawId',
+                        style: const TextStyle(fontSize: 16)),
+                    const SizedBox(height: 8),
+                    if (scoreData != null)
+                      Text(
+                          '점수: ${scoreData['score']}점 (등급: ${scoreData['grade']})',
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo)),
+
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+
+                    // 3. Correction
+                    const Text('학생 수동 지정 (오류 수정)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12)),
+                      hint: const Text('학생 선택'),
+                      value: student?['id'],
+                      items: _students.map<DropdownMenuItem<int>>((s) {
+                        return DropdownMenuItem(
+                          value: s['id'],
+                          child: Text(
+                              '${s['name']} (${s['school']} ${s['grade']}) [${s['attendance_code'] ?? '코드없음'}]'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        // Update parent state
+                        final selectedS =
+                            _students.firstWhere((s) => s['id'] == val);
+
+                        // Update local dialog state if needed (though dropdown handles value)
+                        setStateDialog(() {});
+
+                        // Update main list state
+                        this.setState(() {
+                          _scannedResults[index]['student'] = selectedS;
+                          _scannedResults[index]['status'] = 'MANUAL';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('닫기'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -301,101 +411,104 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
                         color: isSuccess
                             ? Colors.green.shade50
                             : Colors.red.shade50,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                      isSuccess
-                                          ? Icons.check_circle
-                                          : Icons.error,
-                                      color: isSuccess
-                                          ? Colors.green
-                                          : Colors.red),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: student != null
-                                        ? Text(
-                                            '${student['name']} (${student['school']})',
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16))
-                                        : Text('학생 미식별 (ID: $rawId)',
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.red)),
-                                  ),
-                                  if (scoreData != null)
-                                    Text(
-                                        '${scoreData['score']}점 (${scoreData['grade']}등급)',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                            color: Colors.indigo))
-                                ],
-                              ),
-                              if (errorMsg != null &&
-                                  errorMsg.toString().isNotEmpty)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(top: 4, left: 32),
-                                  child: Text(errorMsg,
-                                      style: const TextStyle(
-                                          color: Colors.red, fontSize: 12)),
+                        child: InkWell(
+                          onTap: () => _showVerificationDialog(index, item),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                        isSuccess
+                                            ? Icons.check_circle
+                                            : Icons.error,
+                                        color: isSuccess
+                                            ? Colors.green
+                                            : Colors.red),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: student != null
+                                          ? Text(
+                                              '${student['name']} (${student['school']})',
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16))
+                                          : Text('학생 미식별 (ID: $rawId)',
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.red)),
+                                    ),
+                                    if (scoreData != null)
+                                      Text(
+                                          '${scoreData['score']}점 (${scoreData['grade']}등급)',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                              color: Colors.indigo))
+                                  ],
                                 ),
+                                if (errorMsg != null &&
+                                    errorMsg.toString().isNotEmpty)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.only(top: 4, left: 32),
+                                    child: Text(errorMsg,
+                                        style: const TextStyle(
+                                            color: Colors.red, fontSize: 12)),
+                                  ),
 
-                              // Manual Matching Logic
-                              if (student == null)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(top: 8, left: 32),
-                                  child: Row(
-                                    children: [
-                                      const Text('수동 선택: ',
-                                          style: TextStyle(fontSize: 12)),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: SizedBox(
-                                          height: 36,
-                                          child: DropdownButtonFormField<int>(
-                                            isExpanded: true,
-                                            decoration: const InputDecoration(
-                                                contentPadding:
-                                                    EdgeInsets.symmetric(
-                                                        horizontal: 10),
-                                                border: OutlineInputBorder()),
-                                            hint: const Text('학생 선택'),
-                                            items: _students
-                                                .map<DropdownMenuItem<int>>(
-                                                    (s) {
-                                              return DropdownMenuItem(
-                                                value: s['id'],
-                                                child: Text(
-                                                    '${s['name']} (${s['school']} ${s['grade']})'),
-                                              );
-                                            }).toList(),
-                                            onChanged: (val) {
-                                              final selectedS =
-                                                  _students.firstWhere(
-                                                      (s) => s['id'] == val);
-                                              setState(() {
-                                                // Update this item in result list
-                                                _scannedResults[index]
-                                                    ['student'] = selectedS;
-                                                _scannedResults[index]
-                                                    ['status'] = 'MANUAL';
-                                              });
-                                            },
+                                // Manual Matching Logic
+                                if (student == null)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.only(top: 8, left: 32),
+                                    child: Row(
+                                      children: [
+                                        const Text('수동 선택: ',
+                                            style: TextStyle(fontSize: 12)),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: SizedBox(
+                                            height: 36,
+                                            child: DropdownButtonFormField<int>(
+                                              isExpanded: true,
+                                              decoration: const InputDecoration(
+                                                  contentPadding:
+                                                      EdgeInsets.symmetric(
+                                                          horizontal: 10),
+                                                  border: OutlineInputBorder()),
+                                              hint: const Text('학생 선택'),
+                                              items: _students
+                                                  .map<DropdownMenuItem<int>>(
+                                                      (s) {
+                                                return DropdownMenuItem(
+                                                  value: s['id'],
+                                                  child: Text(
+                                                      '${s['name']} (${s['school']} ${s['grade']})'),
+                                                );
+                                              }).toList(),
+                                              onChanged: (val) {
+                                                final selectedS =
+                                                    _students.firstWhere(
+                                                        (s) => s['id'] == val);
+                                                setState(() {
+                                                  // Update this item in result list
+                                                  _scannedResults[index]
+                                                      ['student'] = selectedS;
+                                                  _scannedResults[index]
+                                                      ['status'] = 'MANUAL';
+                                                });
+                                              },
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );

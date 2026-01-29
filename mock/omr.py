@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import imutils
 import traceback
+import base64
 
 def scan_omr(image_bytes, debug_mode=False):
     """
@@ -214,7 +215,14 @@ def scan_omr(image_bytes, debug_mode=False):
         if debug_mode:
             print(f"DEBUG: Student ID: {student_id}")
             cv2.imwrite("debug_result_final.jpg", debug_img)
-        return student_id, answers
+        debug_base64 = None
+        try:
+            _, buffer = cv2.imencode('.jpg', debug_img)
+            debug_base64 = base64.b64encode(buffer).decode('utf-8')
+        except:
+            pass
+            
+        return student_id, answers, debug_base64
     except Exception:
         traceback.print_exc()
         return None, None
