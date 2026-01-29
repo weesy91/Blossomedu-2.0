@@ -166,26 +166,21 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                 return;
               }
 
-              // [NEW] Auto-extract Year/Month (Strict)
-              int year = 0;
-              int month = 0;
+              // [NEW] Auto-extract Year/Month (Optional)
+              int? year;
+              int? month;
 
               // Regex: 20xx
               final yearMatch = RegExp(r'(20\d{2})').firstMatch(title);
               // Regex: 1~12월
               final monthMatch = RegExp(r'(\d{1,2})월').firstMatch(title);
 
-              if (yearMatch == null || monthMatch == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text(
-                      '제목에 연도(20xx)와 월(x월)을 반드시 포함해주세요.\n예: 2026년 3월 모의고사'),
-                  duration: Duration(seconds: 3),
-                ));
-                return;
+              if (yearMatch != null) {
+                year = int.parse(yearMatch.group(1)!);
               }
-
-              year = int.parse(yearMatch.group(1)!);
-              month = int.parse(monthMatch.group(1)!);
+              if (monthMatch != null) {
+                month = int.parse(monthMatch.group(1)!);
+              }
 
               final institution = institutionController.text.trim().isEmpty
                   ? selectedInstitution
@@ -286,13 +281,19 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
   }
 
   void _showDetail(Map<String, dynamic> exam) {
+    String displayTitle = exam['title'];
+    if (exam['year'] != null &&
+        exam['year'] != 0 &&
+        exam['month'] != null &&
+        exam['month'] != 0) {
+      displayTitle = '${exam['year']}년 ${exam['month']}월 ${exam['title']}';
+    }
+
     Navigator.push(
             context,
             MaterialPageRoute(
                 builder: (_) => MockTestDetailScreen(
-                    examId: exam['id'],
-                    title:
-                        '${exam['year']}년 ${exam['month']}월 ${exam['title']}')))
+                    examId: exam['id'], title: displayTitle)))
         .then((_) => _fetchExamInfos()); // Refresh list on return
   }
 
@@ -311,8 +312,12 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ListTile(
                     onTap: () => _showDetail(exam), // [NEW] Link Tap
-                    title: Text(
-                        '[${exam['institution'] ?? '교육청'}] ${exam['year']}년 ${exam['month']}월 고${exam['grade']} ${exam['title']}'),
+                    title: Text((exam['year'] != null &&
+                            exam['year'] != 0 &&
+                            exam['month'] != null &&
+                            exam['month'] != 0)
+                        ? '[${exam['institution'] ?? '교육청'}] ${exam['year']}년 ${exam['month']}월 고${exam['grade']} ${exam['title']}'
+                        : '[${exam['institution'] ?? '교육청'}] 고${exam['grade']} ${exam['title']}'),
 
                     subtitle: Text(
                         '문항 수: ${exam['questions'] != null ? (exam['questions'] as List).length : 0}개 (탭하여 상세 보기)'),

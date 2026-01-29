@@ -66,8 +66,8 @@ class MockExamInfo(models.Model):
     ]
     
     title = models.CharField(max_length=100, verbose_name="시험명") # 예: 2024 3월 학평
-    year = models.IntegerField(verbose_name="연도", default=timezone.now().year)
-    month = models.IntegerField(verbose_name="월")
+    year = models.IntegerField(verbose_name="연도", null=True, blank=True)
+    month = models.IntegerField(verbose_name="월", null=True, blank=True)
     grade = models.IntegerField(choices=GRADE_CHOICES, verbose_name="대상 학년")
     
     # [NEW] Institution/Publisher
