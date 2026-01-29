@@ -70,6 +70,9 @@ class MockExamInfo(models.Model):
     month = models.IntegerField(verbose_name="월")
     grade = models.IntegerField(choices=GRADE_CHOICES, verbose_name="대상 학년")
     
+    # [NEW] Institution/Publisher
+    institution = models.CharField(max_length=50, verbose_name="주관/출판사", default="교육청")
+    
     is_active = models.BooleanField(default=True, verbose_name="활성 상태") # 목록에 표시 여부
     created_at = models.DateTimeField(auto_now_add=True)
 

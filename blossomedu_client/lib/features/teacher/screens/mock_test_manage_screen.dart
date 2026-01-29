@@ -46,6 +46,30 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
     int selectedGrade = exam?['grade'] ?? 1; // 1, 2, 3
     final isEditingId = exam?['id'];
 
+    // [NEW] Institution
+    String selectedInstitution = exam?['institution'] ?? '교육청';
+    final institutionOptions = [
+      '교육청',
+      '평가원',
+      '대성',
+      '이투스',
+      '메가스터디',
+      '종로',
+      '비상',
+      '기타'
+    ];
+    final institutionController =
+        TextEditingController(text: selectedInstitution);
+
+    // Check if initial value is in options, if not set to '기타' and fill text controller
+    if (!institutionOptions.contains(selectedInstitution) &&
+        selectedInstitution.isNotEmpty) {
+      if (!institutionOptions.contains(selectedInstitution)) {
+        // It's a custom value
+        // We might handle this by adding it to options temporarily or just setting text
+      }
+    }
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -89,6 +113,36 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                 ],
                 onChanged: (v) => selectedGrade = v!,
               ),
+              const SizedBox(height: 16),
+              // [NEW] Institution Dropdown
+              DropdownButtonFormField<String>(
+                value: institutionOptions.contains(selectedInstitution)
+                    ? selectedInstitution
+                    : '기타',
+                decoration: const InputDecoration(labelText: '주관/출판사'),
+                items: institutionOptions
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) {
+                  selectedInstitution = v!;
+                  if (v != '기타') {
+                    institutionController.text = v;
+                  } else {
+                    institutionController.text = '';
+                  }
+                  (context as Element)
+                      .markNeedsBuild(); // Force rebuild to show/hide text field if needed
+                },
+              ),
+              if (selectedInstitution == '기타' ||
+                  !institutionOptions.contains(selectedInstitution))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: TextField(
+                    controller: institutionController,
+                    decoration: const InputDecoration(labelText: '기관명 직접 입력'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -105,11 +159,16 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
 
               if (title.isEmpty) return;
 
+              final institution = institutionController.text.trim().isEmpty
+                  ? selectedInstitution
+                  : institutionController.text.trim();
+
               final data = {
                 'title': title,
                 'year': year,
                 'month': month,
                 'grade': selectedGrade,
+                'institution': institution,
                 'is_active': true,
               };
 
@@ -267,7 +326,8 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                   child: ListTile(
                     onTap: () => _showDetail(exam), // [NEW] Link Tap
                     title: Text(
-                        '${exam['year']}년 ${exam['month']}월 고${exam['grade']} ${exam['title']}'),
+                        '[${exam['institution'] ?? '교육청'}] ${exam['year']}년 ${exam['month']}월 고${exam['grade']} ${exam['title']}'),
+
                     subtitle: Text(
                         '문항 수: ${exam['questions'] != null ? (exam['questions'] as List).length : 0}개 (탭하여 상세 보기)'),
                     trailing: Row(

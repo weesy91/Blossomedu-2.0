@@ -10,7 +10,7 @@ class MockExamInfoSerializer(serializers.ModelSerializer):
     questions = MockExamQuestionSerializer(many=True, read_only=True)
     class Meta:
         model = MockExamInfo
-        fields = ['id', 'year', 'month', 'grade', 'title', 'questions']
+        fields = ['id', 'year', 'month', 'grade', 'title', 'questions', 'institution']
 
 class MockExamSerializer(serializers.ModelSerializer):
     class Meta:
