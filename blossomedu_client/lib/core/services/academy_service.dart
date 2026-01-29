@@ -1015,6 +1015,18 @@ class AcademyService {
     }
   }
 
+  Future<Map<String, dynamic>> getMockExamInfoDetail(int id) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/$id/');
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } else {
+      throw Exception('Failed to load exam detail');
+    }
+  }
+
   Future<void> updateMockExamInfo(int id, Map<String, dynamic> data) async {
     final url = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/infos/$id/');
     final headers = await _getHeaders();

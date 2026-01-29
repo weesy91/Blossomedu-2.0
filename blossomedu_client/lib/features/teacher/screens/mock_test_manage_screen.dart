@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:blossomedu_client/core/services/academy_service.dart';
+import 'package:blossomedu_client/features/teacher/screens/mock_test_detail_screen.dart';
 
 class MockTestManageScreen extends StatefulWidget {
   const MockTestManageScreen({Key? key}) : super(key: key);
@@ -165,23 +166,26 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                 return;
               }
 
-              // [NEW] Auto-extract Year/Month
-              int year = DateTime.now().year;
-              int month = DateTime.now().month;
+              // [NEW] Auto-extract Year/Month (Strict)
+              int year = 0;
+              int month = 0;
 
-              // Regex for Year (20xx)
+              // Regex: 20xx
               final yearMatch = RegExp(r'(20\d{2})').firstMatch(title);
-              if (yearMatch != null) {
-                year = int.parse(yearMatch.group(1)!);
+              // Regex: 1~12월
+              final monthMatch = RegExp(r'(\d{1,2})월').firstMatch(title);
+
+              if (yearMatch == null || monthMatch == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text(
+                      '제목에 연도(20xx)와 월(x월)을 반드시 포함해주세요.\n예: 2026년 3월 모의고사'),
+                  duration: Duration(seconds: 3),
+                ));
+                return;
               }
 
-              // Regex for Month (1~12월 or just 1~12 followed by separator?)
-              // Common pattern: "3월", "03월", "3mo", "March"
-              // Let's stick to "N월" pattern for Korean context
-              final monthMatch = RegExp(r'(\d{1,2})월').firstMatch(title);
-              if (monthMatch != null) {
-                month = int.parse(monthMatch.group(1)!);
-              }
+              year = int.parse(yearMatch.group(1)!);
+              month = int.parse(monthMatch.group(1)!);
 
               final institution = institutionController.text.trim().isEmpty
                   ? selectedInstitution
@@ -217,98 +221,7 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
     );
   }
 
-  // [NEW] Question Edit Dialog
-  Future<void> _showQuestionEditDialog(Map<String, dynamic> question) async {
-    final int questionId = question['id'];
-    int correctAnswer = question['correct_answer'] ?? 1;
-    int score = question['score'] ?? 2;
-    String category = question['category'] ?? 'TOPIC';
-
-    // Category Options (Simplified)
-    final categories = {
-      'LISTENING': '듣기',
-      'PURPOSE': '목적/심경',
-      'TOPIC': '주제/제목',
-      'DATA': '도표/일치',
-      'MEANING': '함축의미',
-      'GRAMMAR': '어법',
-      'VOCAB': '어휘',
-      'BLANK': '빈칸',
-      'FLOW': '무관한문장',
-      'ORDER': '순서',
-      'INSERT': '삽입',
-      'SUMMARY': '요약',
-      'LONG': '장문'
-    };
-
-    await showDialog(
-        context: context,
-        builder: (context) => StatefulBuilder(builder: (context, setState) {
-              return AlertDialog(
-                title: Text('${question['number']}번 문항 수정'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(labelText: '정답'),
-                      value: correctAnswer,
-                      items: [1, 2, 3, 4, 5]
-                          .map((e) =>
-                              DropdownMenuItem(value: e, child: Text('$e번')))
-                          .toList(),
-                      onChanged: (v) => setState(() => correctAnswer = v!),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(labelText: '배점'),
-                      value: score,
-                      items: [2, 3]
-                          .map((e) =>
-                              DropdownMenuItem(value: e, child: Text('${e}점')))
-                          .toList(),
-                      onChanged: (v) => setState(() => score = v!),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: '유형'),
-                      value:
-                          categories.containsKey(category) ? category : 'TOPIC',
-                      items: categories.entries
-                          .map((e) => DropdownMenuItem(
-                              value: e.key, child: Text(e.value)))
-                          .toList(),
-                      onChanged: (v) => setState(() => category = v!),
-                    )
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('취소')),
-                  ElevatedButton(
-                      onPressed: () async {
-                        final data = {
-                          'correct_answer': correctAnswer,
-                          'score': score,
-                          'category': category
-                        };
-                        try {
-                          await _academyService.updateMockExamQuestion(
-                              questionId, data);
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('수정되었습니다.')));
-                          _fetchExamInfos(); // Refresh full list to update UI
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e')));
-                        }
-                      },
-                      child: const Text('저장')),
-                ],
-              );
-            }));
-  }
+  // _showQuestionEditDialog removed (moved to detail screen)
 
   Future<void> _uploadAnswerKey(int id) async {
     try {
@@ -321,9 +234,6 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
       if (result != null) {
         final file = result.files.first;
         if (file.bytes == null) {
-          // Web environment usually has bytes. Mobile might need path handling but we focus on web for admin tasks usually.
-          // If bytes are null (e.g. mobile path), need io.File. But standard FilePicker usually gives bytes or path.
-          // AcademyService expects bytes.
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('파일 데이터를 읽을 수 없습니다.')));
           return;
@@ -331,7 +241,7 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
 
         await _academyService.uploadMockExamAnswers(
           id,
-          file.bytes!, // Uint8List to List<int>
+          file.bytes!,
           file.name,
         );
 
@@ -376,85 +286,14 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
   }
 
   void _showDetail(Map<String, dynamic> exam) {
-    final questions = (exam['questions'] as List?) ?? [];
-    questions
-        .sort((a, b) => (a['number'] as int).compareTo(b['number'] as int));
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${exam['year']}년 ${exam['month']}월 ${exam['title']} 상세'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 400, // Limit height
-          child: questions.isEmpty
-              ? const Center(child: Text('등록된 문항이 없습니다.\n엑셀을 업로드해주세요.'))
-              : ListView.builder(
-                  itemCount: questions.length,
-                  itemBuilder: (context, index) {
-                    final q = questions[index];
-                    final score = q['score'] ?? 2;
-                    final isThreePoint = score == 3;
-                    return ListTile(
-                      onTap: () {
-                        Navigator.pop(
-                            context); // Close detail list first? Or keep it open?
-                        // Better to keep it open, but simple refresh might be tricky.
-                        // Let's close detail dialog, open edit, then reopen? No, that's bad UX.
-                        // Just show edit dialog on top. Refreshing 'exam' map locally is hard because it's passed by value.
-                        // We will rely on _fetchExamInfos() refreshing the background list.
-                        // But the currently open Dialog won't refresh unless we rebuild it.
-                        // For now: Close detail -> Open Edit -> Save -> Re-open detail?
-                        // Or: Open Edit -> Save -> Update local 'questions' list -> setState.
-                        // But 'questions' is local variable in _showDetail.
-                        // Let's convert _showDetail to a proper Stateful Widget dialog or just re-fetch inside.
-                        // Simple approach: Edit, then user requests "Refresh" or close/reopen.
-
-                        // Better: _showQuestionEditDialog triggers _fetchExamInfos.
-                        // The detail dialog holds a reference to 'exam' map which is from '_examInfos'.
-                        // If '_examInfos' updates, we need the dialog to rebuild.
-
-                        _showQuestionEditDialog(q).then((_) {
-                          // After edit, we might want to refresh this view.
-                          // Since this is just a static view of 'exam' map passed in...
-                          // We need to re-find this exam from the updated _examInfos and update 'questions'.
-                          // But we are inside a function, not a persistent widget state for the dialog.
-                          // The simplest UX: Close detail dialog on tap, show edit, then user opens detail again.
-                          // Or, just show edit, and tell user to reopen to see changes.
-                          // Let's allow editing, and if successful, we manually update the 'q' object in place so UI updates?
-                          // 'q' is a reference to a map in 'questions' list. If we update 'q', UI might update if we call setState?
-                          // But we are in showDialog builder... need StatefulBuilder there too.
-                        });
-                      },
-                      dense: true,
-                      leading: CircleAvatar(
-                        backgroundColor: isThreePoint
-                            ? Colors.redAccent.withOpacity(0.2)
-                            : Colors.grey.withOpacity(0.1),
-                        child: Text('${q['number']}',
-                            style: TextStyle(
-                                color: isThreePoint ? Colors.red : Colors.black,
-                                fontWeight: isThreePoint
-                                    ? FontWeight.bold
-                                    : FontWeight.normal)),
-                      ),
-                      title: Text('정답: ${q['correct_answer'] ?? '-'}'),
-                      subtitle:
-                          Text('배점: ${score}점 | 유형: ${q['category'] ?? '-'}'),
-                      trailing: isThreePoint
-                          ? const Chip(
-                              label: Text('3점', style: TextStyle(fontSize: 10)))
-                          : null,
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('닫기')),
-        ],
-      ),
-    );
+    Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => MockTestDetailScreen(
+                    examId: exam['id'],
+                    title:
+                        '${exam['year']}년 ${exam['month']}월 ${exam['title']}')))
+        .then((_) => _fetchExamInfos()); // Refresh list on return
   }
 
   @override
