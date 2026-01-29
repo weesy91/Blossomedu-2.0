@@ -46,9 +46,11 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
     int selectedGrade = exam?['grade'] ?? 1; // 1, 2, 3
     final isEditingId = exam?['id'];
 
-    // [NEW] Institution
+    // [NEW] Institution Logic (Dynamic)
     String selectedInstitution = exam?['institution'] ?? '교육청';
-    final institutionOptions = [
+
+    // 1. Default options (Immutable base)
+    final Set<String> defaultOptions = {
       '교육청',
       '평가원',
       '대성',
@@ -57,17 +59,40 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
       '종로',
       '비상',
       '기타'
-    ];
+    };
+
+    // 2. Extract existing institutions from loaded exams
+    final Set<String> existingInstitutions = _examInfos
+        .map((e) => e['institution'] as String?)
+        .where((e) => e != null && e.isNotEmpty)
+        .cast<String>()
+        .toSet();
+
+    // 3. Combine and sort
+    // We want defaults + existing, but '기타' should always be last.
+    // Let's make a combined set, remove '기타', sort, then add '기타' back.
+    final Set<String> combinedSet = {
+      ...defaultOptions,
+      ...existingInstitutions
+    };
+    combinedSet.remove('기타');
+
+    final List<String> institutionOptions = combinedSet.toList()..sort();
+    institutionOptions.add('기타'); // Ensure '기타' is at the end
+
     final institutionController =
         TextEditingController(text: selectedInstitution);
 
     // Check if initial value is in options, if not set to '기타' and fill text controller
+    // But now, since we dynamically added it, it SHOULD be in options unless it's a brand new one entered right now?
+    // Actually, if we just added all existing ones to options, selectedInstitution IS in options (unless it's null).
+    // So distinct 'custom' check is only needed if the user wants to enter a NEW one not in list.
+
     if (!institutionOptions.contains(selectedInstitution) &&
         selectedInstitution.isNotEmpty) {
-      if (!institutionOptions.contains(selectedInstitution)) {
-        // It's a custom value
-        // We might handle this by adding it to options temporarily or just setting text
-      }
+      // This theoretically shouldn't happen for existing exams if we rebuilt the list correctly,
+      // unless _examInfos hasn't refreshed yet or something.
+      // But for safety, treat as custom.
     }
 
     await showDialog(
