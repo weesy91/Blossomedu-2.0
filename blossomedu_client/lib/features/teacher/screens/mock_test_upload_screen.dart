@@ -24,6 +24,11 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
   String? _fileName;
   Uint8List? _fileBytes;
 
+  // Filters
+  int _selectedFilterGrade = 0; // 0: All
+  String _selectedFilterInstitution = '전체'; // '전체': All
+  List<String> _institutionOptions = ['전체']; // Dynamic options
+
   @override
   void initState() {
     super.initState();
@@ -40,9 +45,14 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
       setState(() {
         _examInfos = exams;
         _students = students;
-        if (exams.isNotEmpty) {
-          _selectedExam = exams.first;
-        }
+
+        // Populate filter options
+        final distinctInst =
+            exams.map((e) => e['institution'] as String? ?? '교육청').toSet();
+        _institutionOptions = ['전체', ...distinctInst.toList()..sort()];
+
+        // Initial selection logic handled by re-filtering logic
+        _updateSelectedExam();
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,6 +144,33 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
     }
   }
 
+  // [NEW] Helper to filter exams
+  List<dynamic> get _filteredExams {
+    return _examInfos.where((e) {
+      final g = e['grade'] as int? ?? 0;
+      final i = e['institution'] as String? ?? '교육청';
+
+      bool matchGrade = _selectedFilterGrade == 0 || g == _selectedFilterGrade;
+      bool matchInst =
+          _selectedFilterInstitution == '전체' || i == _selectedFilterInstitution;
+
+      return matchGrade && matchInst;
+    }).toList();
+  }
+
+  void _updateSelectedExam() {
+    final list = _filteredExams;
+    if (list.isNotEmpty) {
+      // If current selection is not in list, pick first
+      if (_selectedExam == null ||
+          !list.any((e) => e['id'] == _selectedExam['id'])) {
+        _selectedExam = list.first;
+      }
+    } else {
+      _selectedExam = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,12 +183,54 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
             color: Colors.white,
             child: Column(
               children: [
+                // Filter Row
+                Row(children: [
+                  // Grade Filter
+                  Expanded(
+                      child: DropdownButtonFormField<int>(
+                          decoration: const InputDecoration(
+                              labelText: '학년 필터',
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 0)),
+                          value: _selectedFilterGrade,
+                          items: const [
+                            DropdownMenuItem(value: 0, child: Text('전체')),
+                            DropdownMenuItem(value: 1, child: Text('고1')),
+                            DropdownMenuItem(value: 2, child: Text('고2')),
+                            DropdownMenuItem(value: 3, child: Text('고3')),
+                          ],
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedFilterGrade = val!;
+                              _updateSelectedExam();
+                            });
+                          })),
+                  const SizedBox(width: 10),
+                  // Institution Filter
+                  Expanded(
+                      child: DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                              labelText: '출판사 필터',
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 0)),
+                          value: _selectedFilterInstitution,
+                          items: _institutionOptions
+                              .map((s) =>
+                                  DropdownMenuItem(value: s, child: Text(s)))
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedFilterInstitution = val!;
+                              _updateSelectedExam();
+                            });
+                          })),
+                ]),
+                const SizedBox(height: 16),
+
                 DropdownButtonFormField(
                   decoration: const InputDecoration(labelText: '시험지 선택'),
-                  value: _selectedExam != null
-                      ? _selectedExam['id']
-                      : null, // Store ID as value for simplicity or Object
-                  items: _examInfos.map<DropdownMenuItem<int>>((e) {
+                  value: _selectedExam != null ? _selectedExam['id'] : null,
+                  items: _filteredExams.map<DropdownMenuItem<int>>((e) {
                     return DropdownMenuItem(
                       value: e['id'],
                       child:

@@ -39,10 +39,6 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
   Future<void> _showEditDialog({Map<String, dynamic>? exam}) async {
     final isEditing = exam != null;
     final titleController = TextEditingController(text: exam?['title'] ?? '');
-    final yearController = TextEditingController(
-        text: exam?['year']?.toString() ?? DateTime.now().year.toString());
-    final monthController = TextEditingController(
-        text: exam?['month']?.toString() ?? DateTime.now().month.toString());
     int selectedGrade = exam?['grade'] ?? 1; // 1, 2, 3
     final isEditingId = exam?['id'];
 
@@ -107,30 +103,14 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                 controller: titleController,
                 decoration: const InputDecoration(labelText: '시험명 (예: 3월 학평)'),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: yearController,
-                      decoration: const InputDecoration(labelText: '연도'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: monthController,
-                      decoration: const InputDecoration(labelText: '월'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
               const SizedBox(height: 16),
+              // [MODIFIED] Year/Month hidden, extracted from title
+              // TextField(controller: yearController, ...),
+              // TextField(controller: monthController, ...),
+
               DropdownButtonFormField<int>(
                 value: selectedGrade,
-                decoration: const InputDecoration(labelText: '학년'),
+                decoration: const InputDecoration(labelText: '대상 학년'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('고1')),
                   DropdownMenuItem(value: 2, child: Text('고2')),
@@ -179,10 +159,29 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
           ElevatedButton(
             onPressed: () async {
               final title = titleController.text.trim();
-              final year = int.tryParse(yearController.text) ?? 2024;
-              final month = int.tryParse(monthController.text) ?? 3;
+              if (title.isEmpty) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(const SnackBar(content: Text('시험명을 입력해주세요')));
+                return;
+              }
 
-              if (title.isEmpty) return;
+              // [NEW] Auto-extract Year/Month
+              int year = DateTime.now().year;
+              int month = DateTime.now().month;
+
+              // Regex for Year (20xx)
+              final yearMatch = RegExp(r'(20\d{2})').firstMatch(title);
+              if (yearMatch != null) {
+                year = int.parse(yearMatch.group(1)!);
+              }
+
+              // Regex for Month (1~12월 or just 1~12 followed by separator?)
+              // Common pattern: "3월", "03월", "3mo", "March"
+              // Let's stick to "N월" pattern for Korean context
+              final monthMatch = RegExp(r'(\d{1,2})월').firstMatch(title);
+              if (monthMatch != null) {
+                month = int.parse(monthMatch.group(1)!);
+              }
 
               final institution = institutionController.text.trim().isEmpty
                   ? selectedInstitution
