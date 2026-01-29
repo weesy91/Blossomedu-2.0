@@ -286,213 +286,238 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
             title: const Text('OMR 판독 확인 및 수정'),
             content: SizedBox(
               width: 500,
-              height: 600,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. OMR Image
-                    if (imageBase64 != null)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('판독 이미지 (수험번호 영역 확인)',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 300,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              color: Colors.grey.shade200,
-                            ),
-                            child: InteractiveViewer(
-                              minScale: 1.0,
-                              maxScale: 5.0,
-                              child: Image.memory(
-                                base64Decode(imageBase64),
-                                fit: BoxFit.contain,
-                              ),
-                            ),
+              height: 700,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Fixed Image Area
+                  if (imageBase64 != null)
+                    Container(
+                      height: 250,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        color: Colors.grey.shade200,
+                      ),
+                      child: ClipRect(
+                        child: InteractiveViewer(
+                          minScale: 1.0,
+                          maxScale: 5.0,
+                          panEnabled: true,
+                          scaleEnabled: true,
+                          child: Image.memory(
+                            base64Decode(imageBase64),
+                            fit: BoxFit.contain,
                           ),
-                          const SizedBox(height: 16),
-                        ],
-                      )
-                    else
-                      const Text('이미지 데이터가 없습니다.',
-                          style: TextStyle(color: Colors.grey)),
-
-                    // 2. Info
-                    Text('인식된 수험번호: $rawId',
-                        style: const TextStyle(fontSize: 16)),
-                    const SizedBox(height: 8),
-                    if (scoreData != null)
-                      Text(
-                          '점수: ${scoreData['score']}점 (등급: ${scoreData['grade']})',
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.indigo)),
-
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 16),
-
-                    // 3. Correction
-                    const Text('학생 수동 지정 (오류 수정)',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12)),
-                      hint: const Text('학생 선택'),
-                      value: student?['id'],
-                      items: _students.map<DropdownMenuItem<int>>((s) {
-                        return DropdownMenuItem(
-                          value: s['id'],
-                          child: Text(
-                              '${s['name']} (${s['school']} ${s['grade']}) [${s['attendance_code'] ?? '코드없음'}]'),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        // Update parent state
-                        final selectedS =
-                            _students.firstWhere((s) => s['id'] == val);
-
-                        // Update local dialog state if needed (though dropdown handles value)
-                        setStateDialog(() {});
-
-                        // Update main list state
-                        this.setState(() {
-                          _scannedResults[index]['student'] = selectedS;
-                          _scannedResults[index]['status'] = 'MANUAL';
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 16),
-
-                    // 4. Answer Editing (Grid)
-                    if (scoreData != null && _fullExamDetails != null) ...[
-                      const Text('답안 수정 (채점 결과 자동 반영)',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      // Grid of 45 questions
-                      Container(
-                        height: 300,
-                        decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300)),
-                        child: GridView.builder(
-                          padding: const EdgeInsets.all(8),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 5, // 5 columns
-                            childAspectRatio: 1.5,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                          ),
-                          itemCount: 45,
-                          itemBuilder: (context, qIndex) {
-                            final qNum = qIndex + 1;
-                            final answersDict =
-                                scoreData['student_answers_dict'] ?? {};
-                            final currentAns = answersDict[qNum.toString()];
-                            final questionInfo =
-                                (_fullExamDetails!['questions'] as List)
-                                    .firstWhere((q) => q['number'] == qNum,
-                                        orElse: () => null);
-                            final isCorrect = questionInfo != null &&
-                                currentAns == questionInfo['correct_answer'];
-
-                            return InkWell(
-                              onTap: () {
-                                // Show dialog to select answer 1-5
-                                showDialog(
-                                    context: context,
-                                    builder: (_) => SimpleDialog(
-                                          title: Text('$qNum번 정답 선택'),
-                                          children: [1, 2, 3, 4, 5]
-                                              .map((ans) => SimpleDialogOption(
-                                                    child: Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 8),
-                                                      child: Text('$ans번'),
-                                                    ),
-                                                    onPressed: () {
-                                                      // Update answer
-                                                      Navigator.pop(context);
-                                                      final newDict = Map<
-                                                          String,
-                                                          dynamic>.from(scoreData[
-                                                              'student_answers_dict'] ??
-                                                          {});
-                                                      newDict[qNum.toString()] =
-                                                          ans;
-
-                                                      // Update local state first
-                                                      this.setState(() {
-                                                        _scannedResults[index][
-                                                                    'score_data']
-                                                                [
-                                                                'student_answers_dict'] =
-                                                            newDict;
-                                                      });
-
-                                                      // Recalculate
-                                                      _recalculateScore(index);
-
-                                                      // Update Image Dialog UI
-                                                      setStateDialog(() {});
-                                                    },
-                                                  ))
-                                              .toList(),
-                                        ));
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: currentAns == null
-                                      ? Colors.grey.shade100
-                                      : (isCorrect
-                                          ? Colors.green.shade100
-                                          : Colors.red.shade100),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: currentAns == null
-                                        ? Colors.grey
-                                        : (isCorrect
-                                            ? Colors.green
-                                            : Colors.red),
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('$qNum번',
-                                        style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.black54)),
-                                    Text(
-                                        currentAns == null
-                                            ? '-'
-                                            : '$currentAns',
-                                        style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
                         ),
                       ),
-                    ]
-                  ],
-                ),
+                    )
+                  else
+                    const SizedBox(
+                        height: 50,
+                        child: Center(child: Text('이미지 데이터가 없습니다.'))),
+
+                  const SizedBox(height: 16),
+                  const Divider(thickness: 2),
+
+                  // 2. Scrollable Details Area
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 2. Info
+                          Text('인식된 수험번호: $rawId',
+                              style: const TextStyle(fontSize: 16)),
+                          const SizedBox(height: 8),
+                          if (scoreData != null)
+                            Text(
+                                '점수: ${scoreData['score']}점 (등급: ${scoreData['grade']})',
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo)),
+
+                          const SizedBox(height: 24),
+                          const Divider(),
+                          const SizedBox(height: 16),
+
+                          // 3. Correction
+                          const Text('학생 수동 지정 (오류 수정)',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<int>(
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                contentPadding:
+                                    EdgeInsets.symmetric(horizontal: 12)),
+                            hint: const Text('학생 선택'),
+                            value: student?['id'],
+                            items: _students.map<DropdownMenuItem<int>>((s) {
+                              return DropdownMenuItem(
+                                value: s['id'],
+                                child: Text(
+                                    '${s['name']} (${s['school']} ${s['grade']}) [${s['attendance_code'] ?? '코드없음'}]'),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              // Update parent state
+                              final selectedS =
+                                  _students.firstWhere((s) => s['id'] == val);
+
+                              // Update local dialog state if needed (though dropdown handles value)
+                              setStateDialog(() {});
+
+                              // Update main list state
+                              this.setState(() {
+                                _scannedResults[index]['student'] = selectedS;
+                                _scannedResults[index]['status'] = 'MANUAL';
+                              });
+                            },
+                          ),
+
+                          const SizedBox(height: 24),
+                          const Divider(),
+                          const SizedBox(height: 16),
+
+                          // 4. Answer Editing (Grid)
+                          if (scoreData != null &&
+                              _fullExamDetails != null) ...[
+                            const Text('답안 수정 (채점 결과 자동 반영)',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            // Grid of 45 questions
+                            Container(
+                              height: 300,
+                              decoration: BoxDecoration(
+                                  border:
+                                      Border.all(color: Colors.grey.shade300)),
+                              child: GridView.builder(
+                                padding: const EdgeInsets.all(8),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 5, // 5 columns
+                                  childAspectRatio: 1.5,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                ),
+                                itemCount: 45,
+                                itemBuilder: (context, qIndex) {
+                                  final qNum = qIndex + 1;
+                                  final answersDict =
+                                      scoreData['student_answers_dict'] ?? {};
+                                  final currentAns =
+                                      answersDict[qNum.toString()];
+                                  final questionInfo =
+                                      (_fullExamDetails!['questions'] as List)
+                                          .firstWhere(
+                                              (q) => q['number'] == qNum,
+                                              orElse: () => null);
+                                  final isCorrect = questionInfo != null &&
+                                      currentAns ==
+                                          questionInfo['correct_answer'];
+
+                                  return InkWell(
+                                    onTap: () {
+                                      // Show dialog to select answer 1-5
+                                      showDialog(
+                                          context: context,
+                                          builder: (_) => SimpleDialog(
+                                                title: Text('$qNum번 정답 선택'),
+                                                children: [1, 2, 3, 4, 5]
+                                                    .map((ans) =>
+                                                        SimpleDialogOption(
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    vertical:
+                                                                        8),
+                                                            child:
+                                                                Text('$ans번'),
+                                                          ),
+                                                          onPressed: () {
+                                                            // Update answer
+                                                            Navigator.pop(
+                                                                context);
+                                                            final newDict = Map<
+                                                                    String,
+                                                                    dynamic>.from(
+                                                                scoreData[
+                                                                        'student_answers_dict'] ??
+                                                                    {});
+                                                            newDict[qNum
+                                                                    .toString()] =
+                                                                ans;
+
+                                                            // Update local state first
+                                                            this.setState(() {
+                                                              _scannedResults[
+                                                                          index]
+                                                                      [
+                                                                      'score_data']
+                                                                  [
+                                                                  'student_answers_dict'] = newDict;
+                                                            });
+
+                                                            // Recalculate
+                                                            _recalculateScore(
+                                                                index);
+
+                                                            // Update Image Dialog UI
+                                                            setStateDialog(
+                                                                () {});
+                                                          },
+                                                        ))
+                                                    .toList(),
+                                              ));
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: currentAns == null
+                                            ? Colors.grey.shade100
+                                            : (isCorrect
+                                                ? Colors.green.shade100
+                                                : Colors.red.shade100),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: currentAns == null
+                                              ? Colors.grey
+                                              : (isCorrect
+                                                  ? Colors.green
+                                                  : Colors.red),
+                                        ),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text('$qNum번',
+                                              style: const TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.black54)),
+                                          Text(
+                                              currentAns == null
+                                                  ? '-'
+                                                  : '$currentAns',
+                                              style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ]
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             actions: [

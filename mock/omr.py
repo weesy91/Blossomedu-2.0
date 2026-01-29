@@ -4,7 +4,7 @@ import imutils
 import traceback
 import base64
 
-def scan_omr(image_bytes, debug_mode=False):
+def scan_omr(image_bytes, debug_mode=True):
     """
     [Core] OMR Engine v45 (Noise Rejection & ROI Fix)
     - 문제: 하단 영역 과다 확장으로 '감독관 확인란'을 9번 마킹으로 오인 -> 그리드 전체 밀림
@@ -81,15 +81,15 @@ def scan_omr(image_bytes, debug_mode=False):
         row_step = grid_span / 9.0
 
         # 시각화
-        if debug_mode:
-            # 탐색 영역 (파란 점선)
-            cv2.rectangle(debug_img, (int(SEARCH_X_MIN), int(SEARCH_Y_MIN)), 
-                          (int(SEARCH_X_MAX), int(SEARCH_Y_MAX)), (255, 0, 0), 3)
-            
-            # 빨간 그리드 선 (0~9 중앙)
-            for i in range(10):
-                y_center = int(grid_top + (row_step * i))
-                cv2.line(debug_img, (int(SEARCH_X_MIN), y_center), (int(SEARCH_X_MAX), y_center), (0, 0, 255), 3)
+        # 시각화 (Always active)
+        # 탐색 영역 (파란 점선)
+        cv2.rectangle(debug_img, (int(SEARCH_X_MIN), int(SEARCH_Y_MIN)), 
+                        (int(SEARCH_X_MAX), int(SEARCH_Y_MAX)), (255, 0, 0), 3)
+        
+        # 빨간 그리드 선 (0~9 중앙)
+        for i in range(10):
+            y_center = int(grid_top + (row_step * i))
+            cv2.line(debug_img, (int(SEARCH_X_MIN), y_center), (int(SEARCH_X_MAX), y_center), (0, 0, 255), 3)
 
         student_id = ""
         if id_cnts:
@@ -208,9 +208,9 @@ def scan_omr(image_bytes, debug_mode=False):
                         if total > max_px: max_px, bubbled_idx = total, i + 1
                 if bubbled_idx:
                     answers.append(bubbled_idx)
-                    if debug_mode:
-                        gx, gy, bw, bh = roi_x1 + row[bubbled_idx-1][0], roi_y_top + row[bubbled_idx-1][1], row[bubbled_idx-1][2], row[bubbled_idx-1][3]
-                        cv2.rectangle(debug_img, (gx, gy), (gx+bw, gy+bh), (0, 255, 0), 5)
+                    # if debug_mode: # Always draw
+                    gx, gy, bw, bh = roi_x1 + row[bubbled_idx-1][0], roi_y_top + row[bubbled_idx-1][1], row[bubbled_idx-1][2], row[bubbled_idx-1][3]
+                    cv2.rectangle(debug_img, (gx, gy), (gx+bw, gy+bh), (0, 255, 0), 5)
 
         if debug_mode:
             print(f"DEBUG: Student ID: {student_id}")
