@@ -633,7 +633,8 @@ class _TeacherPlannerScreenState extends State<TeacherPlannerScreen> {
     if (subject.contains('독해') || subject.contains('READING')) {
       subjectColor = Colors.purple;
     } else if (subject.contains('모의고사') || subject.contains('EXTRA')) {
-      subjectColor = Colors.orange; // Different color for Mock Test
+      subjectColor = Colors
+          .green; // Different color for Mock Test (Assignments are Orange)
     }
 
     if (isRescheduled) {
