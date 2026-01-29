@@ -30,6 +30,15 @@ class MockExamInfoViewSet(viewsets.ModelViewSet):
     queryset = MockExamInfo.objects.filter(is_active=True).order_by('-year', '-month')
     serializer_class = MockExamInfoSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+class MockExamQuestionViewSet(viewsets.ModelViewSet):
+    """
+    모의고사 개별 문항 수정 API
+    """
+    queryset = MockExamQuestion.objects.all().order_by('number')
+    serializer_class = MockExamQuestionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
 
     @action(detail=True, methods=['post'])
     def upload_answers(self, request, pk=None):

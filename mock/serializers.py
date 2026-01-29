@@ -4,7 +4,7 @@ from .models import MockExam, MockExamInfo, MockExamQuestion
 class MockExamQuestionSerializer(serializers.ModelSerializer):
     class Meta:
          model = MockExamQuestion
-         fields = ['number', 'score', 'category']
+         fields = ['id', 'number', 'score', 'category', 'correct_answer']
 
 class MockExamInfoSerializer(serializers.ModelSerializer):
     questions = MockExamQuestionSerializer(many=True, read_only=True)

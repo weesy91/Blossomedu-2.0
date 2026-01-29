@@ -1063,4 +1063,16 @@ class AcademyService {
       throw Exception('Error uploading answers: $e');
     }
   }
+
+  // [NEW] Update Individual Question
+  Future<void> updateMockExamQuestion(int id, Map<String, dynamic> data) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/mock/api/v1/questions/$id/');
+    final headers = await _getHeaders();
+    final response =
+        await http.patch(url, headers: headers, body: jsonEncode(data));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update question: ${response.body}');
+    }
+  }
 }

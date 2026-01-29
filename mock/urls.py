@@ -6,6 +6,7 @@ app_name = 'mock'
 
 router = DefaultRouter()
 router.register(r'api/v1/infos', views_api.MockExamInfoViewSet, basename='api-info')
+router.register(r'api/v1/questions', views_api.MockExamQuestionViewSet, basename='api-question')
 router.register(r'api/v1/results', views_api.MockExamViewSet, basename='api-result')
 
 urlpatterns = [

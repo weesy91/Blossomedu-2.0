@@ -218,6 +218,99 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
     );
   }
 
+  // [NEW] Question Edit Dialog
+  Future<void> _showQuestionEditDialog(Map<String, dynamic> question) async {
+    final int questionId = question['id'];
+    int correctAnswer = question['correct_answer'] ?? 1;
+    int score = question['score'] ?? 2;
+    String category = question['category'] ?? 'TOPIC';
+
+    // Category Options (Simplified)
+    final categories = {
+      'LISTENING': '듣기',
+      'PURPOSE': '목적/심경',
+      'TOPIC': '주제/제목',
+      'DATA': '도표/일치',
+      'MEANING': '함축의미',
+      'GRAMMAR': '어법',
+      'VOCAB': '어휘',
+      'BLANK': '빈칸',
+      'FLOW': '무관한문장',
+      'ORDER': '순서',
+      'INSERT': '삽입',
+      'SUMMARY': '요약',
+      'LONG': '장문'
+    };
+
+    await showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(builder: (context, setState) {
+              return AlertDialog(
+                title: Text('${question['number']}번 문항 수정'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(labelText: '정답'),
+                      value: correctAnswer,
+                      items: [1, 2, 3, 4, 5]
+                          .map((e) =>
+                              DropdownMenuItem(value: e, child: Text('$e번')))
+                          .toList(),
+                      onChanged: (v) => setState(() => correctAnswer = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(labelText: '배점'),
+                      value: score,
+                      items: [2, 3]
+                          .map((e) =>
+                              DropdownMenuItem(value: e, child: Text('${e}점')))
+                          .toList(),
+                      onChanged: (v) => setState(() => score = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(labelText: '유형'),
+                      value:
+                          categories.containsKey(category) ? category : 'TOPIC',
+                      items: categories.entries
+                          .map((e) => DropdownMenuItem(
+                              value: e.key, child: Text(e.value)))
+                          .toList(),
+                      onChanged: (v) => setState(() => category = v!),
+                    )
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('취소')),
+                  ElevatedButton(
+                      onPressed: () async {
+                        final data = {
+                          'correct_answer': correctAnswer,
+                          'score': score,
+                          'category': category
+                        };
+                        try {
+                          await _academyService.updateMockExamQuestion(
+                              questionId, data);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('수정되었습니다.')));
+                          _fetchExamInfos(); // Refresh full list to update UI
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')));
+                        }
+                      },
+                      child: const Text('저장')),
+                ],
+              );
+            }));
+  }
+
   Future<void> _uploadAnswerKey(int id) async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -304,6 +397,36 @@ class _MockTestManageScreenState extends State<MockTestManageScreen> {
                     final score = q['score'] ?? 2;
                     final isThreePoint = score == 3;
                     return ListTile(
+                      onTap: () {
+                        Navigator.pop(
+                            context); // Close detail list first? Or keep it open?
+                        // Better to keep it open, but simple refresh might be tricky.
+                        // Let's close detail dialog, open edit, then reopen? No, that's bad UX.
+                        // Just show edit dialog on top. Refreshing 'exam' map locally is hard because it's passed by value.
+                        // We will rely on _fetchExamInfos() refreshing the background list.
+                        // But the currently open Dialog won't refresh unless we rebuild it.
+                        // For now: Close detail -> Open Edit -> Save -> Re-open detail?
+                        // Or: Open Edit -> Save -> Update local 'questions' list -> setState.
+                        // But 'questions' is local variable in _showDetail.
+                        // Let's convert _showDetail to a proper Stateful Widget dialog or just re-fetch inside.
+                        // Simple approach: Edit, then user requests "Refresh" or close/reopen.
+
+                        // Better: _showQuestionEditDialog triggers _fetchExamInfos.
+                        // The detail dialog holds a reference to 'exam' map which is from '_examInfos'.
+                        // If '_examInfos' updates, we need the dialog to rebuild.
+
+                        _showQuestionEditDialog(q).then((_) {
+                          // After edit, we might want to refresh this view.
+                          // Since this is just a static view of 'exam' map passed in...
+                          // We need to re-find this exam from the updated _examInfos and update 'questions'.
+                          // But we are inside a function, not a persistent widget state for the dialog.
+                          // The simplest UX: Close detail dialog on tap, show edit, then user opens detail again.
+                          // Or, just show edit, and tell user to reopen to see changes.
+                          // Let's allow editing, and if successful, we manually update the 'q' object in place so UI updates?
+                          // 'q' is a reference to a map in 'questions' list. If we update 'q', UI might update if we call setState?
+                          // But we are in showDialog builder... need StatefulBuilder there too.
+                        });
+                      },
                       dense: true,
                       leading: CircleAvatar(
                         backgroundColor: isThreePoint
