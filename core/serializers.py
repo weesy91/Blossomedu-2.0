@@ -69,7 +69,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'is_active',
             'class_times', # [NEW]
             'temp_schedules', # [NEW]
-            'log_history' # [NEW]
+            'log_history', # [NEW]
+            'attendance_code' # [NEW]
         ]
         # StudentProfile has start_date.
         extra_kwargs = {

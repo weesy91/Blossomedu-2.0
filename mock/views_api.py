@@ -151,8 +151,23 @@ class OMRScanView(views.APIView):
                     error_msg = f"수험번호 인식 실패 ({student_id_str})"
                     # Fail이어도 일단 넘기지만, Frontend에서 처리 필요
                 else:
+
                     try:
-                        student = StudentProfile.objects.get(attendance_code=student_id_str)
+                        # [Modified] 1. Try Attendance Code
+                        student = StudentProfile.objects.filter(attendance_code=student_id_str).first()
+
+                        # 2. Fallback: Try Username (Phone) EndsWith
+                        if not student:
+                            # If student_id_str is 8 digits (e.g. 12345678), matched against 01012345678
+                            student = StudentProfile.objects.filter(user__username__endswith=student_id_str).first()
+                        
+                        # 3. Fallback: Try Phone Number EndsWith
+                        if not student:
+                             student = StudentProfile.objects.filter(phone_number__endswith=student_id_str).first()
+
+                        if not student:
+                            raise StudentProfile.DoesNotExist
+
                         student_data = {
                             "id": student.id,
                             "name": student.name,

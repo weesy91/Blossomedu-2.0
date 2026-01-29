@@ -358,7 +358,7 @@ class _MockTestUploadScreenState extends State<MockTestUploadScreen> {
                               return DropdownMenuItem(
                                 value: s['id'],
                                 child: Text(
-                                    '${s['name']} (${s['school']} ${s['grade']}) [${s['attendance_code'] ?? '코드없음'}]'),
+                                    '${s['name']} (${s['school']} ${s['grade']}) [${s['attendance_code'] ?? s['phone_number'] ?? '코드없음'}]'),
                               );
                             }).toList(),
                             onChanged: (val) {
